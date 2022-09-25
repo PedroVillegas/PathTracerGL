@@ -59,7 +59,7 @@ bool Window::Init()
 
 void WindowResize(GLFWwindow* window, int width, int height)
 {  
-    // glViewport(0, 0, width, height);
+    glViewport(0, 0, width, height);
 }
 
 void CursorPos(GLFWwindow* window, float xPos, float yPos)

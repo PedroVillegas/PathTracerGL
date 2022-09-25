@@ -31,20 +31,25 @@ void main()
     float discriminant = b * b - 4.0 * a * c;
 
     if (discriminant < 0.0) 
-        FragCol = vec4(0.0, 0.0, 0.0, 1.0); // vec4(0.45, 0.55, 0.6, 1.0);
+        FragCol = (1 - (uv.y * 0.5 + 0.5)) * vec4(1.0, 1.0, 1.0, 1.0) + (uv.y * 0.5 + 0.5) * vec4(0.5, 0.7, 1.0, 1.0); // vec4(0.45, 0.55, 0.6, 1.0);
     else 
     {
-        float rootOne = (-b + discriminant) / (2.0 * a);
+        // float rootOne = (-b + discriminant) / (2.0 * a);
         float closestRoot = (-b - discriminant) / (2.0 * a);
 
-        vec3 hitPoint = u_RayOrigin + rayDir * closestRoot;
-        vec3 normal = normalize(hitPoint);
+        if (closestRoot < 0.0)
+            FragCol = vec4(0.0, 0.0, 0.0, 1.0);
+        else
+        {
+            vec3 hitPoint = u_RayOrigin + rayDir * closestRoot;
+            vec3 normal = normalize(hitPoint);
 
-        vec3 lightDirection = normalize(u_LightDirection);
-        float LightIntensity = max(dot(-lightDirection, normal), 0.0);
-        vec4 SphereCol = u_SphereCol;
-        SphereCol *= LightIntensity;
+            vec3 lightDirection = normalize(u_LightDirection);
+            float LightIntensity = max(dot(-lightDirection, normal), 0.0);
+            vec4 SphereCol = u_SphereCol;
+            SphereCol *= LightIntensity;
 
-        FragCol = SphereCol;
+            FragCol = SphereCol;
+        }
     }    
 }

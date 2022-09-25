@@ -18,7 +18,6 @@ int main(void)
     FBspec.width = ViewportWidth;
     FBspec.height = ViewportHeight;
     Framebuffer fb(FBspec);
-    //fb.Create();
 
     Camera camera = Camera(window.GetWindow(), 45.0f, 0.01f, 100.0f);
 
@@ -76,22 +75,13 @@ int main(void)
         style.Colors[ImGuiCol_WindowBg].w = 1.0f;
     }
 
-    float u_SphereCol[4] = { 1.0f, 0.0f, 1.0f, 1.0f };
+    float u_SphereCol[4] = { 0.5f, 0.5f, 0.5f, 1.0f };
     float u_LightDirection[3] = { -1.0f, -1.0f, -1.0f };
 
     float LastFrameTime = 0.0;
     float FrameTime = 0.0;
     float TimeStep = 0.0333;
     int FPS = 0;
-
-    // STEPS:
-    // Create window context
-    // Create imgui context
-    // Bind imgui context to window context
-    // 2 imgui panels -> 1 Viewport panel, 1 settings panel
-    // Create framebuffer using texture for frag shader to write to
-    // Bind texture to imgui image in viewport panel
-    // Render viewport and settings panel onto window context
 
     while (!window.Closed())
     {
@@ -135,7 +125,7 @@ int main(void)
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
 
-        shader.Unbind();
+        shader.Unbind();    
         fb.Unbind();
 
         // Renderer.OnUIPreRender();
