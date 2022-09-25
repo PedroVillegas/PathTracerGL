@@ -34,7 +34,7 @@ void Framebuffer::Create()
     glGenTextures(1, &m_TextureID); // Generate texture with ID: m_TextureID
     glBindTexture(GL_TEXTURE_2D, m_TextureID); // Select texture as current 2D Texture
     glTexImage2D(
-        GL_TEXTURE_2D, 0, GL_RGB, 300, 300, 0, GL_RGB, 
+        GL_TEXTURE_2D, 0, GL_RGB, m_Spec.width, m_Spec.height, 0, GL_RGB, 
         GL_UNSIGNED_BYTE, nullptr
         ); // Build texture with specified dimensions
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -54,7 +54,9 @@ void Framebuffer::Create()
 void Framebuffer::Destroy()
 {
     glDeleteFramebuffers(1, &m_ID);
+    m_ID = 0;
     glDeleteTextures(1, &m_TextureID);
+    m_TextureID = 0;
 }
 
 void Framebuffer::Unbind() const
