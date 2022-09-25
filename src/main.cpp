@@ -18,7 +18,7 @@ int main(void)
     FBspec.width = ViewportWidth;
     FBspec.height = ViewportHeight;
     Framebuffer fb(FBspec);
-    fb.Create();
+    //fb.Create();
 
     Camera camera = Camera(window.GetWindow(), 45.0f, 0.01f, 100.0f);
 
@@ -115,9 +115,8 @@ int main(void)
 
         // Renderer.OnPreRender();
         // Bind custom framebuffer so frame can be rendered onto texture for ImGui::Image to display onto panel
-        //fb.Create();
+        fb.Create();
         fb.Bind();
-        // glViewport(0, 0, ViewportWidth, ViewportHeight);
         glClear(GL_COLOR_BUFFER_BIT);
 
         shader.Bind();
@@ -171,6 +170,7 @@ int main(void)
         }
 
         window.Update();
+        fb.Destroy();
 
         float time = glfwGetTime();
         FrameTime = time - LastFrameTime;
