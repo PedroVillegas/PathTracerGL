@@ -5,15 +5,22 @@
 #include "shader.h"
 #include "window.h"
 #include "framebuffer.h"
+#include "camera.h"
+#include "renderer.h"
 
 int main(void) 
 {
     Window window("OpenGL Raytracer", 800, 600);
-    FramebufferSpec FBspec = FramebufferSpec();
-    FBspec.width = 1000;
-    FBspec.height = 1000;
+    // Renderer renderer;
+    unsigned int ViewportWidth = 1000;
+    unsigned int ViewportHeight = 1000;
+    FramebufferSpec FBspec;
+    FBspec.width = ViewportWidth;
+    FBspec.height = ViewportHeight;
     Framebuffer fb(FBspec);
-    // glViewport(0, 0, FBspec.width, FBspec.height);
+    fb.Create();
+
+    Camera camera = Camera(window.GetWindow(), 45.0f, 0.01f, 100.0f);
 
     float vertices[] = {
         // pos                 // col
@@ -69,29 +76,25 @@ int main(void)
         style.Colors[ImGuiCol_WindowBg].w = 1.0f;
     }
 
-    bool show_demo_window = true;
+    float u_SphereCol[4] = { 1.0f, 0.0f, 1.0f, 1.0f };
+    float u_LightDirection[3] = { -1.0f, -1.0f, -1.0f };
 
-    float u_SphereCol[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    float LastFrameTime = 0.0;
+    float FrameTime = 0.0;
+    float TimeStep = 0.0333;
+    int FPS = 0;
 
-    float prevTime = 0.0;
-    float crntTime = 0.0;
-    float timeDiff;
-    unsigned int counter = 0;
-    float FPS, renderTime;
+    // STEPS:
+    // Create window context
+    // Create imgui context
+    // Bind imgui context to window context
+    // 2 imgui panels -> 1 Viewport panel, 1 settings panel
+    // Create framebuffer using texture for frag shader to write to
+    // Bind texture to imgui image in viewport panel
+    // Render viewport and settings panel onto window context
 
     while (!window.Closed())
     {
-        crntTime = glfwGetTime();
-        timeDiff = crntTime - prevTime;
-        counter++;
-        if (timeDiff >= 1.0 / 30.0)
-        {
-            FPS = (1.0 / timeDiff) * counter;
-            renderTime = (timeDiff / counter) * 1000;
-            prevTime = crntTime;
-            counter = 0;
-        }
-
         // Input
         window.ProcessInput();
 
@@ -100,35 +103,62 @@ int main(void)
         ImGui::NewFrame();
         ImGui::DockSpaceOverViewport(ImGui::GetMainViewport());
 
+        // Renderer.OnResize();
+        // Renderer.OnUpdate();
+        fb.OnResize(ViewportWidth, ViewportHeight);
+        camera.OnResize(ViewportWidth, ViewportHeight);
+        camera.OnUpdate(TimeStep);
+        
+        // Renderer.Clear();
         glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
         window.Clear();
 
+        // Renderer.OnPreRender();
         // Bind custom framebuffer so frame can be rendered onto texture for ImGui::Image to display onto panel
+        //fb.Create();
         fb.Bind();
+        // glViewport(0, 0, ViewportWidth, ViewportHeight);
+        glClear(GL_COLOR_BUFFER_BIT);
 
         shader.Bind();
-        shader.SetUniform2f("u_resolution", FBspec.width, FBspec.height);
+        shader.SetUniform2f("u_Resolution", ViewportWidth, ViewportHeight);
+
+        shader.SetUniform3f("u_RayOrigin", camera.GetPosition().x, camera.GetPosition().y, camera.GetPosition().z);
+        shader.SetUniform4m("u_InverseProjection", camera.GetInverseProjection());
+        shader.SetUniform4m("u_InverseView", camera.GetInverseView());
+
         shader.SetUniform4f("u_SphereCol", u_SphereCol[0], u_SphereCol[1], u_SphereCol[2], u_SphereCol[3]);
 
+        shader.SetUniform3f("u_LightDirection", u_LightDirection[0], u_LightDirection[1], u_LightDirection[2]);
+
+        // Renderer.OnRender();
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
 
+        shader.Unbind();
         fb.Unbind();
 
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0,0));
-        ImGui::Begin("RT Viewport", 0, ImGuiWindowFlags_NoTitleBar);
-        ImVec2 MaxSpaceAvail = ImGui::GetContentRegionAvail();
-        ImGui::Image((void*)(intptr_t)fb.GetTextureID(), MaxSpaceAvail, {0, 1}, {1, 0});
+        // Renderer.OnUIPreRender();
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+        ImGui::Begin("Game Window", 0, ImGuiWindowFlags_NoTitleBar);
+
+        ViewportWidth = ImGui::GetContentRegionAvail().x;
+        ViewportHeight = ImGui::GetContentRegionAvail().y;
+        
+        ImGui::Image((void*)(intptr_t)fb.GetTextureID(), { (float)ViewportWidth, (float)ViewportHeight }, {0, 1}, {1, 0});
+
         ImGui::End();
         ImGui::PopStyleVar();
 
         ImGui::Begin("Settings");
-        ImGui::Text("Render time: %f ms", renderTime);
+        ImGui::Text("Render time: %.3f ms", FrameTime * 1000);
         ImGui::Text("FPS: %i", (int)FPS);
-        ImGui::ColorEdit4("Sphere Colour", u_SphereCol);
+        ImGui::ColorEdit3("Sphere Colour", u_SphereCol);
+        ImGui::DragFloat3("Light Direction: ", u_LightDirection, 0.01);
         ImGui::End();
 
+        // renderer.OnUIRender();
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
@@ -141,6 +171,12 @@ int main(void)
         }
 
         window.Update();
+
+        float time = glfwGetTime();
+        FrameTime = time - LastFrameTime;
+        TimeStep = glm::min<float>(FrameTime, 0.0333f);
+        LastFrameTime = time;
+        FPS = (int) (1 / FrameTime);
     }
 
     ImGui_ImplOpenGL3_Shutdown();

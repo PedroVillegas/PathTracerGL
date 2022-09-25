@@ -1,6 +1,7 @@
 #include "window.h"
 
 void WindowResize(GLFWwindow* window, int width, int height);
+void CursorPosition(GLFWwindow* window, float xPos, float yPos);
 
 Window::Window(const char* title, unsigned int width, unsigned int height)
 {
@@ -41,6 +42,7 @@ bool Window::Init()
     glfwMakeContextCurrent(m_Window);
     // glfwSwapInterval(0);
     glfwSetFramebufferSizeCallback(m_Window, WindowResize);
+    // glfwSetCursorPosCallback(m_Window, CursorPosition);
 
     // glad: load all OpenGL function pointers
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
@@ -50,13 +52,19 @@ bool Window::Init()
     }
 
     std::cout << glGetString(GL_VERSION) << std::endl;
+    std::cout << glGetString(GL_RENDERER) << std::endl;
 
     return true;
 }
 
 void WindowResize(GLFWwindow* window, int width, int height)
+{  
+    // glViewport(0, 0, width, height);
+}
+
+void CursorPos(GLFWwindow* window, float xPos, float yPos)
 {
-    glViewport(0, 0, width, height);
+    return;
 }
 
 void Window::ProcessInput() const
@@ -81,4 +89,14 @@ void Window::Update() const
 bool Window::Closed() const
 {
     return glfwWindowShouldClose(m_Window);
+}
+
+void Window::SetWidth(unsigned int width)
+{
+    m_Width = width;
+}
+
+void Window::SetHeight(unsigned int height)
+{
+    m_Height = height;
 }

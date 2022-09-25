@@ -1,6 +1,8 @@
 #pragma once
 
 #include <glad/glad.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -22,8 +24,10 @@ public:
     void Bind() const;
     void Unbind() const;
     // setters
+    void SetUniform2f(const std::string& name, float f0, float f1);
+    void SetUniform3f(const std::string& name, float f0, float f1, float f2);
     void SetUniform4f(const std::string& name, float f0, float f1, float f2, float f3);
-    void SetUniform2f(const std::string& name, float f0, float f2);
+    void SetUniform4m(const std::string& name, const glm::mat4& matrix);
 
 private:
     std::string ParseShader(const std::string& filepath);
