@@ -40,7 +40,6 @@ void main()
         vec3 hitPoint = u_RayOrigin + rayDir * closestRoot;
         vec3 normal = normalize(hitPoint);
 
-        vec4 WorldSpaceLightDirection = u_InverseProjection * vec4(u_LightDirection, 1);
         vec3 lightDirection = normalize(u_LightDirection);
         float LightIntensity = max(dot(-lightDirection, normal), 0.0);
         vec4 SphereCol = u_SphereCol;
