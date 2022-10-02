@@ -75,9 +75,8 @@ int main(void)
         style.Colors[ImGuiCol_WindowBg].w = 1.0f;
     }
 
-    float u_SphereCol[4] = { 0.5f, 0.5f, 0.5f, 1.0f };
+    float u_SphereCol[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
     float u_LightDirection[3] = { -1.0f, -1.0f, -1.0f };
-
     float LastFrameTime = 0.0;
     float FrameTime = 0.0;
     float TimeStep = 0.0333;
@@ -93,17 +92,13 @@ int main(void)
         ImGui::NewFrame();
         ImGui::DockSpaceOverViewport(ImGui::GetMainViewport());
 
-        // Renderer.OnResize();
-        // Renderer.OnUpdate();
         fb.OnResize(ViewportWidth, ViewportHeight);
         camera.OnResize(ViewportWidth, ViewportHeight);
         camera.OnUpdate(TimeStep);
         
-        // Renderer.Clear();
         glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
         window.Clear();
 
-        // Renderer.OnPreRender();
         // Bind custom framebuffer so frame can be rendered onto texture for ImGui::Image to display onto panel
         fb.Create();
         fb.Bind();
@@ -120,7 +115,6 @@ int main(void)
 
         shader.SetUniform3f("u_LightDirection", u_LightDirection[0], u_LightDirection[1], u_LightDirection[2]);
 
-        // Renderer.OnRender();
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
@@ -128,7 +122,6 @@ int main(void)
         shader.Unbind();    
         fb.Unbind();
 
-        // Renderer.OnUIPreRender();
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
         ImGui::Begin("Game Window", 0, ImGuiWindowFlags_NoTitleBar);
 
@@ -147,7 +140,6 @@ int main(void)
         ImGui::DragFloat3("Light Direction: ", u_LightDirection, 0.01);
         ImGui::End();
 
-        // renderer.OnUIRender();
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
