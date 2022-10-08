@@ -1,9 +1,12 @@
 #include "framebuffer.h"
 
-Framebuffer::Framebuffer(FramebufferSpec& FBspec)
+Framebuffer::Framebuffer()
 {
-    m_Spec = FBspec;
-    // Create();
+}
+
+Framebuffer::Framebuffer(FramebufferSpec& FBspec)
+    : m_Spec(FBspec)
+{
 }
 
 Framebuffer::~Framebuffer()
@@ -11,7 +14,7 @@ Framebuffer::~Framebuffer()
     glDeleteFramebuffers(1, &m_ID);
 }
 
-void Framebuffer::OnResize(unsigned int width, unsigned int height)
+void Framebuffer::OnResize(uint width, uint height)
 {
     if (width == m_Spec.width && height == m_Spec.height)
         return;
@@ -65,12 +68,12 @@ void Framebuffer::Unbind() const
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void Framebuffer::SetWidth(unsigned int width)
+void Framebuffer::SetWidth(uint width)
 {
     m_Spec.width = width;
 }
 
-void Framebuffer::SetHeight(unsigned int height)
+void Framebuffer::SetHeight(uint height)
 {
     m_Spec.height = height;
 }

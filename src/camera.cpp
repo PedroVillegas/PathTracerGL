@@ -1,17 +1,20 @@
 #include "camera.h"
 
-Camera::Camera(GLFWwindow* window, float verticalFOV, float nearClip, float farClip)
-    : m_Window(window), m_VerticalFOV(verticalFOV), m_NearClip(nearClip), m_FarClip(farClip)
+Camera::Camera(float verticalFOV, float nearClip, float farClip)
+    :
+    m_VerticalFOV(verticalFOV), 
+    m_NearClip(nearClip), 
+    m_FarClip(farClip)
 {
     m_ForwardDirection = glm::vec3(0, 0, -1);
     m_Position = glm::vec3(0, 0, 3);
 }
 
-void Camera::OnUpdate(float dt)
+void Camera::OnUpdate(float dt, GLFWwindow* window)
 {
     float mousePosX = 0.0f , mousePosY = 0.0f;
     glm::vec2 mousePos = {mousePosX, mousePosY};
-    // glfwGetCursorPos(m_Window, &mousePosX, &mousePosY);
+    // glfwGetCursorPos(window, &mousePosX, &mousePosY);
     glm::vec2 delta = (mousePos - m_LastMousePosition) * 0.002f;
     m_LastMousePosition = mousePos;
 
@@ -21,32 +24,32 @@ void Camera::OnUpdate(float dt)
     float speed = 5.0f;
 
     // Movement
-    if(glfwGetKey(m_Window, GLFW_KEY_W) == GLFW_PRESS)
+    if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
     {
         m_Position += m_ForwardDirection * speed * dt;
     }
 
-    if(glfwGetKey(m_Window, GLFW_KEY_S) == GLFW_PRESS)
+    if(glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
     {
         m_Position -= m_ForwardDirection * speed * dt;
     }
 
-    if(glfwGetKey(m_Window, GLFW_KEY_D) == GLFW_PRESS)
+    if(glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
     {
         m_Position += rightDirection * speed * dt;
     }
 
-    if(glfwGetKey(m_Window, GLFW_KEY_A) == GLFW_PRESS)
+    if(glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
     {
         m_Position -= rightDirection * speed * dt;
     }
 
-    if(glfwGetKey(m_Window, GLFW_KEY_E) == GLFW_PRESS)
+    if(glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
     {
         m_Position += upDirection * speed * dt;
     }
 
-    if(glfwGetKey(m_Window, GLFW_KEY_Q) == GLFW_PRESS)
+    if(glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
     {
         m_Position -= upDirection * speed * dt;
     }
@@ -65,7 +68,7 @@ void Camera::OnUpdate(float dt)
     RecalculateView();
 }
 
-void Camera::OnResize(unsigned int width, unsigned int height)
+void Camera::OnResize(uint width, uint height)
 {
     if (width == m_ViewportWidth && height == m_ViewportHeight)
         return;

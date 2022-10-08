@@ -8,11 +8,11 @@ class Window
 {
 private:
     const char* m_Title;
-    unsigned int m_Width, m_Height;
+    uint m_Width, m_Height;
     GLFWwindow* m_Window;
 
 public:
-    Window(const char* title, unsigned int width, unsigned int height);
+    Window(const char* title, uint width, uint height);
     ~Window();
     void ProcessInput() const;
     void Clear() const;
@@ -20,10 +20,10 @@ public:
     bool Closed() const;
 
     inline GLFWwindow* GetWindow() const { return m_Window; }
-    inline unsigned int GetWidth() const { return m_Width; }
-    void SetWidth(unsigned int width);
-    inline unsigned int GetHeight() const { return m_Height; }
-    void SetHeight(unsigned int height);
+    inline uint GetWidth() const { return m_Width; }
+    void SetWidth(uint width);
+    inline uint GetHeight() const { return m_Height; }
+    void SetHeight(uint height);
 
 private:
     bool Init();

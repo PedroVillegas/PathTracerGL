@@ -27,9 +27,9 @@ std::string Shader::ParseShader(const std::string& filepath)
     return ss.str();
 }
 
-unsigned int Shader::CompileShader(unsigned int type, const std::string& source)
+uint Shader::CompileShader(uint type, const std::string& source)
 {
-    unsigned int id = glCreateShader(type);
+    uint id = glCreateShader(type);
     const char* src = source.c_str();
     glShaderSource(id, 1, &src, NULL);
     glCompileShader(id);
@@ -52,12 +52,12 @@ unsigned int Shader::CompileShader(unsigned int type, const std::string& source)
     return id;
 }
 
-unsigned int Shader::CreateShader(const std::string& vertexShader, const std::string& fragmentShader)
+uint Shader::CreateShader(const std::string& vertexShader, const std::string& fragmentShader)
 {
     // create program for shaders to link to
-    unsigned int program = glCreateProgram();
-    unsigned int vs = CompileShader(GL_VERTEX_SHADER, vertexShader);
-    unsigned int fs = CompileShader(GL_FRAGMENT_SHADER, fragmentShader);
+    uint program = glCreateProgram();
+    uint vs = CompileShader(GL_VERTEX_SHADER, vertexShader);
+    uint fs = CompileShader(GL_FRAGMENT_SHADER, fragmentShader);
 
     // link shaders into one program
     glAttachShader(program, vs);
@@ -81,32 +81,42 @@ void Shader::Unbind() const
     glUseProgram(0);
 }
 
-void Shader::SetUniform2f(const std::string& name, float f0, float f1)
+void Shader::SetUniformInt(const std::string& name, int val)
 {
-    glUniform2f(GetUniformLocation(name), f0, f1);
+    glUniform1i(GetUniformLocation(name), val);
 }
 
-void Shader::SetUniform3f(const std::string& name, float f0, float f1, float f2)
+void Shader::SetUniformFloat(const std::string& name, float val)
 {
-    glUniform3f(GetUniformLocation(name), f0, f1, f2);
+    glUniform1f(GetUniformLocation(name), val);
 }
 
-void Shader::SetUniform4f(const std::string& name, float f0, float f1, float f2, float f3)
+void Shader::SetUniformVec2(const std::string& name, float val0, float val1)
 {
-    glUniform4f(GetUniformLocation(name), f0, f1, f2, f3);
+    glUniform2f(GetUniformLocation(name), val0, val1);
 }
 
-void Shader::SetUniform4m(const std::string& name, const glm::mat4& matrix)
+void Shader::SetUniformVec3(const std::string& name, float val0, float val1, float val2)
+{
+    glUniform3f(GetUniformLocation(name), val0, val1, val2);
+}
+
+void Shader::SetUniformVec4(const std::string& name, float val0, float val1, float val2, float val3)
+{
+    glUniform4f(GetUniformLocation(name), val0, val1, val2, val3);
+}
+
+void Shader::SetUniformMat4(const std::string& name, const glm::mat4& matrix)
 {
     glUniformMatrix4fv(GetUniformLocation(name), 1, GL_FALSE, glm::value_ptr(matrix));
 }
 
-unsigned int Shader::GetUniformLocation(const std::string &name)
+uint Shader::GetUniformLocation(const std::string &name)
 {
     if (m_UniformLocationCache.find(name) != m_UniformLocationCache.end())
         return m_UniformLocationCache[name];
 
-    unsigned int location = glGetUniformLocation(m_ID, name.c_str());
+    uint location = glGetUniformLocation(m_ID, name.c_str());
     if (location == -1)
         std::cout << "[Warning] Uniform '" << name << "' doesn't exist!" << std::endl;
     

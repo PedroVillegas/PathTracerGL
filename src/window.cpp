@@ -3,11 +3,12 @@
 void WindowResize(GLFWwindow* window, int width, int height);
 void CursorPosition(GLFWwindow* window, float xPos, float yPos);
 
-Window::Window(const char* title, unsigned int width, unsigned int height)
+Window::Window(const char* title, uint width, uint height)
+    :
+    m_Title(title),
+    m_Width(width),
+    m_Height(height)
 {
-    m_Title = title;
-    m_Width = width;
-    m_Height = height;
     if (!Window::Init())
         glfwTerminate();
 }
@@ -91,12 +92,12 @@ bool Window::Closed() const
     return glfwWindowShouldClose(m_Window);
 }
 
-void Window::SetWidth(unsigned int width)
+void Window::SetWidth(uint width)
 {
     m_Width = width;
 }
 
-void Window::SetHeight(unsigned int height)
+void Window::SetHeight(uint height)
 {
     m_Height = height;
 }

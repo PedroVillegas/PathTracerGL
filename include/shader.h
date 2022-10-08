@@ -13,8 +13,8 @@
 class Shader
 {
 private:
-    unsigned int m_ID;
-    std::unordered_map<std::string, unsigned int> m_UniformLocationCache;
+    uint m_ID;
+    std::unordered_map<std::string, uint> m_UniformLocationCache;
     
 public:
     // constructor reads and builds shader
@@ -23,15 +23,19 @@ public:
     // use/activate the shader
     void Bind() const;
     void Unbind() const;
+
+    inline uint GetID() { return m_ID; }
     // setters
-    void SetUniform2f(const std::string& name, float f0, float f1);
-    void SetUniform3f(const std::string& name, float f0, float f1, float f2);
-    void SetUniform4f(const std::string& name, float f0, float f1, float f2, float f3);
-    void SetUniform4m(const std::string& name, const glm::mat4& matrix);
+    void SetUniformInt(const std::string& name, int val);
+    void SetUniformFloat(const std::string& name, float val);
+    void SetUniformVec2(const std::string& name, float val0, float val1);
+    void SetUniformVec3(const std::string& name, float val0, float val1, float val2);
+    void SetUniformVec4(const std::string& name, float val0, float val1, float val2, float val3);
+    void SetUniformMat4(const std::string& name, const glm::mat4& matrix);
 
 private:
     std::string ParseShader(const std::string& filepath);
-    unsigned int CreateShader(const std::string& vertexShader, const std::string& fragmentShader);
-    unsigned int CompileShader(unsigned int type, const std::string& source);
-    unsigned int GetUniformLocation(const std::string& name);
+    uint CreateShader(const std::string& vertexShader, const std::string& fragmentShader);
+    uint CompileShader(uint type, const std::string& source);
+    uint GetUniformLocation(const std::string& name);
 };

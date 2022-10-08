@@ -4,12 +4,11 @@
 
 #include <vector>
 
-struct Sphere
+struct alignas(16) Sphere
 {
-    glm::vec3 Position(0.0f, 0.0f, 0.0f);
+    glm::vec4 Position {0.0f, 0.0f, 0.0f, 1.0f};
     float Radius = 0.5f;
-
-    glm::vec3 Albedo(1.0f)
+    glm::vec4 Albedo {1.0f, 1.0f, 1.0f, 1.0f};
 };
 
 struct Scene

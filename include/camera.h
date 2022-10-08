@@ -11,10 +11,10 @@
 class Camera
 {
 public:
-    Camera(GLFWwindow* window, float verticalFOV, float nearClip, float farClip);
+    Camera(float verticalFOV, float nearClip, float farClip);
 
-    void OnUpdate(float dt);
-    void OnResize(unsigned int width, unsigned int height);
+    void OnUpdate(float dt, GLFWwindow* window);
+    void OnResize(uint width, uint height);
 
     const glm::mat4& GetProjection() const { return m_Projection; }
     const glm::mat4& GetInverseProjection() const { return m_InverseProjection; }
@@ -35,8 +35,6 @@ private:
     glm::mat4 m_View { 1.0f };
     glm::mat4 m_InverseProjection { 1.0f };
     glm::mat4 m_InverseView { 1.0f };
-    
-    GLFWwindow* m_Window;
 
     float m_VerticalFOV = 45.0f;
     float m_NearClip = 0.1f;
@@ -47,5 +45,5 @@ private:
 
     glm::vec2 m_LastMousePosition { 0.0f, 0.0f };
 
-    unsigned int m_ViewportWidth = 0, m_ViewportHeight = 0;
+    uint m_ViewportWidth = 0, m_ViewportHeight = 0;
 };
