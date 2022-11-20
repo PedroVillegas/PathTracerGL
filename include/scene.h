@@ -14,4 +14,5 @@ struct alignas(16) Sphere
 struct Scene
 {
     std::vector<Sphere> Spheres;
+    glm::vec3 lightDirection {-1.0f, -1.0f, -1.0f};
 };

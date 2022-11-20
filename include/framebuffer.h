@@ -2,6 +2,7 @@
 
 #include <glad/glad.h>
 #include <iostream>
+#include "consoleLogger.h"
 
 struct FramebufferSpec
 {
@@ -11,8 +12,8 @@ struct FramebufferSpec
 class Framebuffer
 {
 private:
-    uint m_ID;
-    uint m_TextureID;
+    uint m_ID = 0;
+    uint m_TextureID = 0;
     FramebufferSpec m_Spec;
 
 public:

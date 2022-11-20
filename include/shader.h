@@ -9,11 +9,12 @@
 #include <sstream>
 #include <string>
 #include <unordered_map>
+#include "consoleLogger.h"
 
 class Shader
 {
 private:
-    uint m_ID;
+    uint m_ID = 0;
     std::unordered_map<std::string, uint> m_UniformLocationCache;
     
 public:

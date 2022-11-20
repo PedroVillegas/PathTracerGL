@@ -7,10 +7,12 @@
 #include "shader.h"
 #include "camera.h"
 #include "scene.h"
+#include "consoleLogger.h"
+
 class Renderer
 {
 public:
-    Renderer(Shader shader, uint ViewportWidth, uint ViewportHeight);
+    Renderer(Shader& shader, uint ViewportWidth, uint ViewportHeight);
     ~Renderer();
 
     void OnResize(uint width, uint height);
@@ -18,20 +20,20 @@ public:
     void SetViewportWidth(uint width);
     void SetViewportHeight(uint height);
 
-    inline uint GetViewportWidth() { return m_ViewportWidth; }
-    inline uint GetViewportHeight() { return m_ViewportHeight; }
-    inline Shader GetShader() { return m_Shader; }
-    inline Framebuffer GetViewportFramebuffer() { return m_ViewportFramebuffer; }
+    inline uint GetViewportWidth() const { return m_ViewportWidth; }
+    inline uint GetViewportHeight() const { return m_ViewportHeight; }
+    inline Shader* GetShader() const { return m_Shader; }
+    inline Framebuffer GetViewportFramebuffer() const { return m_ViewportFramebuffer; }
 
-    inline void SetClearColour(const glm::vec4& colour) { glClearColor(colour.r, colour.g, colour.b, colour.a); }
-    inline void Clear() { glClear(GL_COLOR_BUFFER_BIT); }
+    inline void SetClearColour(const glm::vec4& colour) { glClearColor(colour.r, colour.g, colour.b, colour.a); GLCall; }
+    inline void Clear() { glClear(GL_COLOR_BUFFER_BIT); GLCall; }
 
     void Render(const Scene& scene, const Camera& camera, uint VAO);
 
 private:
-    Camera m_Camera;
-    Scene m_Scene;
-    Shader m_Shader;
+    const Camera* m_Camera = nullptr;
+    const Scene* m_Scene = nullptr;
+    Shader* m_Shader = nullptr;
     uint m_ViewportWidth, m_ViewportHeight = 0;
     FramebufferSpec m_ViewportSpec;
     Framebuffer m_ViewportFramebuffer;

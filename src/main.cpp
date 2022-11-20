@@ -2,6 +2,7 @@
 #include "imgui/imgui_impl_glfw.h"
 #include "imgui/imgui_impl_opengl3.h"
 
+#include "consoleLogger.h"
 #include "shader.h"
 #include "window.h"
 #include "framebuffer.h"
@@ -9,16 +10,17 @@
 #include "renderer.h"
 #include "scene.h"
 
+#include <glm/glm.hpp>
+
 void SetupScene(Scene& scene);
-void SetupViewportImage(Renderer renderer, Scene scene, uint& VAO, uint& VBO, uint& IBO);
+void SetupViewportImage(const Renderer& renderer, const Scene& scene, uint& VAO, uint& VBO, uint& IBO);
 
 int main(void) 
 {
     uint ViewportWidth = 1000, ViewportHeight = 1000;
-    Window window("OpenGL Raytracer", 800, 600);
-    Shader shader("res/shaders/vert.vs", "res/shaders/frag.fs");
-    // std::unique_ptr<Shader> shaderPtr = std::make_unique<Shader>(shader);
-    Renderer renderer(shader, ViewportWidth, ViewportHeight);
+    Window window = Window("GLRT", 800, 600);
+    Shader shader = Shader("res/shaders/vert.vs", "res/shaders/frag.fs");
+    Renderer renderer = Renderer(shader, ViewportWidth, ViewportHeight);
     Camera camera = Camera(45.0f, 0.01f, 100.0f);
     Scene scene = Scene();
 
@@ -45,10 +47,9 @@ int main(void)
         style.Colors[ImGuiCol_WindowBg].w = 1.0f;
     }
 
-    float u_LightDirection[3] = { -1.0f, -1.0f, -1.0f };
     float LastFrameTime = 0.0;
     float FrameTime = 0.0;
-    float TimeStep = 0.0333;
+    float dt = 0.0333;
     uint FPS = 0;
 
     while (!window.Closed())
@@ -63,12 +64,8 @@ int main(void)
 
         renderer.OnResize(ViewportWidth, ViewportHeight);
         camera.OnResize(renderer.GetViewportWidth(), renderer.GetViewportHeight());
-        camera.OnUpdate(TimeStep, window.GetWindow());
+        camera.OnUpdate(dt, window.GetWindow());
 
-        renderer.SetClearColour(glm::vec4(1.0f));
-        renderer.Clear();
-        shader.Bind();
-        shader.SetUniformVec3("u_LightDirection", u_LightDirection[0], u_LightDirection[1], u_LightDirection[2]);
         renderer.Render(scene, camera, VAO);
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0.0f, 0.0f});
@@ -76,16 +73,33 @@ int main(void)
 
         ViewportWidth = ImGui::GetContentRegionAvail().x;
         ViewportHeight = ImGui::GetContentRegionAvail().y;
-        
-        ImGui::Image((void*)(intptr_t)renderer.GetViewportFramebuffer().GetTextureID(), { (float)ViewportWidth, (float)ViewportHeight }, {0, 1}, {1, 0});
+
+        auto image = renderer.GetViewportFramebuffer().GetTextureID();
+        // std::cout << image << std::endl;
+
+        if (image)
+        {
+            // std::cout << "Successfully obtained framebuffer texture ID." << std::endl;
+            ImGui::Image((void*)(intptr_t)image, { (float)ViewportWidth, (float)ViewportHeight }, {0, 1}, {1, 0});
+        }
 
         ImGui::End();
         ImGui::PopStyleVar();
 
-        ImGui::Begin("Settings");
+        ImGui::Begin("Analytics");
         ImGui::Text("Render time: %.3f ms", FrameTime * 1000);
         ImGui::Text("FPS: %i", (int)FPS);
-        ImGui::DragFloat3("Light Direction: ", u_LightDirection, 0.01);
+        ImGui::BulletText("Press 1/2 to disable/enable mouse rotation");
+        ImGui::End();
+        
+        ImGui::Begin("Scene");
+        float u_LightDirection[3] = {scene.lightDirection.x, scene.lightDirection.y, scene.lightDirection.z};
+        ImGui::Text("[Camera Position]");
+        ImGui::Text("< %.2f, %.2f, %.2f >", camera.GetPosition().x, camera.GetPosition().y , camera.GetPosition().z);
+        ImGui::Separator();
+        ImGui::Text("[Light Direction]");
+        ImGui::DragFloat3("", u_LightDirection, 0.01);
+        scene.lightDirection = glm::vec3(u_LightDirection[0], u_LightDirection[1], u_LightDirection[2]);
         ImGui::End();
 
         ImGui::Render();
@@ -104,7 +118,7 @@ int main(void)
 
         float time = glfwGetTime();
         FrameTime = time - LastFrameTime;
-        TimeStep = glm::min<float>(FrameTime, 0.0333f);
+        dt = glm::min<float>(FrameTime, 0.0333f);
         LastFrameTime = time;
         FPS = (uint) (1 / FrameTime);
     }
@@ -113,9 +127,9 @@ int main(void)
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
 
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(1, &VBO);
-    glDeleteBuffers(1, &IBO);
+    glDeleteVertexArrays(1, &VAO); GLCall;
+    glDeleteBuffers(1, &VBO); GLCall;
+    glDeleteBuffers(1, &IBO); GLCall;
 }
 
 void SetupScene(Scene& scene)
@@ -123,20 +137,20 @@ void SetupScene(Scene& scene)
     {
         Sphere sphere;
         sphere.Position = { 0.0f, 0.0f, 0.0f, 1.0f };
-        sphere.Albedo = { 1.0f, 1.0f, 1.0f, 1.0f };
+        sphere.Radius = 0.5f;
+        sphere.Albedo = { 1.0f, 0.0f, 1.0f, 1.0f };
         scene.Spheres.push_back(sphere);
     }
     {
         Sphere sphere;
-        sphere.Position = { 0.0f, -1000.5f, 0.0f, 1.0f };
-        sphere.Radius = 1000.0f;
+        sphere.Position = { 0.0f, -5.5f, 0.0f, 1.0f };
+        sphere.Radius = 1.0f;
         sphere.Albedo = { 1.0f, 1.0f, 1.0f, 1.0f };
         scene.Spheres.push_back(sphere);
     }
-
 }
 
-void SetupViewportImage(Renderer renderer, Scene scene, uint& VAO, uint& VBO, uint& IBO)
+void SetupViewportImage(const Renderer& renderer, const Scene& scene, uint& VAO, uint& VBO, uint& IBO)
 {
     float vertices[] = {
         // pos                 // col
@@ -151,35 +165,39 @@ void SetupViewportImage(Renderer renderer, Scene scene, uint& VAO, uint& VBO, ui
         2, 3, 0
     };
  
-    glGenVertexArrays  (1, &VAO);
-    glGenBuffers       (1, &VBO);
-    glGenBuffers       (1, &IBO);
+    glGenVertexArrays  (1, &VAO); GLCall;
+    glGenBuffers       (1, &VBO); GLCall;
+    glGenBuffers       (1, &IBO); GLCall;
     
-    glBindVertexArray  (VAO);
-    glBindBuffer       (GL_ARRAY_BUFFER, VBO);
-    glBufferData       (GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glBindVertexArray  (VAO); GLCall;
+    glBindBuffer       (GL_ARRAY_BUFFER, VBO); GLCall;
+    glBufferData       (GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW); GLCall;
     
-    glBindBuffer       (GL_ELEMENT_ARRAY_BUFFER, IBO);
-    glBufferData       (GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+    glBindBuffer       (GL_ELEMENT_ARRAY_BUFFER, IBO); GLCall;
+    glBufferData       (GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW); GLCall;
 
     // position attrib
-    glVertexAttribPointer      (0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray  (0);
+    glVertexAttribPointer      (0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0); GLCall;
+    glEnableVertexAttribArray  (0); GLCall;
 
     // colour attrib  
-    glVertexAttribPointer      (1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3* sizeof(float)));
-    glEnableVertexAttribArray  (1);
+    glVertexAttribPointer      (1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3* sizeof(float))); GLCall;
+    glEnableVertexAttribArray  (1); GLCall;
 
-    uint SphereCount = scene.Spheres.size();
-    renderer.GetShader().SetUniformInt("u_SphereCount", SphereCount);
-    // std::cout << scene.Spheres.data() << std::endl;
+    renderer.GetShader()->Bind();
+    int SphereCount = scene.Spheres.size();
+    renderer.GetShader()->SetUniformInt("u_SphereCount", SphereCount);
+    
+    uint block = glGetUniformBlockIndex(renderer.GetShader()->GetID(), "SpheresBlock"); GLCall;
+    uint bind = 0;
+    glUniformBlockBinding(renderer.GetShader()->GetID(), block, bind); GLCall;
 
     uint SpheresUBO;
-    glGenBuffers(1, &SpheresUBO);
-    glBindBuffer(GL_UNIFORM_BUFFER, SpheresUBO);
-    glBufferData(GL_UNIFORM_BUFFER, SphereCount * sizeof(Sphere), scene.Spheres.data(), GL_STATIC_DRAW);
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
-    uint block = glGetUniformBlockIndex(renderer.GetShader().GetID(), "SpheresBlock");
-    uint bind = 0;
-    glUniformBlockBinding(renderer.GetShader().GetID(), block, bind);
+    glGenBuffers(1, &SpheresUBO); GLCall;
+    glBindBuffer(GL_UNIFORM_BUFFER, SpheresUBO); GLCall;
+    glBufferData(GL_UNIFORM_BUFFER, SphereCount * sizeof(Sphere), scene.Spheres.data(), GL_STATIC_DRAW); GLCall;
+    glBindBufferBase(GL_UNIFORM_BUFFER, bind, SpheresUBO);
+    glBindBuffer(GL_UNIFORM_BUFFER, 0); GLCall;
+
+    renderer.GetShader()->Unbind();
 }

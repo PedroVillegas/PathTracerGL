@@ -11,47 +11,50 @@ Camera::Camera(float verticalFOV, float nearClip, float farClip)
 }
 
 void Camera::OnUpdate(float dt, GLFWwindow* window)
-{
-    float mousePosX = 0.0f , mousePosY = 0.0f;
-    glm::vec2 mousePos = {mousePosX, mousePosY};
-    // glfwGetCursorPos(window, &mousePosX, &mousePosY);
-    glm::vec2 delta = (mousePos - m_LastMousePosition) * 0.002f;
-    m_LastMousePosition = mousePos;
+{   
+    glm::vec2 delta {0.0f};
+    if (m_AllowCameraToRotate)
+    {
+        double mousePosX = 0.0f , mousePosY = 0.0f;
+        glfwGetCursorPos(window, &mousePosX, &mousePosY);
+        glm::vec2 mousePos {mousePosX, mousePosY};
+        delta = (mousePos - m_LastMousePosition) * 0.005f;
+        m_LastMousePosition = mousePos;
+    }
 
     constexpr glm::vec3 upDirection(0.0f, 1.0f, 0.0f);
     glm::vec3 rightDirection = glm::cross(m_ForwardDirection, upDirection);
 
     float speed = 5.0f;
 
-    // Movement
     if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-    {
         m_Position += m_ForwardDirection * speed * dt;
-    }
 
     if(glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-    {
         m_Position -= m_ForwardDirection * speed * dt;
-    }
 
     if(glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-    {
         m_Position += rightDirection * speed * dt;
-    }
 
     if(glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-    {
         m_Position -= rightDirection * speed * dt;
-    }
 
     if(glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
-    {
         m_Position += upDirection * speed * dt;
-    }
 
     if(glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
-    {
         m_Position -= upDirection * speed * dt;
+
+    if(glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
+    {
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        m_AllowCameraToRotate = false;
+    }
+
+    if(glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
+    {
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        m_AllowCameraToRotate = true;
     }
 
     // Rotation

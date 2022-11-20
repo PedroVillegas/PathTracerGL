@@ -1,7 +1,7 @@
 #include "window.h"
 
 void WindowResize(GLFWwindow* window, int width, int height);
-void CursorPosition(GLFWwindow* window, float xPos, float yPos);
+void CursorPosition(GLFWwindow* window, double xPos, double yPos);
 
 Window::Window(const char* title, uint width, uint height)
     :
@@ -41,9 +41,9 @@ bool Window::Init()
     }
 
     glfwMakeContextCurrent(m_Window);
-    // glfwSwapInterval(0);
+    glfwSwapInterval(0);
     glfwSetFramebufferSizeCallback(m_Window, WindowResize);
-    // glfwSetCursorPosCallback(m_Window, CursorPosition);
+    glfwSetCursorPosCallback(m_Window, CursorPosition);
 
     // glad: load all OpenGL function pointers
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
@@ -52,20 +52,20 @@ bool Window::Init()
         return false;
     }
 
-    std::cout << glGetString(GL_VERSION) << std::endl;
-    std::cout << glGetString(GL_RENDERER) << std::endl;
+    std::cout << glGetString(GL_VERSION) << std::endl; GLCall;
+    std::cout << glGetString(GL_RENDERER) << std::endl; GLCall;
 
     return true;
 }
 
 void WindowResize(GLFWwindow* window, int width, int height)
 {  
-    glViewport(0, 0, width, height);
+    glViewport(0, 0, width, height); GLCall;
 }
 
-void CursorPos(GLFWwindow* window, float xPos, float yPos)
+void CursorPosition(GLFWwindow* window, double xPos, double yPos)
 {
-    return;
+
 }
 
 void Window::ProcessInput() const
@@ -78,7 +78,7 @@ void Window::ProcessInput() const
 
 void Window::Clear() const
 {
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT); GLCall;
 }
 
 void Window::Update() const

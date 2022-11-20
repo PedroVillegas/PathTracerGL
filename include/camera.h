@@ -43,6 +43,7 @@ private:
     glm::vec3 m_Position { 0.0f, 0.0f, 0.0f };
     glm::vec3 m_ForwardDirection { 0.0f, 0.0f, 0.0f };
 
+    bool m_AllowCameraToRotate = false;
     glm::vec2 m_LastMousePosition { 0.0f, 0.0f };
 
     uint m_ViewportWidth = 0, m_ViewportHeight = 0;
