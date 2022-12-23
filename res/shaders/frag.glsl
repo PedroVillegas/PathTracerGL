@@ -38,8 +38,6 @@ struct HitRecord
     int ObjectIndex;
 };
 
-vec4 skyBlue = vec4(0.2549, 0.5412, 0.8471, 1.0);
-
 HitRecord ClosestHit(Ray ray, float hitDistance, int objectIndex)
 {
     HitRecord payload;
@@ -106,12 +104,36 @@ vec4 PerPixel(vec2 uv)
     ray.Direction = vec3(u_InverseView * vec4(normalize(vec3(target.xyz) / target.w), 0)); // Ray direction in world space
     ray.Origin = u_RayOrigin;
 
-    HitRecord payload = TraceRay(ray);
+    vec3 colour = vec3(0.0);
+    float multiplier = 1.0;
 
-    if (payload.HitDistance < 0)
-        return mix(skyBlue, vec4(0.0902, 0.2784, 0.4784, 1.0), uv.y);
+    int depth = 10;
+    for (int i = 0; i < depth; i++)
+    {
+        HitRecord payload = TraceRay(ray);
 
-    return vec4(payload.WorldNormal * 0.5 + 0.5, 1);
+        if (payload.HitDistance < 0)
+        {
+            vec3 skyColour = vec3(0.3, 0.6, 0.8);
+            colour += skyColour * multiplier;
+            break;
+        }
+
+        vec3 lightDir = normalize(u_LightDirection);
+        float lightIntensity = max(dot(payload.WorldNormal, -lightDir), 0);
+
+        Sphere sphere = u_Spheres[payload.ObjectIndex];
+        vec3 sphereColour = vec3(sphere.Albedo);
+        sphereColour *= lightIntensity;
+        colour += sphereColour * multiplier;
+
+        multiplier *= 0.5;
+
+        ray.Origin = payload.WorldPosition + payload.WorldNormal * 0.0001;
+        ray.Direction = reflect(ray.Direction, payload.WorldNormal);
+    }
+
+    return vec4(colour, 1.0); // vec4(payload.WorldNormal * 0.5 + 0.5, 1);
 }
 
 void main()
