@@ -19,9 +19,9 @@ int main(void)
 {
     uint ViewportWidth = 1000, ViewportHeight = 1000;
     Window window = Window("GLRT", 800, 600);
-    Shader shader = Shader("res/shaders/vert.vs", "res/shaders/frag.fs");
+    Shader shader = Shader("res/shaders/vert.glsl", "res/shaders/frag.glsl");
     Renderer renderer = Renderer(shader, ViewportWidth, ViewportHeight);
-    Camera camera = Camera(45.0f, 0.01f, 100.0f);
+    Camera camera = Camera(60.0f, 0.01f, 100.0f);
     Scene scene = Scene();
 
     uint VAO, VBO, IBO;
@@ -74,8 +74,7 @@ int main(void)
         ViewportWidth = ImGui::GetContentRegionAvail().x;
         ViewportHeight = ImGui::GetContentRegionAvail().y;
 
-        auto image = renderer.GetViewportFramebuffer().GetTextureID();
-        // std::cout << image << std::endl;
+        uint image = renderer.GetViewportFramebuffer().GetTextureID();
 
         if (image)
         {
@@ -138,13 +137,13 @@ void SetupScene(Scene& scene)
         Sphere sphere;
         sphere.Position = { 0.0f, 0.0f, 0.0f, 1.0f };
         sphere.Radius = 0.5f;
-        sphere.Albedo = { 1.0f, 0.0f, 1.0f, 1.0f };
+        sphere.Albedo = { 1.0f, 1.0f, 1.0f, 1.0f };
         scene.Spheres.push_back(sphere);
     }
     {
         Sphere sphere;
-        sphere.Position = { 0.0f, -5.5f, 0.0f, 1.0f };
-        sphere.Radius = 1.0f;
+        sphere.Position = { 0.0f, -100.5f, 0.0f, 1.0f };
+        sphere.Radius = 100.0f;
         sphere.Albedo = { 1.0f, 1.0f, 1.0f, 1.0f };
         scene.Spheres.push_back(sphere);
     }
@@ -196,7 +195,7 @@ void SetupViewportImage(const Renderer& renderer, const Scene& scene, uint& VAO,
     glGenBuffers(1, &SpheresUBO); GLCall;
     glBindBuffer(GL_UNIFORM_BUFFER, SpheresUBO); GLCall;
     glBufferData(GL_UNIFORM_BUFFER, SphereCount * sizeof(Sphere), scene.Spheres.data(), GL_STATIC_DRAW); GLCall;
-    glBindBufferBase(GL_UNIFORM_BUFFER, bind, SpheresUBO);
+    glBindBufferBase(GL_UNIFORM_BUFFER, bind, SpheresUBO); GLCall;
     glBindBuffer(GL_UNIFORM_BUFFER, 0); GLCall;
 
     renderer.GetShader()->Unbind();

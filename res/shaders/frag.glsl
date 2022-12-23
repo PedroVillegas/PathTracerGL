@@ -1,8 +1,8 @@
 #version 410 core
 
-out vec4 FragCol;
+#define FLT_MAX 3.402823466e+38
 
-float FLT_MAX = 999999999.0;
+out vec4 FragCol;
 
 uniform vec3 u_LightDirection;
 uniform vec2 u_Resolution;
@@ -37,40 +37,35 @@ vec4 TraceRay(Ray ray, vec2 uv)
     float hitDistance = FLT_MAX;
     for (int i = 0; i < u_SphereCount; i++)
     {        
-        vec3 origin = ray.Origin - vec3(u_Spheres[i].Position.xyz);
+        Sphere sphere = u_Spheres[i];
+        vec3 origin = ray.Origin - vec3(sphere.Position.xyz);
         float a = dot(ray.Direction, ray.Direction);
-        float b = 2.0 * dot(origin, ray.Direction);
-        float c = dot(origin, origin) - u_Spheres[i].Radius * u_Spheres[i].Radius;
+        float half_b = dot(origin, ray.Direction);
+        float c = dot(origin, origin) - sphere.Radius * sphere.Radius;
 
         // discriminant hit test
-        float discriminant = b * b - 4.0 * a * c;
-
+        float discriminant = half_b * half_b - a * c;
         if (discriminant < 0.0)
             continue;
 
-        // float rootOne = (-b + discriminant) / (2.0 * a);
-        float closestRoot = (-b - discriminant) / (2.0 * a);
-        if (closestRoot < hitDistance)
+        // float rootOne = (-b + sqrt(discriminant)) / (2.0 * a);
+        float closestRoot = (-half_b - sqrt(discriminant)) / a;
+        if (closestRoot > 0.0 && closestRoot < hitDistance)
         {
             hitDistance = closestRoot;
             closestSphereIndex = i;
         }
     }
 
-    if (closestSphereIndex == -1)
-        //return u_Spheres[0].Position;
+    if (closestSphereIndex < 0)
         return mix(skyBlue, vec4(0.0902, 0.2784, 0.4784, 1.0), uv.y);
     
-    vec3 origin = ray.Origin - vec3(u_Spheres[closestSphereIndex].Position.xyz);
-    vec3 hitPoint = origin + ray.Direction * hitDistance;
-    vec3 normal = normalize(hitPoint);
+    // Calculate outside normal of sphere
+    vec3 centre = vec3(u_Spheres[closestSphereIndex].Position.xyz);
+    vec3 hitPoint = ray.Origin + ray.Direction * hitDistance;
+    vec3 normal = normalize(hitPoint - centre);
 
-    vec3 LightDirection = normalize(u_LightDirection);
-    float LightIntensity = max(dot(-LightDirection, normal), 0.0);
-    vec4 SphereCol = u_Spheres[closestSphereIndex].Albedo;
-    SphereCol *= LightIntensity;
-
-    return SphereCol; 
+    return vec4(normal * 0.5 + 0.5, 1.0); 
 }
 
 void main()
