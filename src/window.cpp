@@ -41,7 +41,6 @@ bool Window::Init()
     }
 
     glfwMakeContextCurrent(m_Window);
-    glfwSwapInterval(0);
     glfwSetFramebufferSizeCallback(m_Window, WindowResize);
     glfwSetCursorPosCallback(m_Window, CursorPosition);
 

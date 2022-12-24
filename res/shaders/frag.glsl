@@ -44,7 +44,6 @@ HitRecord ClosestHit(Ray ray, float hitDistance, int objectIndex)
     payload.HitDistance = hitDistance;
     payload.ObjectIndex = objectIndex;
     
-
     Sphere closestSphere = u_Spheres[objectIndex];
 
     // Calculate outside normal of sphere and intersection point in world space
@@ -123,7 +122,7 @@ vec4 PerPixel(vec2 uv)
         float lightIntensity = max(dot(payload.WorldNormal, -lightDir), 0);
 
         Sphere sphere = u_Spheres[payload.ObjectIndex];
-        vec3 sphereColour = vec3(sphere.Albedo);
+        vec3 sphereColour = vec3(sphere.Albedo);//vec3(1.0);
         sphereColour *= lightIntensity;
         colour += sphereColour * multiplier;
 

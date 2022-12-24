@@ -13,7 +13,7 @@
 #include <glm/glm.hpp>
 
 void SetupScene(Scene& scene);
-void SetupViewportImage(const Renderer& renderer, const Scene& scene, uint& VAO, uint& VBO, uint& IBO);
+void SetupViewportImage(const Renderer& renderer, const Scene& scene, uint& VAO, uint& VBO, uint& IBO, uint& SpheresUBO);
 
 int main(void) 
 {
@@ -24,10 +24,10 @@ int main(void)
     Camera camera = Camera(60.0f, 0.01f, 100.0f);
     Scene scene = Scene();
 
-    uint VAO, VBO, IBO;
+    uint VAO, VBO, IBO, SpheresUBO;
     
     SetupScene(scene);
-    SetupViewportImage(renderer, scene, VAO, VBO, IBO);
+    SetupViewportImage(renderer, scene, VAO, VBO, IBO, SpheresUBO);
 
     // Initialise ImGui
     IMGUI_CHECKVERSION();
@@ -51,11 +51,14 @@ int main(void)
     float FrameTime = 0.0;
     float dt = 0.0333;
     uint FPS = 0;
+    bool vsync = true;
 
     while (!window.Closed())
     {
         // Input
         window.ProcessInput();
+        if (vsync) { glfwSwapInterval(1); }
+        else { glfwSwapInterval(0); }
 
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
@@ -66,6 +69,8 @@ int main(void)
         camera.OnResize(renderer.GetViewportWidth(), renderer.GetViewportHeight());
         camera.OnUpdate(dt, window.GetWindow());
 
+        //glBindBuffer(GL_UNIFORM_BUFFER, SpheresUBO); GLCall;
+        //glBufferData(GL_UNIFORM_BUFFER, scene.Spheres.size() * sizeof(Sphere), scene.Spheres.data(), GL_DYNAMIC_DRAW); GLCall;
         renderer.Render(scene, camera, VAO);
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0.0f, 0.0f});
@@ -86,6 +91,7 @@ int main(void)
         ImGui::PopStyleVar();
 
         ImGui::Begin("Analytics");
+        ImGui::Checkbox("V-Sync", &vsync);
         ImGui::Text("Render time: %.3f ms", FrameTime * 1000);
         ImGui::Text("FPS: %i", (int)FPS);
         ImGui::BulletText("Press 1/2 to disable/enable mouse rotation");
@@ -99,6 +105,20 @@ int main(void)
         ImGui::Text("[Light Direction]");
         ImGui::DragFloat3("", u_LightDirection, 0.01);
         scene.lightDirection = glm::vec3(u_LightDirection[0], u_LightDirection[1], u_LightDirection[2]);
+
+        for (int i = 0; i < scene.Spheres.size(); i++)
+        {
+            ImGui::PushID(i);
+
+            Sphere& sphere = scene.Spheres[i];
+            ImGui::DragFloat3("Position", glm::value_ptr(sphere.Position), 0.1f);
+            ImGui::DragFloat("Radius", &sphere.Radius, 0.1f, 0.1f);
+            ImGui::ColorEdit3("Albedo", glm::value_ptr(sphere.Albedo));
+
+            ImGui::Separator();
+            ImGui::PopID();
+        }
+
         ImGui::End();
 
         ImGui::Render();
@@ -135,21 +155,18 @@ void SetupScene(Scene& scene)
 {
     {
         Sphere sphere;
-        sphere.Position = { 0.0f, 0.0f, 0.0f, 1.0f };
-        sphere.Radius = 0.5f;
-        sphere.Albedo = { 1.0f, 1.0f, 1.0f, 1.0f };
         scene.Spheres.push_back(sphere);
     }
     {
         Sphere sphere;
-        sphere.Position = { 0.0f, -100.5f, 0.0f, 1.0f };
+        sphere.Position = { 0.0f, -101.0f, 0.0f, 0.0f};
         sphere.Radius = 100.0f;
         sphere.Albedo = { 1.0f, 1.0f, 1.0f, 1.0f };
         scene.Spheres.push_back(sphere);
     }
 }
 
-void SetupViewportImage(const Renderer& renderer, const Scene& scene, uint& VAO, uint& VBO, uint& IBO)
+void SetupViewportImage(const Renderer& renderer, const Scene& scene, uint& VAO, uint& VBO, uint& IBO, uint& SpheresUBO)
 {
     float vertices[] = {
         // pos                 // col
@@ -191,12 +208,9 @@ void SetupViewportImage(const Renderer& renderer, const Scene& scene, uint& VAO,
     uint bind = 0;
     glUniformBlockBinding(renderer.GetShader()->GetID(), block, bind); GLCall;
 
-    uint SpheresUBO;
     glGenBuffers(1, &SpheresUBO); GLCall;
-    glBindBuffer(GL_UNIFORM_BUFFER, SpheresUBO); GLCall;
-    glBufferData(GL_UNIFORM_BUFFER, SphereCount * sizeof(Sphere), scene.Spheres.data(), GL_STATIC_DRAW); GLCall;
     glBindBufferBase(GL_UNIFORM_BUFFER, bind, SpheresUBO); GLCall;
-    glBindBuffer(GL_UNIFORM_BUFFER, 0); GLCall;
+    glBufferData(GL_UNIFORM_BUFFER, SphereCount * sizeof(Sphere), scene.Spheres.data(), GL_STATIC_DRAW); GLCall;
 
     renderer.GetShader()->Unbind();
 }
