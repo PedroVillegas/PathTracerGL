@@ -9,7 +9,6 @@ uniform vec2 u_Resolution;
 uniform vec3 u_RayOrigin;
 uniform mat4 u_InverseProjection;
 uniform mat4 u_InverseView;
-uniform int u_SphereCount;
 
 struct Material
 {
@@ -20,16 +19,16 @@ struct Material
 
 struct Sphere
 {
-    vec4 Position;
-    float Radius;
+    vec4 Position; // Radius stored in Position.w
 
     Material Mat;
 };
 
-layout (std140) uniform SpheresBlock
+layout (std140) uniform ObjectData
 {
-    Sphere u_Spheres[2];
-};
+    int sphereCount;
+    Sphere Spheres[2];
+} objectData;
 
 struct Ray
 {
@@ -52,7 +51,7 @@ HitRecord ClosestHit(Ray ray, float hitDistance, int objectIndex)
     payload.HitDistance = hitDistance;
     payload.ObjectIndex = objectIndex;
     
-    Sphere closestSphere = u_Spheres[objectIndex];
+    Sphere closestSphere = objectData.Spheres[objectIndex];
 
     // Calculate outside normal of sphere and intersection point in world space
     vec3 centre = vec3(closestSphere.Position.xyz);
@@ -74,16 +73,17 @@ HitRecord TraceRay(Ray ray)
     int closestSphereIndex = -1;
     float hitDistance = FLT_MAX;
 
-    for (int i = 0; i < u_SphereCount; i++)
+    for (int i = 0; i < objectData.sphereCount; i++)
     {        
-        Sphere sphere = u_Spheres[i];
+        Sphere sphere = objectData.Spheres[i];
         vec3 origin = ray.Origin - sphere.Position.xyz;
+        float radius = sphere.Position.w;
 
         // Evaluate intersections points between ray and sphere
         // by solving quadratic equation
         float a = dot(ray.Direction, ray.Direction);
         float half_b = dot(origin, ray.Direction);
-        float c = dot(origin, origin) - sphere.Radius * sphere.Radius;
+        float c = dot(origin, origin) - radius * radius;
 
         // Discriminant hit test (< 0 means no real solution)
         float discriminant = half_b * half_b - a * c;
@@ -137,7 +137,7 @@ vec4 PerPixel(vec2 uv)
         float lightIntensity = max(dot(payload.WorldNormal, -lightDir), 0);
 
         // Closest object to the eye -> contributes the most colour
-        Sphere sphere = u_Spheres[payload.ObjectIndex];
+        Sphere sphere = objectData.Spheres[payload.ObjectIndex];
         vec3 sphereColour = vec3(sphere.Mat.Albedo);
         sphereColour *= lightIntensity;
         colour += sphereColour * multiplier;

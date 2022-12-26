@@ -70,7 +70,7 @@ int main(void)
         camera.OnUpdate(dt, window.GetWindow());
 
         //glBindBuffer(GL_UNIFORM_BUFFER, SpheresUBO); GLCall;
-        glBufferData(GL_UNIFORM_BUFFER, scene.Spheres.size() * sizeof(Sphere), scene.Spheres.data(), GL_DYNAMIC_DRAW); GLCall;
+        glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::vec4), scene.Spheres.size() * sizeof(Sphere), scene.Spheres.data()); GLCall;
         renderer.Render(scene, camera, VAO);
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0.0f, 0.0f});
@@ -112,8 +112,8 @@ int main(void)
 
             Sphere& sphere = scene.Spheres[i];
             ImGui::DragFloat3("Position", glm::value_ptr(sphere.Position), 0.1f);
-            ImGui::DragFloat("Radius", &sphere.Radius, 0.1f, 0.1f);
-            //ImGui::ColorEdit3("Albedo", glm::value_ptr(sphere.Mat.Albedo));
+            ImGui::DragFloat("Radius", &sphere.Position.w, 0.1f, 0.1f);
+            ImGui::ColorEdit3("Albedo", glm::value_ptr(sphere.Mat.Albedo));
 
             ImGui::Separator();
             ImGui::PopID();
@@ -159,8 +159,12 @@ void SetupScene(Scene& scene)
     }
     {
         Sphere sphere;
-        sphere.Position = glm::vec4(0.0f, -101.0f, 0.0f, 0.0f);
-        sphere.Radius = 100.0f;
+        sphere.Position = { 5.0f, 0.0f, 0.0f, 1.0f };
+        scene.Spheres.push_back(sphere);
+    }
+    {
+        Sphere sphere;
+        sphere.Position = glm::vec4(0.0f, -101.0f, 0.0f, 100.0f);
         //sphere.Mat.Albedo = glm::vec4(0.5f, 0.5f, 1.0f, 1.0f);
         scene.Spheres.push_back(sphere);
     }
@@ -202,17 +206,25 @@ void SetupViewportImage(const Renderer& renderer, const Scene& scene, uint& VAO,
 
     renderer.GetShader()->Bind();
     int SphereCount = scene.Spheres.size();
-    renderer.GetShader()->SetUniformInt("u_SphereCount", SphereCount);
     
-    uint block = glGetUniformBlockIndex(renderer.GetShader()->GetID(), "SpheresBlock"); GLCall;
+    uint block = glGetUniformBlockIndex(renderer.GetShader()->GetID(), "ObjectData"); GLCall;
     uint bind = 0;
     glUniformBlockBinding(renderer.GetShader()->GetID(), block, bind); GLCall;
 
     glGenBuffers(1, &SpheresUBO); GLCall;
     glBindBuffer(GL_UNIFORM_BUFFER, SpheresUBO); GLCall;
     glBindBufferBase(GL_UNIFORM_BUFFER, bind, SpheresUBO); GLCall;
-    glBufferData(GL_UNIFORM_BUFFER, SphereCount * sizeof(Sphere), scene.Spheres.data(), GL_STATIC_DRAW); GLCall;
-    glBindBuffer(GL_UNIFORM_BUFFER, 0); GLCall;
+    glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::vec4) + SphereCount * sizeof(Sphere), nullptr, GL_STATIC_DRAW); GLCall;
+
+    {
+        int offset = 0;
+
+        // Set Sphere object data
+        glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &SphereCount);
+        offset += sizeof(glm::vec4);
+
+        glBufferSubData(GL_UNIFORM_BUFFER, offset, SphereCount * sizeof(Sphere), scene.Spheres.data());
+    }
 
     renderer.GetShader()->Unbind();
 }

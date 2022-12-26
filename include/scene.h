@@ -12,8 +12,7 @@ struct Material
 };
 struct alignas(16) Sphere
 {
-    glm::vec4 Position = glm::vec4(0.0f);
-    float Radius = 1.0f;
+    glm::vec4 Position { 0.0f, 0.0f, 0.0f, 1.0f };
 
     Material Mat;
 };
