@@ -11,11 +11,19 @@ uniform mat4 u_InverseProjection;
 uniform mat4 u_InverseView;
 uniform int u_SphereCount;
 
+struct Material
+{
+    vec4 Albedo;
+    //float Roughness;
+    //float Metallic;
+};
+
 struct Sphere
 {
     vec4 Position;
     float Radius;
-    vec4 Albedo;
+
+    Material Mat;
 };
 
 layout (std140) uniform SpheresBlock
@@ -54,7 +62,7 @@ HitRecord ClosestHit(Ray ray, float hitDistance, int objectIndex)
     return payload;
 }
 
-HitRecord Miss(Ray ray)
+HitRecord Miss()
 {
     HitRecord payload;
     payload.HitDistance = -1;
@@ -69,17 +77,20 @@ HitRecord TraceRay(Ray ray)
     for (int i = 0; i < u_SphereCount; i++)
     {        
         Sphere sphere = u_Spheres[i];
-        vec3 origin = ray.Origin - vec3(sphere.Position.xyz);
+        vec3 origin = ray.Origin - sphere.Position.xyz;
 
+        // Evaluate intersections points between ray and sphere
+        // by solving quadratic equation
         float a = dot(ray.Direction, ray.Direction);
         float half_b = dot(origin, ray.Direction);
         float c = dot(origin, origin) - sphere.Radius * sphere.Radius;
 
-        // discriminant hit test
+        // Discriminant hit test (< 0 means no real solution)
         float discriminant = half_b * half_b - a * c;
         if (discriminant < 0.0)
             continue;
-
+        
+        // Ignore furthest intersection
         // float rootOne = (-b + sqrt(discriminant)) / (2.0 * a);
         float closestRoot = (-half_b - sqrt(discriminant)) / a;
         if (closestRoot > 0.0 && closestRoot < hitDistance)
@@ -90,7 +101,7 @@ HitRecord TraceRay(Ray ray)
     }
 
     if (closestSphereIndex < 0)
-        return Miss(ray);
+        return Miss();
 
     return ClosestHit(ray, hitDistance, closestSphereIndex);
 }
@@ -99,18 +110,22 @@ vec4 PerPixel(vec2 uv)
 {
     Ray ray;
 
+    // Ray direction in world space
     vec4 target = u_InverseProjection * vec4(uv.xy, 1, 1);
-    ray.Direction = vec3(u_InverseView * vec4(normalize(vec3(target.xyz) / target.w), 0)); // Ray direction in world space
+    ray.Direction = vec3(u_InverseView * vec4(normalize(vec3(target.xyz) / target.w), 0));
     ray.Origin = u_RayOrigin;
 
+    // Multiplier simplifies more bounces -> lower contribution to final colour 
     vec3 colour = vec3(0.0);
     float multiplier = 1.0;
 
-    int depth = 10;
+    int depth = 16;
     for (int i = 0; i < depth; i++)
     {
+        // Keep track of ray intersection point, direction etc
         HitRecord payload = TraceRay(ray);
 
+        // If ray misses, object takes on colour of the sky
         if (payload.HitDistance < 0)
         {
             vec3 skyColour = vec3(0.3, 0.6, 0.8);
@@ -121,13 +136,15 @@ vec4 PerPixel(vec2 uv)
         vec3 lightDir = normalize(u_LightDirection);
         float lightIntensity = max(dot(payload.WorldNormal, -lightDir), 0);
 
+        // Closest object to the eye -> contributes the most colour
         Sphere sphere = u_Spheres[payload.ObjectIndex];
-        vec3 sphereColour = vec3(sphere.Albedo);//vec3(1.0);
+        vec3 sphereColour = vec3(sphere.Mat.Albedo);
         sphereColour *= lightIntensity;
         colour += sphereColour * multiplier;
 
         multiplier *= 0.5;
 
+        // Prevent z-fighting situation and reflects ray for the path
         ray.Origin = payload.WorldPosition + payload.WorldNormal * 0.0001;
         ray.Direction = reflect(ray.Direction, payload.WorldNormal);
     }
@@ -137,7 +154,7 @@ vec4 PerPixel(vec2 uv)
 
 void main()
 {
-    // pixel coord in NDC
+    // Pixel coord in NDC [-1, 1]
     vec2 uv = gl_FragCoord.xy / u_Resolution.xy;
     uv = (uv * 2.0) - 1.0;
 

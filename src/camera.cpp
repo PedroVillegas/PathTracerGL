@@ -54,6 +54,7 @@ void Camera::OnUpdate(float dt, GLFWwindow* window)
     if(glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
     {
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        delta = glm::vec2(0.0f);
         m_AllowCameraToRotate = true;
     }
 

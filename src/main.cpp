@@ -70,7 +70,7 @@ int main(void)
         camera.OnUpdate(dt, window.GetWindow());
 
         //glBindBuffer(GL_UNIFORM_BUFFER, SpheresUBO); GLCall;
-        //glBufferData(GL_UNIFORM_BUFFER, scene.Spheres.size() * sizeof(Sphere), scene.Spheres.data(), GL_DYNAMIC_DRAW); GLCall;
+        glBufferData(GL_UNIFORM_BUFFER, scene.Spheres.size() * sizeof(Sphere), scene.Spheres.data(), GL_DYNAMIC_DRAW); GLCall;
         renderer.Render(scene, camera, VAO);
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0.0f, 0.0f});
@@ -113,7 +113,7 @@ int main(void)
             Sphere& sphere = scene.Spheres[i];
             ImGui::DragFloat3("Position", glm::value_ptr(sphere.Position), 0.1f);
             ImGui::DragFloat("Radius", &sphere.Radius, 0.1f, 0.1f);
-            ImGui::ColorEdit3("Albedo", glm::value_ptr(sphere.Albedo));
+            //ImGui::ColorEdit3("Albedo", glm::value_ptr(sphere.Mat.Albedo));
 
             ImGui::Separator();
             ImGui::PopID();
@@ -159,9 +159,9 @@ void SetupScene(Scene& scene)
     }
     {
         Sphere sphere;
-        sphere.Position = { 0.0f, -101.0f, 0.0f, 0.0f};
+        sphere.Position = glm::vec4(0.0f, -101.0f, 0.0f, 0.0f);
         sphere.Radius = 100.0f;
-        sphere.Albedo = { 1.0f, 1.0f, 1.0f, 1.0f };
+        //sphere.Mat.Albedo = glm::vec4(0.5f, 0.5f, 1.0f, 1.0f);
         scene.Spheres.push_back(sphere);
     }
 }
@@ -209,8 +209,10 @@ void SetupViewportImage(const Renderer& renderer, const Scene& scene, uint& VAO,
     glUniformBlockBinding(renderer.GetShader()->GetID(), block, bind); GLCall;
 
     glGenBuffers(1, &SpheresUBO); GLCall;
+    glBindBuffer(GL_UNIFORM_BUFFER, SpheresUBO); GLCall;
     glBindBufferBase(GL_UNIFORM_BUFFER, bind, SpheresUBO); GLCall;
     glBufferData(GL_UNIFORM_BUFFER, SphereCount * sizeof(Sphere), scene.Spheres.data(), GL_STATIC_DRAW); GLCall;
+    glBindBuffer(GL_UNIFORM_BUFFER, 0); GLCall;
 
     renderer.GetShader()->Unbind();
 }
