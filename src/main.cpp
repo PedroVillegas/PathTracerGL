@@ -18,7 +18,7 @@ void SetupViewportImage(const Renderer& renderer, const Scene& scene, uint& VAO,
 int main(void) 
 {
     uint ViewportWidth = 1000, ViewportHeight = 1000;
-    Window window = Window("GLRT", 1000, 600);
+    Window window = Window("Path Tracing", 1000, 600);
     Shader shader = Shader("res/shaders/vert.glsl", "res/shaders/frag.glsl");
     Renderer renderer = Renderer(shader, ViewportWidth, ViewportHeight);
     Camera camera = Camera({0.0f, 0.0f, 3.0f}, 90.0f, 0.01f, 100.0f);
@@ -155,6 +155,7 @@ int main(void)
     glDeleteVertexArrays(1, &VAO); GLCall;
     glDeleteBuffers(1, &VBO); GLCall;
     glDeleteBuffers(1, &IBO); GLCall;
+    glDeleteBuffers(1, &SpheresUBO); GLCall;
 }
 
 void SetupScene(Scene& scene)
