@@ -12,6 +12,8 @@ class Camera
 {
 public:
     Camera(float verticalFOV, float nearClip, float farClip);
+    Camera(glm::vec3 position, float verticalFOV, float nearClip, float farClip);
+    Camera(glm::vec3 position, glm::vec3 forwardDirection, float verticalFOV, float nearClip, float farClip);
 
     void OnUpdate(float dt, GLFWwindow* window);
     void OnResize(uint width, uint height);

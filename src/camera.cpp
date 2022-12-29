@@ -10,6 +10,26 @@ Camera::Camera(float verticalFOV, float nearClip, float farClip)
     m_Position = glm::vec3(0, 0, 3);
 }
 
+Camera::Camera(glm::vec3 position, float verticalFOV, float nearClip, float farClip)
+    :
+    m_VerticalFOV(verticalFOV), 
+    m_NearClip(nearClip), 
+    m_FarClip(farClip),
+    m_Position(position)
+{
+    m_ForwardDirection = glm::vec3(0, 0, -1);
+}
+
+Camera::Camera(glm::vec3 position, glm::vec3 forwardDirection, float verticalFOV, float nearClip, float farClip)
+    :
+    m_VerticalFOV(verticalFOV), 
+    m_NearClip(nearClip), 
+    m_FarClip(farClip),
+    m_Position(position),
+    m_ForwardDirection(forwardDirection)
+{
+}
+
 void Camera::OnUpdate(float dt, GLFWwindow* window)
 {   
     glm::vec2 delta {0.0f};

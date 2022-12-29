@@ -28,7 +28,7 @@ public:
     inline void SetClearColour(const glm::vec4& colour) { glClearColor(colour.r, colour.g, colour.b, colour.a); GLCall; }
     inline void Clear() { glClear(GL_COLOR_BUFFER_BIT); GLCall; }
 
-    void Render(const Scene& scene, const Camera& camera, uint VAO);
+    void Render(const Scene& scene, const Camera& camera, uint VAO, int frameCounter);
 
 private:
     const Camera* m_Camera = nullptr;

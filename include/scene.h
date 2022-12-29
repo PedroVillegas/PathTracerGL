@@ -6,19 +6,20 @@
 
 struct Material
 {
-    glm::vec4 Albedo = glm::vec4(1.0f);
-    //float Roughness = 1.0f;
-    //float Metallic = 1.0f;
+    glm::vec4 albedo { 1.0f };
+    float roughness = 1.0f;
+    //float metallic = 1.0f;
 };
 struct alignas(16) Sphere
 {
-    glm::vec4 Position { 0.0f, 0.0f, 0.0f, 1.0f };
+    glm::vec4 position { 0.0f, 0.0f, 0.0f, 1.0f };
 
-    Material Mat;
+    Material mat;
 };
 
 struct Scene
 {
-    std::vector<Sphere> Spheres;
-    glm::vec3 lightDirection = glm::vec3(-1.0f);
+    int maxRayDepth = 16;
+    std::vector<Sphere> spheres;
+    glm::vec3 lightDirection { 0.0f };
 };

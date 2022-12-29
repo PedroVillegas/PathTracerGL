@@ -39,7 +39,7 @@ void Renderer::OnResize(uint width, uint height)
     m_ViewportFramebuffer.OnResize(m_ViewportWidth, m_ViewportHeight);
 }
 
-void Renderer::Render(const Scene& scene, const Camera& camera, uint VAO)
+void Renderer::Render(const Scene& scene, const Camera& camera, uint VAO, int frameCounter)
 {
     m_Scene = &scene;
     m_Camera = &camera;
@@ -51,11 +51,13 @@ void Renderer::Render(const Scene& scene, const Camera& camera, uint VAO)
     SetClearColour(glm::vec4(1.0f));
     Clear();
 
+    m_Shader->SetUniformInt("u_FrameCounter", frameCounter);
     m_Shader->SetUniformVec3("u_LightDirection", m_Scene->lightDirection.x, m_Scene->lightDirection.y, m_Scene->lightDirection.z);
     m_Shader->SetUniformVec2("u_Resolution", float(m_ViewportWidth), float(m_ViewportHeight));
     m_Shader->SetUniformVec3("u_RayOrigin", m_Camera->GetPosition().x, m_Camera->GetPosition().y, m_Camera->GetPosition().z);
     m_Shader->SetUniformMat4("u_InverseProjection", m_Camera->GetInverseProjection());
     m_Shader->SetUniformMat4("u_InverseView", m_Camera->GetInverseView());
+    m_Shader->SetUniformInt("u_PreviousFrame", 0);
 
     glBindVertexArray(VAO); GLCall;
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); GLCall;
