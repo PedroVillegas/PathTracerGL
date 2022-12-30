@@ -24,6 +24,7 @@ void Framebuffer::OnResize(uint width, uint height)
 
 void Framebuffer::Bind() const
 {
+    // std::cout << m_ID << ", " << m_TextureID << std::endl;
     glBindFramebuffer(GL_FRAMEBUFFER, m_ID); GLCall;
     glBindTexture(GL_TEXTURE_2D, m_TextureID); GLCall;
 }
@@ -67,6 +68,7 @@ void Framebuffer::Destroy()
 
 void Framebuffer::Unbind() const
 {
+    // std::cout << m_ID << ", " << m_TextureID << std::endl;
     glBindFramebuffer(GL_FRAMEBUFFER, 0); GLCall;
     glBindTexture(GL_TEXTURE_2D, 0); GLCall;
 }

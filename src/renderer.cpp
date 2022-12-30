@@ -10,7 +10,7 @@ Renderer::Renderer(Shader& shader, uint ViewportWidth, uint ViewportHeight)
     m_ViewportSpec.width = m_ViewportWidth;
     m_ViewportSpec.height = m_ViewportHeight;
     m_ViewportFramebuffer = Framebuffer(m_ViewportSpec);
-    // std::cout << m_ViewportFramebuffer.GetWidth() << ", " << m_ViewportFramebuffer.GetHeight() << std::endl;
+    //m_ViewportFramebuffer.Create();
 }
 
 Renderer::~Renderer()

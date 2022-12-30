@@ -148,7 +148,7 @@ vec4 PerPixel(vec2 uv, uint seed)
     vec3 colour = vec3(0.0);
     float multiplier = 1.0;
 
-    int depth = 16;
+    int depth = 4;
     for (int i = 0; i < depth; i++)
     {
         // Keep track of ray intersection point, direction etc
@@ -157,7 +157,7 @@ vec4 PerPixel(vec2 uv, uint seed)
         // If ray misses, object takes on colour of the sky
         if (payload.hitDistance < 0)
         {
-            vec3 skyColour = mix(vec3(1.0), vec3(0.5, 0.7, 1.0), uv.y);
+            vec3 skyColour = vec3(0.5, 0.7, 1.0);// mix(vec3(1.0), vec3(0.5, 0.7, 1.0), uv.y);
             colour += skyColour * multiplier;
             break;
         }
@@ -193,5 +193,5 @@ void main()
     uint seed = uint(gl_FragCoord.x * 1973 + gl_FragCoord.y * 9277 + u_FrameCounter * 2699) | uint(1);
     vec4 finalColour = PerPixel(uv, seed);
     //vec4 prevFrameColour = texture(u_PreviousFrame, uv);
-    FragCol = finalColour; //(finalColour + prevFrameColour) / u_FrameCounter;
+    FragCol = finalColour;//(finalColour + prevFrameColour)/2;
 }

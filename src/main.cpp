@@ -68,6 +68,7 @@ int main(void)
         renderer.OnResize(ViewportWidth, ViewportHeight);
         camera.OnResize(renderer.GetViewportWidth(), renderer.GetViewportHeight());
         camera.OnUpdate(dt, window.GetWindow());
+        // camera.MomentumMovement(dt, window.GetWindow());
 
         //glBindBuffer(GL_UNIFORM_BUFFER, SpheresUBO); GLCall;
         glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::vec4), scene.spheres.size() * sizeof(Sphere), scene.spheres.data()); GLCall;
@@ -90,12 +91,12 @@ int main(void)
         ImGui::End();
         ImGui::PopStyleVar();
 
-        ImGui::Begin("Analytics");
+        ImGui::Begin("Debug");
+        ImGui::Text("[TAB] to toggle movement");
         ImGui::Checkbox("V-Sync", &vsync);
         ImGui::Text("Render time: %.3f ms", FrameTime * 1000);
         ImGui::Text("FPS: %i", (int)FPS);
         ImGui::Text("Frame: %i", (int)frameCounter);
-        ImGui::BulletText("Press 1/2 to disable/enable mouse rotation");
         ImGui::End();
         
         ImGui::Begin("Scene");

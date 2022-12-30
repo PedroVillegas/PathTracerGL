@@ -3,6 +3,7 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
+#include "camera.h"
 #include "consoleLogger.h"
 
 class Window
@@ -15,7 +16,7 @@ private:
 public:
     Window(const char* title, uint width, uint height);
     ~Window();
-    void ProcessInput() const;
+    void ProcessInput();
     void Clear() const;
     void Update() const;
     bool Closed() const;

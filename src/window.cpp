@@ -67,7 +67,7 @@ void CursorPosition(GLFWwindow* window, double xPos, double yPos)
 
 }
 
-void Window::ProcessInput() const
+void Window::ProcessInput()
 {
 	if(glfwGetKey(m_Window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 	{
