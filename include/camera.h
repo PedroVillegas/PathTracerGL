@@ -15,7 +15,7 @@ public:
     Camera(glm::vec3 position, float verticalFOV, float nearClip, float farClip);
     Camera(glm::vec3 position, glm::vec3 forwardDirection, float verticalFOV, float nearClip, float farClip);
 
-    void MomentumMovement(float dt, GLFWwindow* window);
+    void CinematicMovement(float dt, GLFWwindow* window);
     void OnUpdate(float dt, GLFWwindow* window);
     void OnResize(uint width, uint height);
 
@@ -47,7 +47,7 @@ private:
     glm::vec3 m_ForwardDirection { 0.0f, 0.0f, 0.0f };
 
     glm::vec3 m_Momentum { 0.0f, 0.0f, 0.0f };
-    float m_Roll = 0.0f;
+    // float m_Roll = 0.0f;
 
     bool m_AllowCameraToMove = false;
     glm::vec2 m_LastMousePosition { 0.0f, 0.0f };

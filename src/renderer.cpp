@@ -10,7 +10,7 @@ Renderer::Renderer(Shader& shader, uint ViewportWidth, uint ViewportHeight)
     m_ViewportSpec.width = m_ViewportWidth;
     m_ViewportSpec.height = m_ViewportHeight;
     m_ViewportFramebuffer = Framebuffer(m_ViewportSpec);
-    //m_ViewportFramebuffer.Create();
+    m_ViewportFramebuffer.Create();
 }
 
 Renderer::~Renderer()
@@ -45,8 +45,6 @@ void Renderer::Render(const Scene& scene, const Camera& camera, uint VAO, int fr
     m_Camera = &camera;
 
     m_Shader->Bind();
-
-    m_ViewportFramebuffer.Create();
     m_ViewportFramebuffer.Bind();
     SetClearColour(glm::vec4(1.0f));
     Clear();
@@ -63,6 +61,6 @@ void Renderer::Render(const Scene& scene, const Camera& camera, uint VAO, int fr
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); GLCall;
     glBindVertexArray(0); GLCall;
 
-    m_Shader->Unbind();
     m_ViewportFramebuffer.Unbind();
+    m_Shader->Unbind();
 }

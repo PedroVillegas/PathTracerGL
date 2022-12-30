@@ -15,18 +15,15 @@ Framebuffer::~Framebuffer()
 
 void Framebuffer::OnResize(uint width, uint height)
 {
-    if (width == m_Spec.width && height == m_Spec.height)
-        return;
-
     m_Spec.width = width;
     m_Spec.height = height;
+    Destroy();
+    Create();
 }
 
 void Framebuffer::Bind() const
 {
-    // std::cout << m_ID << ", " << m_TextureID << std::endl;
     glBindFramebuffer(GL_FRAMEBUFFER, m_ID); GLCall;
-    glBindTexture(GL_TEXTURE_2D, m_TextureID); GLCall;
 }
 
 void Framebuffer::Create()
@@ -55,11 +52,11 @@ void Framebuffer::Create()
         // std::cout << "Successfully completed Framebuffer! Colour buffer ID: " << m_TextureID << std::endl;
     
     glBindFramebuffer(GL_FRAMEBUFFER, 0); GLCall;
-    glBindTexture(GL_TEXTURE_2D, 0); GLCall;
 }
 
 void Framebuffer::Destroy()
 {
+    glBindFramebuffer(GL_FRAMEBUFFER, 0); GLCall;
     glDeleteFramebuffers(1, &m_ID); GLCall;
     m_ID = 0;
     glDeleteTextures(1, &m_TextureID); GLCall;
@@ -68,9 +65,7 @@ void Framebuffer::Destroy()
 
 void Framebuffer::Unbind() const
 {
-    // std::cout << m_ID << ", " << m_TextureID << std::endl;
     glBindFramebuffer(GL_FRAMEBUFFER, 0); GLCall;
-    glBindTexture(GL_TEXTURE_2D, 0); GLCall;
 }
 
 void Framebuffer::SetWidth(uint width)

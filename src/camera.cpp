@@ -30,7 +30,7 @@ Camera::Camera(glm::vec3 position, glm::vec3 forwardDirection, float verticalFOV
 {
 }
 
-void Camera::MomentumMovement(float dt, GLFWwindow* window)
+void Camera::CinematicMovement(float dt, GLFWwindow* window)
 {
     float speed = 5.0f;
     constexpr glm::vec3 upDirection(0.0f, 1.0f, 0.0f);
@@ -90,15 +90,15 @@ void Camera::OnUpdate(float dt, GLFWwindow* window)
 
         // Rotation
 
-        m_Roll = m_Roll * .8f + .2f * ((glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) - (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS));
+        // m_Roll = m_Roll * .8f + .2f * ((glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) - (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS));
         
-        if (m_Roll > 1e-3f)
-        {
-            float theta = m_Roll; //* .3f;// c = std::cos(theta * .5f), s = std::sin(theta * .5f) / m_Roll;
-            glm::quat q = glm::normalize(glm::angleAxis(theta, m_ForwardDirection));
-            rightDirection = glm::rotate(q, rightDirection);
-            upDirection = glm::rotate(q, upDirection);
-        }
+        // if (m_Roll > 1e-3f)
+        // {
+        //     float theta = m_Roll; //* .3f;// c = std::cos(theta * .5f), s = std::sin(theta * .5f) / m_Roll;
+        //     glm::quat q = glm::normalize(glm::angleAxis(theta, m_ForwardDirection));
+        //     rightDirection = glm::rotate(q, rightDirection);
+        //     upDirection = glm::rotate(q, upDirection);
+        // }
 
         double mousePosX = 0.0f , mousePosY = 0.0f;
         glfwGetCursorPos(window, &mousePosX, &mousePosY);

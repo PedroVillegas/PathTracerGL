@@ -68,9 +68,9 @@ int main(void)
         renderer.OnResize(ViewportWidth, ViewportHeight);
         camera.OnResize(renderer.GetViewportWidth(), renderer.GetViewportHeight());
         camera.OnUpdate(dt, window.GetWindow());
-        // camera.MomentumMovement(dt, window.GetWindow());
+        // camera.CinematicMovement(dt, window.GetWindow());
 
-        //glBindBuffer(GL_UNIFORM_BUFFER, SpheresUBO); GLCall;
+        // glBindBuffer(GL_UNIFORM_BUFFER, SpheresUBO); GLCall;
         glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::vec4), scene.spheres.size() * sizeof(Sphere), scene.spheres.data()); GLCall;
         renderer.Render(scene, camera, VAO, frameCounter);
 
@@ -92,7 +92,7 @@ int main(void)
         ImGui::PopStyleVar();
 
         ImGui::Begin("Debug");
-        ImGui::Text("[TAB] to toggle movement");
+        ImGui::Text("[1/2] to toggle movement");
         ImGui::Checkbox("V-Sync", &vsync);
         ImGui::Text("Render time: %.3f ms", FrameTime * 1000);
         ImGui::Text("FPS: %i", (int)FPS);
@@ -139,7 +139,6 @@ int main(void)
         }
 
         window.Update();
-        renderer.GetViewportFramebuffer().Destroy();
 
         float time = glfwGetTime();
         FrameTime = time - LastFrameTime;
