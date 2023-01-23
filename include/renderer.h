@@ -1,5 +1,6 @@
 #pragma once
 
+#include "imgui/imgui.h"
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 
@@ -37,4 +38,5 @@ private:
     uint m_ViewportWidth, m_ViewportHeight = 0;
     FramebufferSpec m_ViewportSpec;
     Framebuffer m_ViewportFramebuffer;
+    Framebuffer m_AccumulationBuffer;
 };

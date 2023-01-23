@@ -48,10 +48,7 @@ int main(void)
     }
 
     int frameCounter = 1;
-    float LastFrameTime = 0.0;
-    float FrameTime = 0.0;
     float dt = 0.0333;
-    uint FPS = 0;
     bool vsync = true;
 
     while (!window.Closed())
@@ -92,10 +89,10 @@ int main(void)
         ImGui::PopStyleVar();
 
         ImGui::Begin("Debug");
+        ImGui::Text("Viewport: %i x %i", ViewportWidth, ViewportHeight);
         ImGui::Text("[1/2] to toggle movement");
         ImGui::Checkbox("V-Sync", &vsync);
-        ImGui::Text("Render time: %.3f ms", FrameTime * 1000);
-        ImGui::Text("FPS: %i", (int)FPS);
+        ImGui::Text("Render time %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
         ImGui::Text("Frame: %i", (int)frameCounter);
         ImGui::End();
         
@@ -139,13 +136,8 @@ int main(void)
         }
 
         window.Update();
-
-        float time = glfwGetTime();
-        FrameTime = time - LastFrameTime;
-        dt = glm::min<float>(FrameTime, 0.0333f);
-        LastFrameTime = time;
-        FPS = (uint) (1 / FrameTime);
         frameCounter++;
+        dt = glm::min<float>(1000.0f / ImGui::GetIO().Framerate, 0.0333f);
     }
 
     ImGui_ImplOpenGL3_Shutdown();

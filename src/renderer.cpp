@@ -11,11 +11,14 @@ Renderer::Renderer(Shader& shader, uint ViewportWidth, uint ViewportHeight)
     m_ViewportSpec.height = m_ViewportHeight;
     m_ViewportFramebuffer = Framebuffer(m_ViewportSpec);
     m_ViewportFramebuffer.Create();
+    m_AccumulationBuffer = Framebuffer(m_ViewportSpec);
+    m_AccumulationBuffer.Create();
 }
 
 Renderer::~Renderer()
 {
     m_ViewportFramebuffer.Destroy();
+    m_AccumulationBuffer.Destroy();
 }
 
 void Renderer::SetViewportWidth(uint width)
@@ -36,6 +39,7 @@ void Renderer::OnResize(uint width, uint height)
     m_ViewportWidth = width;
     m_ViewportHeight = height;
 
+    m_AccumulationBuffer.OnResize(m_ViewportWidth, m_ViewportHeight);
     m_ViewportFramebuffer.OnResize(m_ViewportWidth, m_ViewportHeight);
 }
 
@@ -45,10 +49,6 @@ void Renderer::Render(const Scene& scene, const Camera& camera, uint VAO, int fr
     m_Camera = &camera;
 
     m_Shader->Bind();
-    m_ViewportFramebuffer.Bind();
-    SetClearColour(glm::vec4(1.0f));
-    Clear();
-
     m_Shader->SetUniformInt("u_FrameCounter", frameCounter);
     m_Shader->SetUniformVec3("u_LightDirection", m_Scene->lightDirection.x, m_Scene->lightDirection.y, m_Scene->lightDirection.z);
     m_Shader->SetUniformVec2("u_Resolution", float(m_ViewportWidth), float(m_ViewportHeight));
@@ -57,9 +57,16 @@ void Renderer::Render(const Scene& scene, const Camera& camera, uint VAO, int fr
     m_Shader->SetUniformMat4("u_InverseView", m_Camera->GetInverseView());
     m_Shader->SetUniformInt("u_PreviousFrame", 0);
 
+    m_ViewportFramebuffer.Bind();
+    //glViewport(0, 0, m_ViewportWidth, m_ViewportHeight);
+    SetClearColour(glm::vec4(1.0f));
+    Clear();
+
     glBindVertexArray(VAO); GLCall;
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); GLCall;
     glBindVertexArray(0); GLCall;
+
+    //glActiveTexture(GL_TEXTURE0); GLCall;
 
     m_ViewportFramebuffer.Unbind();
     m_Shader->Unbind();
