@@ -21,10 +21,10 @@ public:
     void Update() const;
     bool Closed() const;
 
-    inline GLFWwindow* GetWindow() const { return m_Window; }
-    inline uint GetWidth() const { return m_Width; }
+    GLFWwindow* GetWindow() const { return m_Window; }
+    uint GetWidth() const { return m_Width; }
     void SetWidth(uint width);
-    inline uint GetHeight() const { return m_Height; }
+    uint GetHeight() const { return m_Height; }
     void SetHeight(uint height);
 
 private:
