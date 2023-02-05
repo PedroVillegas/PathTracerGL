@@ -20,6 +20,6 @@ struct alignas(16) Sphere
 struct Scene
 {
     int maxRayDepth = 16;
+    int samplesPerPixel = 1;
     std::vector<Sphere> spheres;
-    glm::vec3 lightDirection { 0.0f };
 };
