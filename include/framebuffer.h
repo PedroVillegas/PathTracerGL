@@ -31,8 +31,8 @@ public:
     void SetWidth(uint width);
     void SetHeight(uint height);
 
-    inline uint GetWidth() { return m_Spec.width; }
-    inline uint GetHeight() { return m_Spec.height; }
-    inline FramebufferSpec GetSpec() { return m_Spec; }
-    inline uint GetTextureID() { return m_TextureID; }
+    uint GetWidth() { return m_Spec.width; }
+    uint GetHeight() { return m_Spec.height; }
+    FramebufferSpec GetSpec() { return m_Spec; }
+    uint GetTextureID() { return m_TextureID; }
 };
