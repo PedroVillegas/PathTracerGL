@@ -25,7 +25,7 @@ public:
     void Bind() const;
     void Unbind() const;
 
-    inline uint GetID() { return m_ID; }
+    uint GetID() { return m_ID; }
     // setters
     void SetUniformInt(const std::string& name, int val);
     void SetUniformFloat(const std::string& name, float val);
