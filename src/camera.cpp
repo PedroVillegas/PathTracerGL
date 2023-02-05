@@ -52,9 +52,8 @@ void Camera::CinematicMovement(float dt, GLFWwindow* window)
     m_Position += m_Momentum * dt;
 }
 
-void Camera::OnUpdate(float dt, GLFWwindow* window)
+bool Camera::OnUpdate(float dt, GLFWwindow* window)
 {   
-    glm::vec2 delta {0.0f};
     if(glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
     {
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
@@ -67,38 +66,13 @@ void Camera::OnUpdate(float dt, GLFWwindow* window)
         m_AllowCameraToMove = true;
     }
 
+    glm::vec2 delta {0.0f};
+
     if (m_AllowCameraToMove)
     {
         float speed = 5.0f;
         glm::vec3 upDirection(0.0f, 1.0f, 0.0f);
         glm::vec3 rightDirection = glm::cross(m_ForwardDirection, upDirection);
-
-        // Momentum delta
-        glm::vec3 M {0.0f, 0.0f, 0.0f};
-        M.x = (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) - (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS);
-        M.y = (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) - (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS);
-        M.z = (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) - (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS);
-        float mlen = glm::sqrt(glm::dot(M, M)) / speed; if (mlen < 1e-3f) mlen = 1.0f;
-
-        glm::vec3 r = rightDirection, u = upDirection, f = m_ForwardDirection;
-
-        m_Momentum.x = m_Momentum.x * .9f + .1f * (r.x * M.x + r.y * M.y + r.z * M.z) / mlen;
-        m_Momentum.y = m_Momentum.y * .9f + .1f * (u.x * M.x + u.y * M.y + u.z * M.z) / mlen;
-        m_Momentum.z = m_Momentum.z * .9f + .1f * (f.x * M.x + f.y * M.y + f.z * M.z) / mlen;
-
-        m_Position += m_Momentum * dt;
-
-        // Rotation
-
-        // m_Roll = m_Roll * .8f + .2f * ((glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) - (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS));
-        
-        // if (m_Roll > 1e-3f)
-        // {
-        //     float theta = m_Roll; //* .3f;// c = std::cos(theta * .5f), s = std::sin(theta * .5f) / m_Roll;
-        //     glm::quat q = glm::normalize(glm::angleAxis(theta, m_ForwardDirection));
-        //     rightDirection = glm::rotate(q, rightDirection);
-        //     upDirection = glm::rotate(q, upDirection);
-        // }
 
         double mousePosX = 0.0f , mousePosY = 0.0f;
         glfwGetCursorPos(window, &mousePosX, &mousePosY);
@@ -115,9 +89,27 @@ void Camera::OnUpdate(float dt, GLFWwindow* window)
                 glm::angleAxis(-yawDelta, upDirection)));
             m_ForwardDirection = glm::rotate(q, m_ForwardDirection);
         }
-
         RecalculateView();
+        rightDirection = glm::cross(m_ForwardDirection, upDirection);
+
+        // Momentum delta
+        glm::vec3 M {0.0f, 0.0f, 0.0f};
+        M.x = (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) - (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS);
+        M.y = (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) - (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS);
+        M.z = (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) - (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS);
+        float mlen = glm::sqrt(glm::dot(M, M)) / speed; if (mlen < 1e-3f) mlen = 1.0f;
+
+        glm::vec3 r = rightDirection, u = upDirection, f = m_ForwardDirection;
+
+        m_Momentum.x = m_Momentum.x * .9f + .1f * (r.x * M.x + r.y * M.y + r.z * M.z) / mlen;
+        m_Momentum.y = m_Momentum.y * .9f + .1f * (u.x * M.x + u.y * M.y + u.z * M.z) / mlen;
+        m_Momentum.z = m_Momentum.z * .9f + .1f * (f.x * M.x + f.y * M.y + f.z * M.z) / mlen;
+
+        m_Position += m_Momentum * dt;
+        if (glm::sqrt(glm::dot(m_Momentum, m_Momentum)) < 1e-1f) m_Momentum = {0.0f, 0.0f, 0.0f};
+        if (glm::sqrt(glm::dot(m_Momentum, m_Momentum)) > 0.0 || delta.x != 0.0 || delta.y != 0.0) return true;
     }
+    return false;
 }
 
 void Camera::OnResize(uint width, uint height)

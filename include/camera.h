@@ -16,8 +16,10 @@ public:
     Camera(glm::vec3 position, glm::vec3 forwardDirection, float verticalFOV, float nearClip, float farClip);
 
     void CinematicMovement(float dt, GLFWwindow* window);
-    void OnUpdate(float dt, GLFWwindow* window);
+    bool OnUpdate(float dt, GLFWwindow* window);
     void OnResize(uint width, uint height);
+
+    void SetFov(float HorizontalFOV) { m_VerticalFOV = HorizontalFOV * (m_ViewportWidth / m_ViewportHeight); }
 
     const glm::mat4& GetProjection() const { return m_Projection; }
     const glm::mat4& GetInverseProjection() const { return m_InverseProjection; }
@@ -25,11 +27,13 @@ public:
     const glm::mat4& GetInverseView() const { return m_InverseView; }
 
     const glm::vec3& GetPosition() const { return m_Position; }
+    const glm::vec3& GetMomentum() const { return m_Momentum; }
     const glm::vec3& GetDirection() const { return m_ForwardDirection; }
 
     float GetRotationSpeed();
+    int horizontalFOV = 90;
 
-private:
+public:
     void RecalculateProjection();
     void RecalculateView();
 
@@ -47,7 +51,6 @@ private:
     glm::vec3 m_ForwardDirection { 0.0f, 0.0f, 0.0f };
 
     glm::vec3 m_Momentum { 0.0f, 0.0f, 0.0f };
-    // float m_Roll = 0.0f;
 
     bool m_AllowCameraToMove = false;
     glm::vec2 m_LastMousePosition { 0.0f, 0.0f };
