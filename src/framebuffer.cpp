@@ -33,7 +33,6 @@ void Framebuffer::Create()
 
     // Create colour texture size: width, height
     glGenTextures(1, &m_TextureID); GLCall; // Generate texture with ID: m_TextureID
-    //glActiveTexture(GL_TEXTURE0); GLCall;
     glBindTexture(GL_TEXTURE_2D, m_TextureID); GLCall; // Select texture as current 2D Texture
     glTexImage2D(
         GL_TEXTURE_2D, 0, GL_RGBA, m_Spec.width, m_Spec.height, 0, GL_RGBA, 
@@ -51,6 +50,7 @@ void Framebuffer::Create()
     else if (fboStatus == GL_FRAMEBUFFER_COMPLETE) {}
         // std::cout << "Successfully completed Framebuffer! Colour buffer ID: " << m_TextureID << std::endl;
     
+    glBindTexture(GL_TEXTURE_2D, 0); GLCall;
     glBindFramebuffer(GL_FRAMEBUFFER, 0); GLCall;
 }
 
