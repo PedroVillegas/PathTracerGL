@@ -6,9 +6,10 @@
 
 struct alignas(16) Material
 {
-    glm::vec4 type = { 0, 0, 0, 0 };
+    glm::ivec4 type = { 0, 0, 0, 0 };
     glm::vec4 albedo { 1.0f };
     float roughness = 1.0f;
+    float ior = 1.0f;
 };
 struct alignas(16) Sphere
 {
