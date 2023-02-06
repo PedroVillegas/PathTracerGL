@@ -114,16 +114,12 @@ int main(void)
             ImGui::PushID(i);
 
             Sphere& s = scene.spheres[i];
-            int material;
-            if (ImGui::SliderInt("Material", &material, 0, 1)) 
-            {
-                s.mat.type.x = material;
-                renderer.ResetSamples();
-            }
+            if (ImGui::SliderInt("Material", &s.mat.type.x, 0, 2)) renderer.ResetSamples();
             if (ImGui::ColorEdit3("Albedo", glm::value_ptr(s.mat.albedo))) renderer.ResetSamples();
             if (ImGui::DragFloat3("Position", glm::value_ptr(s.position), 0.1f)) renderer.ResetSamples();
             if (ImGui::DragFloat("Radius", &s.position.w, 0.05f, 0.1f, 1000.0f)) renderer.ResetSamples();
             if (ImGui::DragFloat("Roughness", &s.mat.roughness, 0.002f, 0.0f, 1.0f)) renderer.ResetSamples();
+            if (ImGui::DragFloat("IOR", &s.mat.ior, 0.002f, 1.0f, 5.0f)) renderer.ResetSamples();
 
             ImGui::Separator();
             ImGui::PopID();
@@ -158,16 +154,17 @@ int main(void)
 
 void SetupScene(Scene& scene)
 {
-    // Material types: Lambertian = 0, Metal = 1, Glass = 2
+    // Material types: Lambertian = 0, Metal = 1, Dielectric = 2
     {
         Sphere centre_sphere;
         centre_sphere.mat.type.x = 0; 
-        centre_sphere.mat.albedo = { 0.7f, 0.3f, 0.3f, 1.0f };
+        centre_sphere.mat.albedo = { 0.1f, 0.2f, 0.5f, 1.0f };
         scene.spheres.push_back(centre_sphere);
     }
     {
         Sphere left_sphere;
-        left_sphere.mat.type.x = 1;
+        left_sphere.mat.type.x = 2;
+        left_sphere.mat.ior = 1.5;
         left_sphere.mat.albedo = { 0.8f, 0.8f, 0.8f, 1.0f };
         left_sphere.position = { -2.0f, 0.0f, 0.0f, 1.0f };
         left_sphere.mat.roughness = 0.0f;
