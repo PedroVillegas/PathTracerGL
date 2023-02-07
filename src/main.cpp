@@ -97,7 +97,7 @@ int main(void)
         if (ImGui::SliderInt("SPP", &scene.samplesPerPixel, 1, 50)) renderer.ResetSamples();
         if (ImGui::SliderInt("Max Ray Depth", &scene.maxRayDepth, 1, 50)) renderer.ResetSamples();
         ImGui::Separator();
-        ImGui::Text("Camera Position : %.2f %.2f %.2f ", camera.GetPosition().x, camera.GetPosition().y , camera.GetPosition().z);
+        ImGui::Text("Camera Position : %.2f %.2f %.2f", camera.GetPosition().x, camera.GetPosition().y , camera.GetPosition().z);
         ImGui::Text("Camera Momentum : %.2f %.2f %.2f", camera.GetMomentum().x, camera.GetMomentum().y , camera.GetMomentum().z);
         ImGui::Text("Camera Direction: %.2f %.2f %.2f", camera.GetDirection().x, camera.GetDirection().y , camera.GetDirection().z);
         if (ImGui::SliderInt("FOV", &camera.horizontalFOV, 60, 120))
@@ -117,7 +117,7 @@ int main(void)
             if (ImGui::SliderInt("Material", &s.mat.type.x, 0, 2)) renderer.ResetSamples();
             if (ImGui::ColorEdit3("Albedo", glm::value_ptr(s.mat.albedo))) renderer.ResetSamples();
             if (ImGui::DragFloat3("Position", glm::value_ptr(s.position), 0.1f)) renderer.ResetSamples();
-            if (ImGui::DragFloat("Radius", &s.position.w, 0.05f, 0.1f, 1000.0f)) renderer.ResetSamples();
+            if (ImGui::DragFloat("Radius", &s.position.w, 0.05f, -0.5f, 1000.0f)) renderer.ResetSamples();
             if (ImGui::DragFloat("Roughness", &s.mat.roughness, 0.002f, 0.0f, 1.0f)) renderer.ResetSamples();
             if (ImGui::DragFloat("IOR", &s.mat.ior, 0.002f, 1.0f, 5.0f)) renderer.ResetSamples();
 
@@ -158,15 +158,25 @@ void SetupScene(Scene& scene)
     {
         Sphere centre_sphere;
         centre_sphere.mat.type.x = 0; 
+        centre_sphere.position.w = 0.5f;
         centre_sphere.mat.albedo = { 0.1f, 0.2f, 0.5f, 1.0f };
         scene.spheres.push_back(centre_sphere);
     }
     {
         Sphere left_sphere;
         left_sphere.mat.type.x = 2;
+        left_sphere.position = { -1.0f, 0.0f, 0.0f, 0.5f };
+        left_sphere.mat.roughness = 0.0f;
         left_sphere.mat.ior = 1.5;
-        left_sphere.mat.albedo = { 0.8f, 0.8f, 0.8f, 1.0f };
-        left_sphere.position = { -2.0f, 0.0f, 0.0f, 1.0f };
+        //left_sphere.mat.albedo = { 0.8f, 0.8f, 0.8f, 1.0f };
+        scene.spheres.push_back(left_sphere);
+    }
+    {
+        Sphere left_sphere;
+        left_sphere.mat.type.x = 2;
+        left_sphere.mat.ior = 1.5;
+        //left_sphere.mat.albedo = { 0.8f, 0.8f, 0.8f, 1.0f };
+        left_sphere.position = { -1.0f, 0.0f, 0.0f, -0.4f };
         left_sphere.mat.roughness = 0.0f;
         scene.spheres.push_back(left_sphere);
     }
@@ -174,14 +184,14 @@ void SetupScene(Scene& scene)
         Sphere right_sphere;
         right_sphere.mat.type.x = 1;
         right_sphere.mat.albedo = { 0.8f, 0.6f, 0.2f, 1.0f };
-        right_sphere.position = { 2.0f, 0.0f, 0.0f, 1.0f };
+        right_sphere.position = { 1.0f, 0.0f, 0.0f, 0.5f };
         right_sphere.mat.roughness = 0.0f;
         scene.spheres.push_back(right_sphere);
     }
     {
         Sphere ground_sphere;
         ground_sphere.mat.albedo = { 0.8f, 0.8f, 0.0f, 1.0f };
-        ground_sphere.position = { 0.0f, -301.0f, 0.0f, 300.0f };
+        ground_sphere.position = { 0.0f, -100.5f, 0.0f, 100.0f };
         scene.spheres.push_back(ground_sphere);
     }
 }
