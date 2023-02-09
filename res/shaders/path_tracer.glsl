@@ -14,6 +14,8 @@ out vec4 colour;
 uniform int u_SampleIterations;
 uniform int u_SamplesPerPixel;
 uniform int u_Depth;
+uniform float u_FocalLength;
+uniform float u_Aperture;
 uniform vec2 u_Resolution;
 uniform vec3 u_RayOrigin;
 uniform mat4 u_InverseProjection;
@@ -80,27 +82,23 @@ uint PCGHash()
 
 float Rand_01()
 {
+    g_Seed += 1;
     return float(PCGHash()) / 4294967295.0;
 }
+
+vec2 UniformSampleUnitCircle()
+{
+    float theta = Rand_01() * 2.0 * PI;
+    float r = sqrt(Rand_01());
+    return vec2(cos(theta), sin(theta)) * r;
+}
+
 
 vec3 UniformSampleUnitSphere(float u1, float u2)
 {
     vec3 dir;
     float theta = u1 * 2 * PI;
     float z = u2 * 2.0 - 1.0;
-    float r = sqrt(1.0 - z * z);
-    float x = r * cos(theta);
-    float y = r * sin(theta);
-    dir = vec3(x, y, z);
-
-    return dir;
-}
-
-vec3 UniformSampleUnitSphere()
-{
-    vec3 dir;
-    float theta = Rand_01() * 2 * PI;
-    float z = Rand_01() * 2.0 - 1.0;
     float r = sqrt(1.0 - z * z);
     float x = r * cos(theta);
     float y = r * sin(theta);
@@ -128,8 +126,9 @@ float SchlicksApproximation(float cosine_t, float refraction_ratio)
     return r0 + (1-r0) * pow((1-cosine_t), 5);
 }
 
-Ray ComputeRay(vec2 uv)
+Ray ComputeWorldSpaceRay(vec2 uv)
 {
+    // Local Space => World Space => View Space => Clip Space => NDC
     vec4 clip_pos = vec4(uv.xy, 1.0, 1.0);
     vec4 view_pos = u_InverseProjection * clip_pos;
 
@@ -139,7 +138,7 @@ Ray ComputeRay(vec2 uv)
 
     Ray r;
 
-    r.origin = u_RayOrigin;
+    r.origin = u_RayOrigin; // Ray Origin is already in World Space
     r.direction = d;
 
     return r;
@@ -264,8 +263,6 @@ vec3 PerPixel(Ray ray)
             scattered_dir = CosineHemisphereSampling(r1, r2);
             scattered_dir = TangentX * scattered_dir.x + TangentY * scattered_dir.y + N * scattered_dir.z;
 
-            //scattered_dir = N + UniformSampleUnitSphere(r1, r2); // RT in one weekend
-
             ray.origin = P + N * EPSILON;
             ray.direction = normalize(scattered_dir);
 
@@ -279,10 +276,13 @@ vec3 PerPixel(Ray ray)
             float R = Hit_rec.mat.roughness;
             vec3 albedo = sphere.mat.albedo.xyz;
 
+            float r1 = Rand_01();
+            float r2 = Rand_01();
+
             vec3 reflected;
 
             reflected = reflect(normalize(ray.direction), N);
-            ray.direction = reflected + R * UniformSampleUnitSphere();
+            ray.direction = reflected + R * UniformSampleUnitSphere(r1, r2);
             ray.origin = P + N * EPSILON;
 
             attenuation = (dot(ray.direction, N) > 0) ? albedo : vec3(0.0);
@@ -352,10 +352,18 @@ void main()
         float r1 = Rand_01();
         float r2 = Rand_01();
 
-        vec2 jitter = vec2(gl_FragCoord.x + r1, gl_FragCoord.y + r2) / u_Resolution;
-        jitter = jitter * 2.0 - 1.0;
+        vec2 sub_pixel_jitter = vec2(gl_FragCoord.x + r1, gl_FragCoord.y + r2) / u_Resolution;
+        sub_pixel_jitter = sub_pixel_jitter * 2.0 - 1.0;
 
-        Ray r = ComputeRay(jitter);
+        Ray r = ComputeWorldSpaceRay(sub_pixel_jitter);
+        
+        // Compute Depth of Field
+        // vec3 focal_point = r.origin + r.direction * 10.0;
+        // vec2 offset = 0.1 * 0.5 * UniformSampleUnitCircle();
+
+        // r.origin = (u_InverseView * vec4(offset, 0.0, 1.0)).xyz;
+        // r.direction = normalize(focal_point - r.origin);
+
         pixel_colour += PerPixel(r);
     }
     pixel_colour /= samples_per_pixel;
