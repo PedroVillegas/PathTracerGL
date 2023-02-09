@@ -44,6 +44,9 @@ bool Window::Init()
     glfwSetFramebufferSizeCallback(m_Window, WindowResize);
     glfwSetCursorPosCallback(m_Window, CursorPosition);
 
+    if (glfwRawMouseMotionSupported())
+        glfwSetInputMode(m_Window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+
     // glad: load all OpenGL function pointers
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
@@ -62,10 +65,7 @@ void WindowResize(GLFWwindow* window, int width, int height)
     glViewport(0, 0, width, height); GLCall;
 }
 
-void CursorPosition(GLFWwindow* window, double xPos, double yPos)
-{
-
-}
+void CursorPosition(GLFWwindow* window, double xPos, double yPos) {}
 
 void Window::ProcessInput()
 {

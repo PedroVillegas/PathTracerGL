@@ -4,7 +4,6 @@
 
 #include "consoleLogger.h"
 #include "shader.h"
-#include "window.h"
 #include "framebuffer.h"
 #include "camera.h"
 #include "renderer.h"
@@ -35,11 +34,14 @@ int main(void)
     InitImGui(window.GetWindow());
     SetupStyle();
 
-    float dt = 0.0333;
+    float last_frame = 0.0f;
+    float dt = 0.0333f;
     bool vsync = true;
 
     while (!window.Closed())
     {
+        float current_frame = glfwGetTime();
+
         // Input
         window.ProcessInput();
         vsync == true ? glfwSwapInterval(1) : glfwSwapInterval(0);
@@ -51,8 +53,8 @@ int main(void)
 
         renderer.OnResize(ViewportWidth, ViewportHeight);
         camera.OnResize(renderer.GetViewportWidth(), renderer.GetViewportHeight());
-        bool cameraIsMoving = camera.OnUpdate(dt, window.GetWindow());
-        // camera.CinematicMovement(dt, window.GetWindow());
+        bool cameraIsMoving = camera.FPS(dt, &window);
+        //bool cameraIsMoving = camera.Cinematic(dt, &window);
 
         if (cameraIsMoving) renderer.ResetSamples();
 
@@ -90,22 +92,28 @@ int main(void)
         ImGui::Checkbox("V-Sync", &vsync);
         ImGui::Text("Render time %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
         ImGui::End();
-        
-        ImGui::Begin("Scene");
-        ImGui::Text("Iterations: %i", renderer.GetIterations());
-        if (ImGui::Button("Reset Samples")) renderer.ResetSamples();
-        if (ImGui::SliderInt("SPP", &scene.samplesPerPixel, 1, 50)) renderer.ResetSamples();
-        if (ImGui::SliderInt("Max Ray Depth", &scene.maxRayDepth, 1, 50)) renderer.ResetSamples();
-        ImGui::Separator();
-        ImGui::Text("Camera Position : %.2f %.2f %.2f", camera.GetPosition().x, camera.GetPosition().y , camera.GetPosition().z);
-        ImGui::Text("Camera Momentum : %.2f %.2f %.2f", camera.GetMomentum().x, camera.GetMomentum().y , camera.GetMomentum().z);
-        ImGui::Text("Camera Direction: %.2f %.2f %.2f", camera.GetDirection().x, camera.GetDirection().y , camera.GetDirection().z);
+
+        ImGui::Begin("Camera");
+        ImGui::Text("Position : %.2f %.2f %.2f", camera.GetPosition().x, camera.GetPosition().y , camera.GetPosition().z);
+        ImGui::Text("Momentum : %.2f %.2f %.2f", camera.GetMovementMomentum().x, camera.GetMovementMomentum().y, camera.GetMovementMomentum().z);
+        ImGui::Text("Direction: %.2f %.2f %.2f", camera.GetDirection().x, camera.GetDirection().y , camera.GetDirection().z);
+        ImGui::Text("Rotation : %.2f %.2f %.2f", camera.GetRotationMomentum().x, camera.GetRotationMomentum().y, camera.GetRotationMomentum().z);
+        ImGui::SliderFloat("Damping Factor", &camera.damping, 0.0f, 0.95f);
+        ImGui::SliderFloat("Focal Length", &camera.focal_length, 1.0f, 50.0f);
+        ImGui::SliderFloat("Aperture", &camera.aperture, 0.1f, 5.0f);
         if (ImGui::SliderInt("FOV", &camera.horizontalFOV, 60, 120))
         {
             camera.SetFov(camera.horizontalFOV);
             camera.RecalculateProjection();
             renderer.ResetSamples();
         }
+        ImGui::End();
+        
+        ImGui::Begin("Scene");
+        ImGui::Text("Iterations: %i", renderer.GetIterations());
+        if (ImGui::Button("Reset Samples")) renderer.ResetSamples();
+        if (ImGui::SliderInt("SPP", &scene.samplesPerPixel, 1, 50)) renderer.ResetSamples();
+        if (ImGui::SliderInt("Max Ray Depth", &scene.maxRayDepth, 1, 50)) renderer.ResetSamples();
 
         ImGui::Separator();
 
@@ -139,7 +147,9 @@ int main(void)
         }
 
         window.Update();
-        dt = glm::min<float>(1000.0f / ImGui::GetIO().Framerate, 0.0333f);
+        //dt = glm::min<float>(1000.0f / ImGui::GetIO().Framerate, 0.0333f);
+        dt = current_frame - last_frame;
+        last_frame = current_frame;
     }
 
     ImGui_ImplOpenGL3_Shutdown();

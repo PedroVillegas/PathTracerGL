@@ -67,6 +67,8 @@ void Renderer::Render(const Scene& scene, const Camera& camera, uint VAO)
     m_PathTraceShader->SetUniformInt("u_SampleIterations", m_SampleIterations);
     m_PathTraceShader->SetUniformInt("u_SamplesPerPixel", m_Scene->samplesPerPixel);
     m_PathTraceShader->SetUniformInt("u_Depth", m_Scene->maxRayDepth);
+    m_PathTraceShader->SetUniformFloat("u_Aperture", m_Camera->aperture);
+    m_PathTraceShader->SetUniformFloat("u_FocalLength", m_Camera->focal_length);
     m_PathTraceShader->SetUniformVec2("u_Resolution", float(m_ViewportWidth), float(m_ViewportHeight));
     m_PathTraceShader->SetUniformVec3("u_RayOrigin", m_Camera->GetPosition().x, m_Camera->GetPosition().y, m_Camera->GetPosition().z);
     m_PathTraceShader->SetUniformMat4("u_InverseProjection", m_Camera->GetInverseProjection());
