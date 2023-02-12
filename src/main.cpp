@@ -10,11 +10,13 @@
 #include "scene.h"
 
 #include <glm/glm.hpp>
+#include <cstdlib>
 
 void InitImGui(GLFWwindow* window);
 void SetupStyle();
 void SetupScene(Scene& scene);
 void SetupViewportImage(const Renderer& renderer, const Scene& scene, uint& VAO, uint& VBO, uint& IBO, uint& SpheresUBO);
+void RandomizeScene(Scene& scene);
 
 int main(void) 
 {
@@ -30,6 +32,7 @@ int main(void)
     uint VAO, VBO, IBO, SpheresUBO;
     
     SetupScene(scene);
+    //RandomizeScene(scene);
     SetupViewportImage(renderer, scene, VAO, VBO, IBO, SpheresUBO);
     InitImGui(window.GetWindow());
     SetupStyle();
@@ -53,20 +56,23 @@ int main(void)
 
         renderer.OnResize(ViewportWidth, ViewportHeight);
         camera.OnResize(renderer.GetViewportWidth(), renderer.GetViewportHeight());
-        //bool cameraIsMoving = camera.FPS(dt, &window);
-        bool cameraIsMoving = camera.Cinematic(dt, &window);
+
+        bool cameraIsMoving;
+        if (camera.type == 0) cameraIsMoving = camera.FPS(dt, &window);
+        if (camera.type == 1) cameraIsMoving = camera.Cinematic(dt, &window);
 
         if (cameraIsMoving) renderer.ResetSamples();
 
         {
-        glBindBuffer(GL_UNIFORM_BUFFER, SpheresUBO); GLCall;
-        int offset = 0;
-        int SphereCount = scene.spheres.size();
-        // Set Sphere object data
-        glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &SphereCount);
-        offset += sizeof(glm::vec4);
-        glBufferSubData(GL_UNIFORM_BUFFER, offset, SphereCount * sizeof(Sphere), scene.spheres.data());
+            glBindBuffer(GL_UNIFORM_BUFFER, SpheresUBO); GLCall;
+            int offset = 0;
+            int SphereCount = scene.spheres.size();
+            // Set Sphere object data
+            glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &SphereCount);
+            offset += sizeof(glm::vec4);
+            glBufferSubData(GL_UNIFORM_BUFFER, offset, SphereCount * sizeof(Sphere), scene.spheres.data());
         }
+
         renderer.Render(scene, camera, VAO);
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0.0f, 0.0f});
@@ -89,20 +95,40 @@ int main(void)
         ImGui::Begin("Overview");
 
         ImGui::Text("Viewport: %i x %i", ViewportWidth, ViewportHeight);
+
         ImGui::Text("[1/2] to toggle movement");
+
         ImGui::Checkbox("V-Sync", &vsync);
+
         ImGui::Text("Render time %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 
         if (ImGui::CollapsingHeader("Camera"))
         {
+            if (ImGui::Combo("Type", &camera.type, "FREE\0CINEMATIC")) 
+            {
+                camera.Reset();
+                renderer.ResetSamples();
+            }
+
             ImGui::Text("Position : %.2f %.2f %.2f", camera.GetPosition().x, camera.GetPosition().y , camera.GetPosition().z);
-            ImGui::Text("Momentum : %.2f %.2f %.2f", camera.GetMovementMomentum().x, camera.GetMovementMomentum().y, camera.GetMovementMomentum().z);
+
             ImGui::Text("Direction: %.2f %.2f %.2f", camera.GetDirection().x, camera.GetDirection().y , camera.GetDirection().z);
+
+            ImGui::Text("Momentum : %.2f %.2f %.2f", camera.GetMovementMomentum().x, camera.GetMovementMomentum().y, camera.GetMovementMomentum().z);
+
             ImGui::Text("Rotation : %.2f %.2f %.2f", camera.GetRotationMomentum().x, camera.GetRotationMomentum().y, camera.GetRotationMomentum().z);
+
             ImGui::SliderFloat("Sensitivity", &camera.sensitivity, 1.0f, 100.0f);
+
             ImGui::SliderFloat("Damping Factor", &camera.damping, 0.0f, 0.95f);
-            ImGui::SliderFloat("Focal Length", &camera.focal_length, 1.0f, 50.0f);
-            ImGui::SliderFloat("Aperture", &camera.aperture, 0.1f, 5.0f);
+
+            if (ImGui::InputFloat("Focal Length", &camera.focal_length, 0.1f)) 
+                renderer.ResetSamples();
+
+            if (ImGui::InputFloat("Aperture Diameter", &camera.aperture, 0.002f)) 
+                renderer.ResetSamples();
+
+            ImGui::Text("f-number: f/%0.5f", camera.focal_length / camera.aperture);
 
             if (ImGui::SliderInt("FOV", &camera.horizontalFOV, 60, 120))
             {
@@ -115,10 +141,23 @@ int main(void)
         if (ImGui::CollapsingHeader("Scene"))
         {
             ImGui::Text("Iterations: %i", renderer.GetIterations());
-            if (ImGui::Button("Reset Samples")) renderer.ResetSamples();
-            if (ImGui::SliderInt("SPP", &scene.samplesPerPixel, 1, 50)) renderer.ResetSamples();
-            if (ImGui::SliderInt("Max Ray Depth", &scene.maxRayDepth, 1, 50)) renderer.ResetSamples();
 
+            if (ImGui::Button("Randomize Scene"))
+            {
+                RandomizeScene(scene);
+                renderer.ResetSamples();
+            }
+
+            if (ImGui::Button("Reset Samples")) 
+                renderer.ResetSamples();
+
+            if (ImGui::SliderInt("SPP", &scene.samplesPerPixel, 1, 50)) 
+                renderer.ResetSamples();
+
+            if (ImGui::SliderInt("Max Ray Depth", &scene.maxRayDepth, 1, 50)) 
+                renderer.ResetSamples();
+
+            /*
             ImGui::Separator();
 
             for (int i = 0; i < scene.spheres.size(); i++)
@@ -126,16 +165,28 @@ int main(void)
                 ImGui::PushID(i);
 
                 Sphere& s = scene.spheres[i];
-                if (ImGui::SliderInt("Material", &s.mat.type.x, 0, 2)) renderer.ResetSamples();
-                if (ImGui::ColorEdit3("Albedo", glm::value_ptr(s.mat.albedo))) renderer.ResetSamples();
-                if (ImGui::DragFloat3("Position", glm::value_ptr(s.position), 0.1f)) renderer.ResetSamples();
-                if (ImGui::DragFloat("Radius", &s.position.w, 0.05f, -0.5f, 1000.0f)) renderer.ResetSamples();
-                if (ImGui::DragFloat("Roughness", &s.mat.roughness, 0.002f, 0.0f, 1.0f)) renderer.ResetSamples();
-                if (ImGui::DragFloat("IOR", &s.mat.ior, 0.002f, 1.0f, 5.0f)) renderer.ResetSamples();
+                if (ImGui::Combo("Material", &s.mat.type.x,"LAMBERTIAN\0METAL\0GLASS")) 
+                    renderer.ResetSamples();
+
+                if (ImGui::ColorEdit3("Albedo", glm::value_ptr(s.mat.albedo))) 
+                    renderer.ResetSamples();
+
+                if (ImGui::DragFloat3("Position", glm::value_ptr(s.position), 0.1f)) 
+                    renderer.ResetSamples();
+
+                if (ImGui::DragFloat("Radius", &s.position.w, 0.05f, -0.5f, 1000.0f)) 
+                    renderer.ResetSamples();
+
+                if (ImGui::DragFloat("Roughness", &s.mat.roughness, 0.002f, 0.0f, 1.0f)) 
+                    renderer.ResetSamples();
+
+                if (ImGui::DragFloat("IOR", &s.mat.ior, 0.002f, 1.0f, 5.0f)) 
+                    renderer.ResetSamples();
 
                 ImGui::Separator();
                 ImGui::PopID();
             }
+            */
         }
         ImGui::End();
 
@@ -182,14 +233,12 @@ void SetupScene(Scene& scene)
         left_sphere.position = { -1.0f, 0.0f, 0.0f, 0.5f };
         left_sphere.mat.roughness = 0.0f;
         left_sphere.mat.ior = 1.5;
-        //left_sphere.mat.albedo = { 0.8f, 0.8f, 0.8f, 1.0f };
         scene.spheres.push_back(left_sphere);
     }
     {
         Sphere left_sphere;
         left_sphere.mat.type.x = 2;
-        left_sphere.mat.ior = 1.5;
-        //left_sphere.mat.albedo = { 0.8f, 0.8f, 0.8f, 1.0f };
+        left_sphere.mat.ior = 1.55;
         left_sphere.position = { -1.0f, 0.0f, 0.0f, -0.4f };
         left_sphere.mat.roughness = 0.0f;
         scene.spheres.push_back(left_sphere);
@@ -205,9 +254,64 @@ void SetupScene(Scene& scene)
     {
         Sphere ground_sphere;
         ground_sphere.mat.albedo = { 0.8f, 0.8f, 0.0f, 1.0f };
-        ground_sphere.position = { 0.0f, -100.5f, 0.0f, 100.0f };
+        ground_sphere.position = { 0.0f, -1000.5f, 0.0f, 1000.0f };
         scene.spheres.push_back(ground_sphere);
     }
+}
+
+void RandomizeScene(Scene& scene)
+{
+    enum material { LAMBERTIAN, METAL, GLASS };
+    // Sphere with large radius acts as a plane
+    Sphere ground;
+    material ground_mat = LAMBERTIAN;
+    ground.position = glm::vec4(0.0f, -1000.0f, 0.0f, 1000.0f);
+    ground.mat.type.x = ground_mat;
+    ground.mat.albedo = glm::vec4(0.4f, 0.4f, 0.4f, 1.0f);
+    scene.spheres.push_back(ground);
+
+    // Generate 16 random spheres
+    for (int a = -2; a < 2; a++) 
+    {
+        for (int b = -2; b < 2; b++) 
+        {
+            float mat_probability = std::rand();
+            glm::vec3 pos = glm::vec3(a + 0.9*std::rand(), 0.2, b + 0.9*std::rand());
+
+            if (glm::length(pos - glm::vec3(4, 0.2, 0)) > 0.9) 
+            {
+                Sphere sphere;
+
+                if (mat_probability < 0.4) 
+                {
+                    // diffuse
+                    material s_material = LAMBERTIAN;
+                    sphere.mat.type.x = s_material;
+                    sphere.mat.albedo = glm::vec4(std::rand(), std::rand(), std::rand(), 1.0f) * glm::vec4(std::rand(), std::rand(), std::rand(), 1.0f);
+                    scene.spheres.push_back(sphere);
+                } 
+                else if (mat_probability < 0.8) 
+                {
+                    // metal
+                    material s_material = METAL;
+                    sphere.mat.type.x = s_material;
+                    sphere.mat.albedo = glm::vec4(std::rand() * 0.5 + 0.5, std::rand() * 0.5 + 0.5, std::rand() * 0.5 + 0.5, 1.0f);
+                    sphere.mat.roughness = std::rand() * 0.5;
+                    scene.spheres.push_back(sphere);
+                } 
+                else 
+                {
+                    // glass
+                    Sphere sphere;
+                    material s_material = GLASS;
+                    sphere.mat.type.x = s_material;
+                    sphere.mat.ior = 1.55f;
+                    scene.spheres.push_back(sphere);
+                }
+            }
+        }
+    }
+
 }
 
 void SetupViewportImage(const Renderer& renderer, const Scene& scene, uint& VAO, uint& VBO, uint& IBO, uint& SpheresUBO)
