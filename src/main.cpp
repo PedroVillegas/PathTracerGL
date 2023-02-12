@@ -53,8 +53,8 @@ int main(void)
 
         renderer.OnResize(ViewportWidth, ViewportHeight);
         camera.OnResize(renderer.GetViewportWidth(), renderer.GetViewportHeight());
-        bool cameraIsMoving = camera.FPS(dt, &window);
-        //bool cameraIsMoving = camera.Cinematic(dt, &window);
+        //bool cameraIsMoving = camera.FPS(dt, &window);
+        bool cameraIsMoving = camera.Cinematic(dt, &window);
 
         if (cameraIsMoving) renderer.ResetSamples();
 
@@ -86,53 +86,57 @@ int main(void)
         ImGui::End();
         ImGui::PopStyleVar();
 
-        ImGui::Begin("Debug");
+        ImGui::Begin("Overview");
+
         ImGui::Text("Viewport: %i x %i", ViewportWidth, ViewportHeight);
         ImGui::Text("[1/2] to toggle movement");
         ImGui::Checkbox("V-Sync", &vsync);
         ImGui::Text("Render time %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-        ImGui::End();
 
-        ImGui::Begin("Camera");
-        ImGui::Text("Position : %.2f %.2f %.2f", camera.GetPosition().x, camera.GetPosition().y , camera.GetPosition().z);
-        ImGui::Text("Momentum : %.2f %.2f %.2f", camera.GetMovementMomentum().x, camera.GetMovementMomentum().y, camera.GetMovementMomentum().z);
-        ImGui::Text("Direction: %.2f %.2f %.2f", camera.GetDirection().x, camera.GetDirection().y , camera.GetDirection().z);
-        ImGui::Text("Rotation : %.2f %.2f %.2f", camera.GetRotationMomentum().x, camera.GetRotationMomentum().y, camera.GetRotationMomentum().z);
-        ImGui::SliderFloat("Damping Factor", &camera.damping, 0.0f, 0.95f);
-        ImGui::SliderFloat("Focal Length", &camera.focal_length, 1.0f, 50.0f);
-        ImGui::SliderFloat("Aperture", &camera.aperture, 0.1f, 5.0f);
-        if (ImGui::SliderInt("FOV", &camera.horizontalFOV, 60, 120))
+        if (ImGui::CollapsingHeader("Camera"))
         {
-            camera.SetFov(camera.horizontalFOV);
-            camera.RecalculateProjection();
-            renderer.ResetSamples();
+            ImGui::Text("Position : %.2f %.2f %.2f", camera.GetPosition().x, camera.GetPosition().y , camera.GetPosition().z);
+            ImGui::Text("Momentum : %.2f %.2f %.2f", camera.GetMovementMomentum().x, camera.GetMovementMomentum().y, camera.GetMovementMomentum().z);
+            ImGui::Text("Direction: %.2f %.2f %.2f", camera.GetDirection().x, camera.GetDirection().y , camera.GetDirection().z);
+            ImGui::Text("Rotation : %.2f %.2f %.2f", camera.GetRotationMomentum().x, camera.GetRotationMomentum().y, camera.GetRotationMomentum().z);
+            ImGui::SliderFloat("Sensitivity", &camera.sensitivity, 1.0f, 100.0f);
+            ImGui::SliderFloat("Damping Factor", &camera.damping, 0.0f, 0.95f);
+            ImGui::SliderFloat("Focal Length", &camera.focal_length, 1.0f, 50.0f);
+            ImGui::SliderFloat("Aperture", &camera.aperture, 0.1f, 5.0f);
+
+            if (ImGui::SliderInt("FOV", &camera.horizontalFOV, 60, 120))
+            {
+                camera.SetFov(camera.horizontalFOV);
+                camera.RecalculateProjection();
+                renderer.ResetSamples();
+            }
         }
-        ImGui::End();
         
-        ImGui::Begin("Scene");
-        ImGui::Text("Iterations: %i", renderer.GetIterations());
-        if (ImGui::Button("Reset Samples")) renderer.ResetSamples();
-        if (ImGui::SliderInt("SPP", &scene.samplesPerPixel, 1, 50)) renderer.ResetSamples();
-        if (ImGui::SliderInt("Max Ray Depth", &scene.maxRayDepth, 1, 50)) renderer.ResetSamples();
-
-        ImGui::Separator();
-
-        for (int i = 0; i < scene.spheres.size(); i++)
+        if (ImGui::CollapsingHeader("Scene"))
         {
-            ImGui::PushID(i);
-
-            Sphere& s = scene.spheres[i];
-            if (ImGui::SliderInt("Material", &s.mat.type.x, 0, 2)) renderer.ResetSamples();
-            if (ImGui::ColorEdit3("Albedo", glm::value_ptr(s.mat.albedo))) renderer.ResetSamples();
-            if (ImGui::DragFloat3("Position", glm::value_ptr(s.position), 0.1f)) renderer.ResetSamples();
-            if (ImGui::DragFloat("Radius", &s.position.w, 0.05f, -0.5f, 1000.0f)) renderer.ResetSamples();
-            if (ImGui::DragFloat("Roughness", &s.mat.roughness, 0.002f, 0.0f, 1.0f)) renderer.ResetSamples();
-            if (ImGui::DragFloat("IOR", &s.mat.ior, 0.002f, 1.0f, 5.0f)) renderer.ResetSamples();
+            ImGui::Text("Iterations: %i", renderer.GetIterations());
+            if (ImGui::Button("Reset Samples")) renderer.ResetSamples();
+            if (ImGui::SliderInt("SPP", &scene.samplesPerPixel, 1, 50)) renderer.ResetSamples();
+            if (ImGui::SliderInt("Max Ray Depth", &scene.maxRayDepth, 1, 50)) renderer.ResetSamples();
 
             ImGui::Separator();
-            ImGui::PopID();
-        }
 
+            for (int i = 0; i < scene.spheres.size(); i++)
+            {
+                ImGui::PushID(i);
+
+                Sphere& s = scene.spheres[i];
+                if (ImGui::SliderInt("Material", &s.mat.type.x, 0, 2)) renderer.ResetSamples();
+                if (ImGui::ColorEdit3("Albedo", glm::value_ptr(s.mat.albedo))) renderer.ResetSamples();
+                if (ImGui::DragFloat3("Position", glm::value_ptr(s.position), 0.1f)) renderer.ResetSamples();
+                if (ImGui::DragFloat("Radius", &s.position.w, 0.05f, -0.5f, 1000.0f)) renderer.ResetSamples();
+                if (ImGui::DragFloat("Roughness", &s.mat.roughness, 0.002f, 0.0f, 1.0f)) renderer.ResetSamples();
+                if (ImGui::DragFloat("IOR", &s.mat.ior, 0.002f, 1.0f, 5.0f)) renderer.ResetSamples();
+
+                ImGui::Separator();
+                ImGui::PopID();
+            }
+        }
         ImGui::End();
 
         ImGui::Render();

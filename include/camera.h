@@ -31,12 +31,13 @@ public:
     const glm::vec3& GetPosition() const { return m_Position; }
     const glm::vec3& GetMovementMomentum() const { return m_MovementMomentum; }
     const glm::vec3& GetRotationMomentum() const { return m_RotationMomentum; }
-    const glm::vec3& GetDirection() const { return m_MatOrientation[0]; }
+    const glm::vec3& GetDirection() const { return m_Forward; }
 
     int horizontalFOV = 90;
     float damping = 0.9f;
     float focal_length = 10.0f;
     float aperture = 1.0f;
+    float sensitivity = 20.0f;
 
 public:
     void RecalculateProjection();
@@ -53,12 +54,12 @@ private:
     glm::mat4 m_InverseProjection { 0.0f };
     glm::mat4 m_InverseView { 0.0f };
 
-    //glm::quat m_QuatOrientation = glm::quat();
-    glm::mat3 m_MatOrientation = glm::mat3(); // [0] = forward; [1] = up; [2] = right;
+    glm::quat m_QuatOrientation = glm::quat();
 
     glm::vec3 m_Position { 0.0f, 0.0f, 0.0f };
-    glm::vec3 m_ForwardDirection { 0.0f, 0.0f, -1.0f };
-    glm::vec3 m_UpDirection {0.0f, 0.0f, 0.0f };
+    glm::vec3 m_Forward { 0.0f, 0.0f, -1.0f };
+    glm::vec3 m_Up { 0.0f, 1.0f, 0.0f };
+    glm::vec3 m_Right { 1.0f, 0.0f, 0.0f };
 
     glm::vec3 m_MovementMomentum { 0.0f, 0.0f, 0.0f };
     glm::vec3 m_RotationMomentum { 0.0f, 0.0f, 0.0f };
