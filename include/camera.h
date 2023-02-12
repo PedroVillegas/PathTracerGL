@@ -20,6 +20,7 @@ public:
     bool Cinematic(float dt, Window* window);
     bool FPS(float dt, Window* window);
     void OnResize(uint width, uint height);
+    void Reset();
 
     void SetFov(float HorizontalFOV) { m_VerticalFOV = HorizontalFOV * (m_ViewportWidth / m_ViewportHeight); }
 
@@ -33,10 +34,11 @@ public:
     const glm::vec3& GetRotationMomentum() const { return m_RotationMomentum; }
     const glm::vec3& GetDirection() const { return m_Forward; }
 
+    int type = 0;
     int horizontalFOV = 90;
     float damping = 0.9f;
-    float focal_length = 10.0f;
-    float aperture = 1.0f;
+    float focal_length = 5.0f;
+    float aperture = 0.2f;
     float sensitivity = 20.0f;
 
 public:

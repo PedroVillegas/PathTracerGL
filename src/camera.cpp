@@ -102,11 +102,17 @@ bool Camera::Cinematic(float dt, Window* window)
 
     m_Position += m_MovementMomentum * dt;
 
-    mlen = glm::sqrt(glm::dot(m_MovementMomentum, m_MovementMomentum));
-    rlen = glm::sqrt(glm::dot(m_RotationMomentum, m_RotationMomentum));
-    if (mlen < 1e-1f) m_MovementMomentum = {0.0f, 0.0f, 0.0f};
-    if (rlen < 1e-1f) m_RotationMomentum = {0.0f, 0.0f, 0.0f};
-    if (mlen > 0.0 || rlen > 0.0) return true;
+    mlen = glm::length(m_MovementMomentum);
+    rlen = glm::length(m_RotationMomentum);
+    if (mlen < 1e-1f) 
+        m_MovementMomentum = {0.0f, 0.0f, 0.0f};
+
+    if (rlen < 1e-1f) 
+        m_RotationMomentum = {0.0f, 0.0f, 0.0f};
+
+    if (mlen > 0.0 || rlen > 0.0) 
+        return true;
+        
     return false;
 }
 
@@ -184,8 +190,12 @@ bool Camera::FPS(float dt, Window* window)
         m_MovementMomentum.z = m_MovementMomentum.z * damping + (1-damping) * (f.x * M.x + f.y * M.y + f.z * M.z) / mlen;
 
         m_Position += m_MovementMomentum * dt;
-        if (glm::sqrt(glm::dot(m_MovementMomentum, m_MovementMomentum)) < 1e-1f) m_MovementMomentum = {0.0f, 0.0f, 0.0f};
-        if (glm::sqrt(glm::dot(m_MovementMomentum, m_MovementMomentum)) > 0.0 || dx != 0.0 || dy != 0.0) return true;
+
+        if (glm::length(m_MovementMomentum) < 1e-1f) 
+            m_MovementMomentum = {0.0f, 0.0f, 0.0f};
+
+        if (glm::length(m_MovementMomentum) > 0.0 || dx != 0.0 || dy != 0.0) 
+            return true;
     }
     return false;
 }
@@ -200,6 +210,18 @@ void Camera::OnResize(uint width, uint height)
     m_AspectRatio = (float) width / height;
 
     RecalculateProjection();
+}
+
+void Camera::Reset()
+{
+    m_Forward = glm::vec3(0.0f, 0.0f, -1.0f);
+    m_Up = glm::vec3(0.0f, 1.0f, 0.0f);
+    m_Right = glm::vec3(1.0f, 0.0f, 0.0f);
+    m_Position = glm::vec3(0.0f, 0.0f, 3.0f);
+    m_MovementMomentum = glm::vec3(0.0f, 0.0f, 0.0f);
+    m_RotationMomentum = glm::vec3(0.0f, 0.0f, 0.0f);
+    m_FirstMouse = true;
+    RecalculateView();
 }
 
 void Camera::RecalculateProjection()
