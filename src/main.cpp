@@ -22,9 +22,9 @@ int main(void)
 {
     uint ViewportWidth = 1000, ViewportHeight = 1000;
     Window window = Window("Path Tracing", 1000, 600);
-    Shader PathTracerShader = Shader("res/shaders/vert.glsl", "res/shaders/path_tracer.glsl");
-    Shader AccumShader = Shader("res/shaders/vert.glsl", "res/shaders/accumulation.glsl");
-    Shader FinalOutputShader = Shader("res/shaders/vert.glsl", "res/shaders/final_output.glsl");
+    Shader PathTracerShader = Shader("src/shaders/vert.glsl", "src/shaders/path_tracer.glsl");
+    Shader AccumShader = Shader("src/shaders/vert.glsl", "src/shaders/accumulation.glsl");
+    Shader FinalOutputShader = Shader("src/shaders/vert.glsl", "src/shaders/final_output.glsl");
     Renderer renderer = Renderer(PathTracerShader, AccumShader, FinalOutputShader, ViewportWidth, ViewportHeight);
     Camera camera = Camera({0.0f, 0.0f, 3.0f}, 90.0f, 0.01f, 100.0f);
     Scene scene = Scene();
