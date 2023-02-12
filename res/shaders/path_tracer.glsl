@@ -44,7 +44,7 @@ struct Sphere
 layout (std140) uniform ObjectData
 {
     int sphereCount;
-    Sphere Spheres[4];
+    Sphere Spheres[17];
 } objectData;
 
 struct Ray
@@ -354,12 +354,12 @@ void main()
 
         Ray r = ComputeWorldSpaceRay(sub_pixel_jitter);
         
-        // Compute Depth of Field
-        // vec3 focal_point = r.origin + r.direction * 10.0;
-        // vec2 offset = 0.1 * 0.5 * UniformSampleUnitCircle();
+        // Compute Lens Defocus Blur
+        vec3 focal_point = r.origin + r.direction * u_FocalLength;
+        vec2 offset = u_Aperture * 0.5 * UniformSampleUnitCircle();
 
-        // r.origin = (u_InverseView * vec4(offset, 0.0, 1.0)).xyz;
-        // r.direction = normalize(focal_point - r.origin);
+        r.origin += vec3(offset, 0.0);
+        r.direction = normalize(focal_point - r.origin);
 
         pixel_colour += PerPixel(r);
     }
