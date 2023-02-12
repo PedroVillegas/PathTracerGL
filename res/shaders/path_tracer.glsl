@@ -221,15 +221,15 @@ Hit_record TraceRay(Ray ray)
 
 vec3 PerPixel(Ray ray)
 {
-    vec3 colour = vec3(1.0);
-    vec3 attenuation = vec3(0.0); // colour absorbed by objects
+    vec3 radiance = vec3(0.0);
+    vec3 attenuation = vec3(1.0); // radiance absorbed by objects
 
     for (int i = 0; i < g_depth; i++)
     {
         // Keep track of ray intersection point, direction etc
         Hit_record Hit_rec = TraceRay(ray);
 
-        // If ray misses, object takes on colour of the sky
+        // If ray misses, object takes on radiance of the sky
         if (Hit_rec.hit_distance < 0)
         {
             vec3 D = normalize(ray.direction);
@@ -237,7 +237,7 @@ vec3 PerPixel(Ray ray)
             float t = 0.5*(D.y + 1.0);
             vec3 sky_clr = (1.0-t)*vec3(1.0) + t*vec3(0.5, 0.7, 1.0);
 
-            colour *= sky_clr;
+            radiance += sky_clr * attenuation;
             break;
         }
 
@@ -266,7 +266,7 @@ vec3 PerPixel(Ray ray)
             ray.origin = P + N * EPSILON;
             ray.direction = normalize(scattered_dir);
 
-            attenuation = albedo;
+            attenuation *= albedo;
         }
         else if (Hit_rec.mat.type.x == METAL)
         {
@@ -285,13 +285,13 @@ vec3 PerPixel(Ray ray)
             ray.direction = reflected + R * UniformSampleUnitSphere(r1, r2);
             ray.origin = P + N * EPSILON;
 
-            attenuation = (dot(ray.direction, N) > 0) ? albedo : vec3(0.0);
+            attenuation *= (dot(ray.direction, N) > 0) ? albedo : vec3(0.0);
         }
         
         else if (Hit_rec.mat.type.x == DIELECTRIC)
         {
             // Glass Scattering
-            attenuation = vec3(1.0); // Attenuation always 1 since glass doesn't absorb anything
+            attenuation * Hit_rec.mat.albedo.xyz;
             vec3 P = Hit_rec.position;
             vec3 N = Hit_rec.normal;
             vec3 D = normalize(ray.direction);
@@ -328,13 +328,10 @@ vec3 PerPixel(Ray ray)
 
             ray.origin = pos;
             ray.direction = dir;
-        }
-        
-        colour *= attenuation;
-        
+        }        
         // return vec3(Hit_rec.normal * 0.5 + 0.5);
     }
-    return vec3(colour); 
+    return vec3(radiance); 
 }
 
 void main()
