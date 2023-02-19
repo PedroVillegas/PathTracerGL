@@ -12,6 +12,7 @@
 class Gui
 {
 public:
+    Gui() {}
     Gui(Window& window);
     ~Gui();
     void Render(Renderer& renderer, Camera& camera, Scene& scene, bool& vsync);

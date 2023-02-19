@@ -46,7 +46,7 @@ void Framebuffer::Create()
 
     auto fboStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER); GLCall;
     if (fboStatus != GL_FRAMEBUFFER_COMPLETE)
-        std::cout << "Failed to complete Framebuffer!" << fboStatus <<  std::endl;
+        std::cout << "Failed to complete Framebuffer! FBO Status: " << fboStatus <<  std::endl;
     else if (fboStatus == GL_FRAMEBUFFER_COMPLETE) {}
         // std::cout << "Successfully completed Framebuffer! Colour buffer ID: " << m_TextureID << std::endl;
     

@@ -7,12 +7,8 @@
 
 class Window
 {
-private:
-    const char* m_Title;
-    uint m_Width, m_Height;
-    GLFWwindow* m_Window;
-
 public:
+    Window() {}
     Window(const char* title, uint width, uint height);
     ~Window();
     void ProcessInput();
@@ -25,7 +21,10 @@ public:
     void SetWidth(uint width);
     uint GetHeight() const { return m_Height; }
     void SetHeight(uint height);
-
 private:
     bool Init();
+private:
+    const char* m_Title;
+    uint m_Width, m_Height;
+    GLFWwindow* m_Window;
 };

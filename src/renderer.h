@@ -13,6 +13,7 @@
 class Renderer
 {
 public:
+    Renderer() {}
     Renderer(Shader& PathTracerShader, Shader& AccumShader, Shader& FinalOutputShader, uint ViewportWidth, uint ViewportHeight);
     ~Renderer();
 

@@ -12,6 +12,7 @@
 class Camera
 {
 public:
+    Camera() {}
     Camera(float verticalFOV, float nearClip, float farClip);
     Camera(glm::vec3 position, float verticalFOV, float nearClip, float farClip);
     Camera(glm::vec3 position, glm::vec3 forwardDirection, float verticalFOV, float nearClip, float farClip);
@@ -33,18 +34,16 @@ public:
     const glm::vec3& GetMovementMomentum() const { return m_MovementMomentum; }
     const glm::vec3& GetRotationMomentum() const { return m_RotationMomentum; }
     const glm::vec3& GetDirection() const { return m_Forward; }
-
+    
+    void RecalculateProjection();
+    void RecalculateView();
+public:
     int type = 0;
     int horizontalFOV = 90;
     float damping = 0.9f;
     float focal_length = 5.0f;
     float aperture = 0.2f;
     float sensitivity = 20.0f;
-
-public:
-    void RecalculateProjection();
-    void RecalculateView();
-
 private:
     float m_VerticalFOV = 45.0f;
     float m_NearClip = 0.1f;
