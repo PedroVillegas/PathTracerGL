@@ -61,9 +61,9 @@ bool Camera::Cinematic(float dt, Window* window)
     float rlen = glm::sqrt(glm::dot(m_RotationMomentum, m_RotationMomentum));
     if (rlen > 1e-3f) // still rotating?
     {
-        float yaw = -glm::radians(m_RotationMomentum.x) * sensitivity*0.1;
-        float pitch = glm::radians(m_RotationMomentum.y) * sensitivity*0.1;
-        float roll = glm::radians(m_RotationMomentum.z) * sensitivity*0.1;
+        float yaw = -glm::radians(m_RotationMomentum.x) * dt * sensitivity;
+        float pitch = glm::radians(m_RotationMomentum.y) * dt * sensitivity;
+        float roll = glm::radians(m_RotationMomentum.z) * dt * sensitivity;
 
         // Construct rotation delta quaternion (q) relative to the current camera orientation
         // by multiplying the rotation momentum vector (m_RotationMomentum) with the current orientation matrix

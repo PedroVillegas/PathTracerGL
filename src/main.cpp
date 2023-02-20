@@ -2,9 +2,6 @@
 #include "imgui/imgui_impl_glfw.h"
 #include "imgui/imgui_impl_opengl3.h"
 
-#include <cstdlib>
-#include <glm/glm.hpp>
-
 #include "consoleLogger.h"
 #include "shader.h"
 #include "framebuffer.h"
@@ -14,26 +11,29 @@
 #include "gui.h"
 
 void SetupScene(Scene& scene);
-void SetupViewportImage(const Renderer& renderer, const Scene& scene, uint& VAO, uint& VBO, uint& IBO, uint& SpheresUBO);
-void RandomizeScene(Scene& scene);
+void SetupUBOs(Renderer& renderer, Scene& scene, uint32_t& ObjectsDataUBO);
+void SetupQuad(uint32_t& VAO, uint32_t& VBO, uint32_t& IBO);
 
 int main(void) 
 {
-    uint ViewportWidth = 1000, ViewportHeight = 1000;
-    Window window = Window("Path Tracing", 1000, 600);
+    const char* Title = "Path Tracing";
+    uint32_t ViewportHeight = 600;
+    uint32_t ViewportWidth = ViewportHeight * 16/9;
+    Window window = Window(Title, ViewportWidth, ViewportHeight);
     Shader PathTracerShader = Shader("src/shaders/vert.glsl", "src/shaders/path_tracer.glsl");
     Shader AccumShader = Shader("src/shaders/vert.glsl", "src/shaders/accumulation.glsl");
     Shader FinalOutputShader = Shader("src/shaders/vert.glsl", "src/shaders/final_output.glsl");
     Renderer renderer = Renderer(PathTracerShader, AccumShader, FinalOutputShader, ViewportWidth, ViewportHeight);
     Gui gui = Gui(window);
-    Camera camera = Camera({0.0f, 0.0f, 3.0f}, 90.0f, 0.01f, 100.0f);
+    Camera camera = Camera({0.0f, 2.0f, 6.0f}, 90.0f, 0.01f, 100.0f);
     Scene scene = Scene();
 
-    uint VAO, VBO, IBO, SpheresUBO;
+    uint32_t VAO, VBO, IBO, ObjectsDataUBO;
     
-    SetupScene(scene);
-    //RandomizeScene(scene);
-    SetupViewportImage(renderer, scene, VAO, VBO, IBO, SpheresUBO);
+    //SetupScene(scene);
+    scene.Randomize();
+    SetupQuad(VAO, VBO, IBO);
+    SetupUBOs(renderer, scene, ObjectsDataUBO);
 
     float last_frame = 0.0f;
     float dt = 0.0333f;
@@ -59,13 +59,13 @@ int main(void)
         if (cameraIsMoving) renderer.ResetSamples();
 
         {
-            glBindBuffer(GL_UNIFORM_BUFFER, SpheresUBO); GLCall;
+            glBindBuffer(GL_UNIFORM_BUFFER, ObjectsDataUBO); GLCall;
             int offset = 0;
-            int SphereCount = scene.spheres.size();
+            int ObjCount = scene.spheres.size();
             // Set Sphere object data
-            glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &SphereCount);
+            glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &ObjCount);
             offset += sizeof(glm::vec4);
-            glBufferSubData(GL_UNIFORM_BUFFER, offset, SphereCount * sizeof(Sphere), scene.spheres.data());
+            glBufferSubData(GL_UNIFORM_BUFFER, offset, ObjCount * sizeof(Sphere), scene.spheres.data());
         }
 
         renderer.Render(scene, camera, VAO);
@@ -76,7 +76,7 @@ int main(void)
         ViewportWidth = ImGui::GetContentRegionAvail().x;
         ViewportHeight = ImGui::GetContentRegionAvail().y;
 
-        uint image = renderer.GetViewportFramebuffer().GetTextureID();
+        uint32_t image = renderer.GetViewportFramebuffer().GetTextureID();
 
         if (image)
             ImGui::Image((void*)(intptr_t)image, { (float)ViewportWidth, (float)ViewportHeight }, {0, 1}, {1, 0});
@@ -94,7 +94,7 @@ int main(void)
     glDeleteVertexArrays(1, &VAO); GLCall;
     glDeleteBuffers(1, &VBO); GLCall;
     glDeleteBuffers(1, &IBO); GLCall;
-    glDeleteBuffers(1, &SpheresUBO); GLCall;
+    glDeleteBuffers(1, &ObjectsDataUBO); GLCall;
 }
 
 void SetupScene(Scene& scene)
@@ -139,64 +139,37 @@ void SetupScene(Scene& scene)
     }
 }
 
-void RandomizeScene(Scene& scene)
+void SetupUBOs(Renderer& renderer, Scene& scene, uint32_t& ObjectsDataUBO)
 {
-    enum material { LAMBERTIAN, METAL, GLASS };
-    // Sphere with large radius acts as a plane
-    Sphere ground;
-    material ground_mat = LAMBERTIAN;
-    ground.position = glm::vec4(0.0f, -1000.0f, 0.0f, 1000.0f);
-    ground.mat.type.x = ground_mat;
-    ground.mat.albedo = glm::vec4(0.4f, 0.4f, 0.4f, 1.0f);
-    scene.spheres.push_back(ground);
+    renderer.GetShader()->Bind();
+    int ObjCount = scene.spheres.size();
+    
+    uint32_t block = glGetUniformBlockIndex(renderer.GetShader()->GetID(), "ObjectData"); GLCall;
+    uint32_t bind = 0;
+    glUniformBlockBinding(renderer.GetShader()->GetID(), block, bind); GLCall;
 
-    // Generate 16 random spheres
-    for (int a = -2; a < 2; a++) 
+    glGenBuffers(1, &ObjectsDataUBO); GLCall;
+    glBindBuffer(GL_UNIFORM_BUFFER, ObjectsDataUBO); GLCall;
+    glBindBufferBase(GL_UNIFORM_BUFFER, bind, ObjectsDataUBO); GLCall;
+    glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::vec4) + ObjCount * sizeof(Sphere), nullptr, GL_STATIC_DRAW); GLCall;
+
     {
-        for (int b = -2; b < 2; b++) 
-        {
-            float mat_probability = std::rand();
-            glm::vec3 pos = glm::vec3(a + 0.9*std::rand(), 0.2, b + 0.9*std::rand());
+        int offset = 0;
 
-            if (glm::length(pos - glm::vec3(4, 0.2, 0)) > 0.9) 
-            {
-                Sphere sphere;
+        // Set Sphere object data
+        glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &ObjCount);
+        offset += sizeof(glm::vec4);
 
-                if (mat_probability < 0.4) 
-                {
-                    // diffuse
-                    material s_material = LAMBERTIAN;
-                    sphere.mat.type.x = s_material;
-                    sphere.mat.albedo = glm::vec4(std::rand(), std::rand(), std::rand(), 1.0f) * glm::vec4(std::rand(), std::rand(), std::rand(), 1.0f);
-                    scene.spheres.push_back(sphere);
-                } 
-                else if (mat_probability < 0.8) 
-                {
-                    // metal
-                    material s_material = METAL;
-                    sphere.mat.type.x = s_material;
-                    sphere.mat.albedo = glm::vec4(std::rand() * 0.5 + 0.5, std::rand() * 0.5 + 0.5, std::rand() * 0.5 + 0.5, 1.0f);
-                    sphere.mat.roughness = std::rand() * 0.5;
-                    scene.spheres.push_back(sphere);
-                } 
-                else 
-                {
-                    // glass
-                    Sphere sphere;
-                    material s_material = GLASS;
-                    sphere.mat.type.x = s_material;
-                    sphere.mat.ior = 1.55f;
-                    scene.spheres.push_back(sphere);
-                }
-            }
-        }
+        glBufferSubData(GL_UNIFORM_BUFFER, offset, ObjCount * sizeof(Sphere), scene.spheres.data());
     }
 
+    renderer.GetShader()->Unbind();
 }
 
-void SetupViewportImage(const Renderer& renderer, const Scene& scene, uint& VAO, uint& VBO, uint& IBO, uint& SpheresUBO)
+void SetupQuad(uint32_t& VAO, uint32_t& VBO, uint32_t& IBO)
 {
-    float vertices[] = {
+    float vertices[] = 
+    {
         // pos                 // col
         -1.0f, -1.0f, 0.0f,    0.25f, 0.52f, 0.96f,
          1.0f, -1.0f, 0.0f,    0.86f, 0.27f, 0.22f,
@@ -204,7 +177,8 @@ void SetupViewportImage(const Renderer& renderer, const Scene& scene, uint& VAO,
         -1.0f,  1.0f, 0.0f,    0.06f, 0.62f, 0.35f
     };
 
-    uint indices[] = {
+    uint32_t indices[] = 
+    {
         0, 1, 2,
         2, 3, 0
     };
@@ -227,28 +201,4 @@ void SetupViewportImage(const Renderer& renderer, const Scene& scene, uint& VAO,
     // colour attrib  
     glVertexAttribPointer      (1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3* sizeof(float))); GLCall;
     glEnableVertexAttribArray  (1); GLCall;
-
-    renderer.GetShader()->Bind();
-    int SphereCount = scene.spheres.size();
-    
-    uint block = glGetUniformBlockIndex(renderer.GetShader()->GetID(), "ObjectData"); GLCall;
-    uint bind = 0;
-    glUniformBlockBinding(renderer.GetShader()->GetID(), block, bind); GLCall;
-
-    glGenBuffers(1, &SpheresUBO); GLCall;
-    glBindBuffer(GL_UNIFORM_BUFFER, SpheresUBO); GLCall;
-    glBindBufferBase(GL_UNIFORM_BUFFER, bind, SpheresUBO); GLCall;
-    glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::vec4) + SphereCount * sizeof(Sphere), nullptr, GL_STATIC_DRAW); GLCall;
-
-    {
-        int offset = 0;
-
-        // Set Sphere object data
-        glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &SphereCount);
-        offset += sizeof(glm::vec4);
-
-        glBufferSubData(GL_UNIFORM_BUFFER, offset, SphereCount * sizeof(Sphere), scene.spheres.data());
-    }
-
-    renderer.GetShader()->Unbind();
 }

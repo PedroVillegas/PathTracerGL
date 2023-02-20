@@ -1,8 +1,9 @@
 #pragma once
 
+#include <ctime>
 #include <glm/glm.hpp>
-
 #include <vector>
+#include <iostream>
 
 struct alignas(16) Material
 {
@@ -23,4 +24,6 @@ struct Scene
     int maxRayDepth = 16;
     int samplesPerPixel = 1;
     std::vector<Sphere> spheres;
+
+    void Randomize();
 };

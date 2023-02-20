@@ -50,7 +50,7 @@ void Gui::Render(Renderer& renderer, Camera& camera, Scene& scene, bool& vsync)
 
         ImGui::Text("f-number: f/%0.5f", camera.focal_length / camera.aperture);
 
-        if (ImGui::SliderInt("FOV", &camera.horizontalFOV, 60, 120))
+        if (ImGui::SliderInt("FOV", &camera.horizontalFOV, 45, 120))
         {
             camera.SetFov(camera.horizontalFOV);
             camera.RecalculateProjection();
@@ -64,7 +64,7 @@ void Gui::Render(Renderer& renderer, Camera& camera, Scene& scene, bool& vsync)
 
         if (ImGui::Button("Randomize Scene"))
         {
-            //RandomizeScene(scene);
+            scene.Randomize();
             renderer.ResetSamples();
         }
 
