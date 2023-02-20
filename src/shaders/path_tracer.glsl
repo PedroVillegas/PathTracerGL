@@ -44,7 +44,7 @@ struct Sphere
 layout (std140) uniform ObjectData
 {
     int sphereCount;
-    Sphere Spheres[17];
+    Sphere Spheres[256];
 } objectData;
 
 struct Ray
@@ -107,19 +107,18 @@ vec3 UniformSampleUnitSphere(float u1, float u2)
     return dir;
 }
 
-vec3 CosineHemisphereSampling(float u1, float u2)
+vec3 CosineSampleHemisphere(vec3 normal)
 {
-    vec3 dir;
-	float r = sqrt(u1);
-	float phi = 2.0 * PI * u2;
-	dir.x = r * cos(phi);
-	dir.y = r * sin(phi);
-	dir.z = sqrt(max(0.0, 1.0 - dir.x*dir.x - dir.y*dir.y));
+    float theta = Rand_01() * 2 * PI;
+    float z = Rand_01() * 2.0 - 1.0;
+    float r = sqrt(1.0 - z * z);
+    float x = r * cos(theta);
+    float y = r * sin(theta);
 
-	return dir;
+    return normalize(normal + vec3(x, y, z));
 }
 
-float SchlicksApproximation(float cosine_t, float refraction_ratio)
+float FresnelSchlick(float cosine_t, float refraction_ratio)
 {
     float r0 = (1-refraction_ratio) / (1+refraction_ratio);
     r0 = r0 * r0;
@@ -204,13 +203,13 @@ Hit_record TraceRay(Ray ray)
             hit_distance = t1;
             closestSphereIndex = i;
         }
-
-        float t2 = (-half_b + disc) / a;
-        if (t2 > EPSILON && t2 < hit_distance)
-        {
-            hit_distance = t2;
-            closestSphereIndex = i;
-        }
+        
+        // float t2 = (-half_b + disc) / a;
+        // if (t2 > EPSILON && t2 < hit_distance)
+        // {
+        //     hit_distance = t2;
+        //     closestSphereIndex = i;
+        // }
     }
 
     if (closestSphereIndex < 0)
@@ -222,7 +221,7 @@ Hit_record TraceRay(Ray ray)
 vec3 PerPixel(Ray ray)
 {
     vec3 radiance = vec3(0.0);
-    vec3 attenuation = vec3(1.0); // radiance absorbed by objects
+    vec3 throughput = vec3(1.0); // colour sent through the ray
 
     for (int i = 0; i < g_depth; i++)
     {
@@ -237,7 +236,7 @@ vec3 PerPixel(Ray ray)
             float t = 0.5*(D.y + 1.0);
             vec3 sky_clr = (1.0-t)*vec3(1.0) + t*vec3(0.5, 0.7, 1.0);
 
-            radiance += sky_clr * attenuation;
+            radiance += sky_clr * throughput;
             break;
         }
 
@@ -253,20 +252,12 @@ vec3 PerPixel(Ray ray)
 
             vec3 scattered_dir;
 
-            float r1 = Rand_01();
-            float r2 = Rand_01();
-
-            vec3 UpVector = abs(N.z) < 0.999 ? vec3(0, 0, 1) : vec3(1, 0, 0);
-            vec3 TangentX = normalize(cross(UpVector, N));
-            vec3 TangentY = cross(N, TangentX);
-
-            scattered_dir = CosineHemisphereSampling(r1, r2);
-            scattered_dir = TangentX * scattered_dir.x + TangentY * scattered_dir.y + N * scattered_dir.z;
+            scattered_dir = CosineSampleHemisphere(N);
 
             ray.origin = P + N * EPSILON;
             ray.direction = normalize(scattered_dir);
 
-            attenuation *= albedo;
+            throughput *= albedo;
         }
         else if (Hit_rec.mat.type.x == METAL)
         {
@@ -285,13 +276,13 @@ vec3 PerPixel(Ray ray)
             ray.direction = reflected + R * UniformSampleUnitSphere(r1, r2);
             ray.origin = P + N * EPSILON;
 
-            attenuation *= (dot(ray.direction, N) > 0) ? albedo : vec3(0.0);
+            throughput *= (dot(ray.direction, N) > 0) ? albedo : vec3(0.0);
         }
         
         else if (Hit_rec.mat.type.x == DIELECTRIC)
         {
             // Glass Scattering
-            attenuation * Hit_rec.mat.albedo.xyz;
+            throughput * Hit_rec.mat.albedo.xyz;
             vec3 P = Hit_rec.position;
             vec3 N = Hit_rec.normal;
             vec3 D = normalize(ray.direction);
@@ -315,7 +306,7 @@ vec3 PerPixel(Ray ray)
             // Fresnel ('Fre-nel') effect which states that reflections are weak when the incident ray is at angles that are
             // more parallel to the normal and strong at angles that are more perpendicular to the normal. The coefficient of this
             // effect can be approximated via 'Schlicks Approximation'
-            if (cannot_refract || SchlicksApproximation(cosine_t, refraction_ratio) > Rand_01())
+            if (cannot_refract || FresnelSchlick(cosine_t, refraction_ratio) > Rand_01())
             {
                 dir = reflect(D, N);
                 pos = P + N * EPSILON;
