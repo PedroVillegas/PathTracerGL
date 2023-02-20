@@ -41,7 +41,7 @@ public:
     int type = 0;
     int horizontalFOV = 90;
     float damping = 0.9f;
-    float focal_length = 5.0f;
+    float focal_length = 3.0f;
     float aperture = 0.2f;
     float sensitivity = 20.0f;
 private:
