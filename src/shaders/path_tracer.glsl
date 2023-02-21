@@ -53,9 +53,9 @@ struct Ray
     vec3 direction;
 };
 
-struct Hit_record
+struct Payload
 {
-    float hit_distance;
+    float t; // distance from origin to intersection point along direction 
     vec3 position;
     vec3 normal;
     bool front_face;
@@ -143,79 +143,82 @@ Ray ComputeWorldSpaceRay(vec2 uv)
     return r;
 }
 
-Hit_record ClosestHit(Ray ray, float hit_distance, int objectIndex)
+bool RaySphereIntersect(Ray ray, Sphere sphere, out float t1, out float t2)
+{
+    t1 = FLT_MAX;
+    t2 = FLT_MAX;
+
+    float radius = sphere.position.w;
+    vec3 OC = ray.origin - sphere.position.xyz;
+    vec3 D = ray.direction;
+
+    // Evaluate intersection points between ray and sphere
+    // by solving quadratic equation
+    float b = dot(OC, D);
+    float c = dot(OC, OC) - radius * radius;
+
+    // Discriminant hit test (< 0 means no real solution)
+    float discriminant = b * b - c;
+    if (discriminant < 0.0)
+        return false;
+    
+    discriminant = sqrt(discriminant);
+    t1 = -b - discriminant;
+    t2 = -b + discriminant;
+
+    return  t1 <= t2;
+}
+
+Payload ClosestHit(Ray ray, float t, int objectIndex)
 {
     Sphere closestSphere = objectData.Spheres[objectIndex];
     float radius = closestSphere.position.w;
-    Hit_record Hit_rec;
+    Payload HitRec;
     
-    Hit_rec.hit_distance = hit_distance;
-    Hit_rec.objectIndex = objectIndex;
+    HitRec.t = t;
+    HitRec.objectIndex = objectIndex;
     
-    Hit_rec.position = ray.origin + ray.direction * hit_distance;
-    Hit_rec.mat = closestSphere.mat; 
+    HitRec.position = ray.origin + ray.direction * t;
+    HitRec.mat = closestSphere.mat; 
 
     vec3 centre = vec3(closestSphere.position.xyz);
-    vec3 pos = Hit_rec.position;
+    vec3 pos = HitRec.position;
     vec3 outward_normal = (pos - centre) / radius;
 
-    Hit_rec.front_face = dot(ray.direction, outward_normal) < 0;
-    Hit_rec.normal = Hit_rec.front_face ? outward_normal : -outward_normal;
+    HitRec.front_face = dot(ray.direction, outward_normal) < 0;
+    HitRec.normal = HitRec.front_face ? outward_normal : -outward_normal;
 
-    return Hit_rec;
+    return HitRec;
 }
 
-Hit_record Miss()
+Payload Miss()
 {
-    Hit_record Hit_rec;
-    Hit_rec.hit_distance = -1;
-    return Hit_rec;
+    Payload HitRec;
+    HitRec.t = -1;
+    return HitRec;
 }
 
-Hit_record TraceRay(Ray ray)
+Payload TraceRay(Ray ray)
 {
     int closestSphereIndex = -1;
-    float hit_distance = INFINITY;
+    float t = INFINITY;
+    float t1;
+    float t2;
 
     for (int i = 0; i < objectData.sphereCount; i++)
     {        
         Sphere sphere = objectData.Spheres[i];
-
-        float radius = sphere.position.w;
-        vec3 OC = ray.origin - sphere.position.xyz;
-        vec3 D = ray.direction;
-
-        // Evaluate intersection points between ray and sphere
-        // by solving quadratic equation
-        float a = dot(D, D);
-        float half_b = dot(OC, D);
-        float c = dot(OC, OC) - radius * radius;
-
-        // Discriminant hit test (< 0 means no real solution)
-        float disc = half_b * half_b - a * c;
-        if (disc < 0.0)
-            continue;
-        
-        disc = sqrt(disc);
-        float t1 = (-half_b - disc) / a;
-        if (t1 > EPSILON && t1 < hit_distance)
+        if (RaySphereIntersect(ray, sphere, t1, t2) && t2 > 0.0 && t1 < t)
         {
-            hit_distance = t1;
+            t = t1 < 0 ? t2 : t1;
             closestSphereIndex = i;
         }
-        
-        // float t2 = (-half_b + disc) / a;
-        // if (t2 > EPSILON && t2 < hit_distance)
-        // {
-        //     hit_distance = t2;
-        //     closestSphereIndex = i;
-        // }
     }
 
     if (closestSphereIndex < 0)
         return Miss();
 
-    return ClosestHit(ray, hit_distance, closestSphereIndex);
+    return ClosestHit(ray, t, closestSphereIndex);
 }
 
 vec3 PerPixel(Ray ray)
@@ -226,10 +229,10 @@ vec3 PerPixel(Ray ray)
     for (int i = 0; i < g_depth; i++)
     {
         // Keep track of ray intersection point, direction etc
-        Hit_record Hit_rec = TraceRay(ray);
+        Payload HitRec = TraceRay(ray);
 
         // If ray misses, object takes on radiance of the sky
-        if (Hit_rec.hit_distance < 0)
+        if (HitRec.t < 0)
         {
             vec3 D = normalize(ray.direction);
             
@@ -241,13 +244,13 @@ vec3 PerPixel(Ray ray)
         }
 
         // Closest object to the camera
-        Sphere sphere = objectData.Spheres[Hit_rec.objectIndex];
+        Sphere sphere = objectData.Spheres[HitRec.objectIndex];
 
-        if (Hit_rec.mat.type.x == LAMBERTIAN)
+        if (HitRec.mat.type.x == LAMBERTIAN)
         {
             // Lambert Scattering
-            vec3 N = Hit_rec.normal;
-            vec3 P = Hit_rec.position;
+            vec3 N = HitRec.normal;
+            vec3 P = HitRec.position;
             vec3 albedo = sphere.mat.albedo.xyz;
 
             vec3 scattered_dir;
@@ -259,12 +262,12 @@ vec3 PerPixel(Ray ray)
 
             throughput *= albedo;
         }
-        else if (Hit_rec.mat.type.x == METAL)
+        else if (HitRec.mat.type.x == METAL)
         {
             // Metal Scattering
-            vec3 N = Hit_rec.normal;
-            vec3 P = Hit_rec.position;
-            float R = Hit_rec.mat.roughness;
+            vec3 N = HitRec.normal;
+            vec3 P = HitRec.position;
+            float R = HitRec.mat.roughness;
             vec3 albedo = sphere.mat.albedo.xyz;
 
             float r1 = Rand_01();
@@ -279,18 +282,18 @@ vec3 PerPixel(Ray ray)
             throughput *= (dot(ray.direction, N) > 0) ? albedo : vec3(0.0);
         }
         
-        else if (Hit_rec.mat.type.x == DIELECTRIC)
+        else if (HitRec.mat.type.x == DIELECTRIC)
         {
             // Glass Scattering
-            throughput * Hit_rec.mat.albedo.xyz;
-            vec3 P = Hit_rec.position;
-            vec3 N = Hit_rec.normal;
+            throughput *= HitRec.mat.albedo.xyz;
+            vec3 P = HitRec.position;
+            vec3 N = HitRec.normal;
             vec3 D = normalize(ray.direction);
-            float ior = Hit_rec.mat.ior;
+            float ior = HitRec.mat.ior;
 
             // When the incident ray intersects object from the outside, the ray goes from air (ior = 1.0) -> dielectric thus the
             // ratio is the inverse of the objects ior, otherwise, the ratio is ior/1.0
-            float refraction_ratio = Hit_rec.front_face ? (1.0 / ior) : ior;
+            float refraction_ratio = HitRec.front_face ? (1.0 / ior) : ior;
 
             float cosine_t = min(dot(-D, N), 1.0);
             float sine_t = sqrt(1.0 - cosine_t*cosine_t);
@@ -320,7 +323,7 @@ vec3 PerPixel(Ray ray)
             ray.origin = pos;
             ray.direction = dir;
         }        
-        // return vec3(Hit_rec.normal * 0.5 + 0.5);
+        // return vec3(HitRec.normal * 0.5 + 0.5);
     }
     return vec3(radiance); 
 }
