@@ -1,9 +1,9 @@
 #version 410 core
 
 #define FLT_MAX     3.402823466e+38
-#define INFINITY    1000000.0
+#define FLT_MIN     -3.402823466e+38
 #define PI          3.14159265358979323
-#define EPSILON     0.001
+#define EPSILON     0.0001
 
 #define LAMBERTIAN  0
 #define METAL       1
@@ -14,6 +14,8 @@ out vec4 colour;
 uniform int u_SampleIterations;
 uniform int u_SamplesPerPixel;
 uniform int u_Depth;
+uniform int u_Day;
+uniform vec3 u_LightDir;
 uniform float u_FocalLength;
 uniform float u_Aperture;
 uniform vec2 u_Resolution;
@@ -28,15 +30,33 @@ uint g_Seed = 0;
 
 struct Material
 {
-    ivec4 type; // Type of material stored in type.x
-    vec4 albedo;
-    float roughness;
-    float ior;
+    vec3 albedo;                    // Base Colour
+    float ior;                      // Index of Refraction - how refractive it is
+
+    // Emissive properties
+    vec3 emissive;                  // How emissive it is
+    float emissiveStrength;         // How strong it emits
+
+    // Dielectric properties
+    vec3 absorption;                // Absorption for beer's law
+    float refractionChance;         // How transparent it is
+    float refractionRoughness;      // How rough the refractive transmissions are
+
+    // Metallic properties
+    float specularChance;           // How reflective it is
+    float specularRoughness;        // How rough the reflections are
+};
+
+struct AABB
+{
+    vec3 minCorner;
+    vec3 maxCorner;
 };
 
 struct Sphere
 {
-    vec4 position; // Radius stored in position.w
+    vec3 position;
+    float radius;
 
     Material mat;
 };
@@ -58,7 +78,7 @@ struct Payload
     float t; // distance from origin to intersection point along direction 
     vec3 position;
     vec3 normal;
-    bool front_face;
+    bool fromInside;
     Material mat;
 
     int objectIndex;
@@ -93,7 +113,6 @@ vec2 UniformSampleUnitCircle()
     return vec2(cos(theta), sin(theta)) * r;
 }
 
-
 vec3 UniformSampleUnitSphere(float u1, float u2)
 {
     vec3 dir;
@@ -109,26 +128,219 @@ vec3 UniformSampleUnitSphere(float u1, float u2)
 
 vec3 CosineSampleHemisphere(vec3 normal)
 {
-    float theta = Rand_01() * 2 * PI;
-    float z = Rand_01() * 2.0 - 1.0;
-    float r = sqrt(1.0 - z * z);
-    float x = r * cos(theta);
-    float y = r * sin(theta);
+    float theta = Rand_01() * 2.0 * PI;
+    float r = sqrt(Rand_01());
 
-    return normalize(normal + vec3(x, y, z));
+    vec3 bitangent = normalize(cross(normal, vec3(0.0, 1.0, 1.0)));
+    vec3 tangent = cross(bitangent, normal);
+    vec3 x = r * cos(theta) * tangent;
+    vec3 y = r * sin(theta) * bitangent;
+    vec3 z = sqrt(1.0 - Rand_01()) * normal;
+
+    return normalize(x + y + z);
 }
 
-float FresnelSchlick(float cosine_t, float refraction_ratio)
+float FresnelSchlick(float cosine_t, float n1, float n2)
 {
-    float r0 = (1-refraction_ratio) / (1+refraction_ratio);
+    //float refraction_ratio = n1 / n2;
+    //float r0 = (1.0-refraction_ratio) / (1.0+refraction_ratio);
+    float r0 = (n1 - n2) / (n1 + n2);
     r0 = r0 * r0;
-    return r0 + (1-r0) * pow((1-cosine_t), 5);
+    return r0 + (1.0-r0) * pow((1.0-cosine_t), 5.0);
+}
+
+vec3 FresnelSchlick(float cosine_t, vec3 f0)
+{
+    return f0 + (1.0-f0) * pow((1.0-cosine_t), 5.0);
+}
+
+float FresnelReflectAmount(vec3 V, vec3 N, float n1, float n2)
+{
+    
+    // n1: IOR of medium the ray originated in
+    // n2: IOR of medium the ray is entering
+    float cosine_t = dot(-V, N);
+
+    if (n1 > n2)
+    {
+        // Ray originated in a denser medium and is entering a lighter one
+        float eta = n1 / n2;
+        float sine_t = sqrt(1.0 - cosine_t * cosine_t);
+
+        if (eta * sine_t > 1.0)
+        {
+            // No solution to Snell's law => total internal reflection 
+            return 1.0;
+        }
+    }
+    return FresnelSchlick(cosine_t, n1, n2);
+    
+    // Schlick aproximation
+    // float r0 = (n1 - n2) / (n1 + n2);
+    // r0 *= r0;
+    // float cosine_t = -dot(N, V);
+    // if (n1 > n2)
+    // {
+    //     float eta = n1 / n2;
+    //     float sine_t2 = eta * eta * (1.0 - cosine_t * cosine_t);
+    //     // Total internal reflection
+    //     if (sine_t2 > 1.0)
+    //         return 1.0;
+    //     cosine_t = sqrt(1.0 - sine_t2);
+    // }
+    // float x = 1.0 - cosine_t;
+    // float ret = r0+(1.0-r0)*x*x*x*x*x;
+
+    // // adjust reflect multiplier for object reflectivity
+    // return ret;
+
+}
+
+float D_GGX(float NdotH, float roughness)
+{
+    float alpha = roughness * roughness;
+    float alpha2 = alpha * alpha;
+    float NdotH2 = NdotH * NdotH;
+    float b = (NdotH2 * (alpha2 - 1.0) + 1.0);
+    return alpha2 / (PI * b * b);
+}
+
+float G1_GGX_Schlick(float NdotV, float roughness)
+{
+    float alpha = roughness * roughness;
+    float k = alpha * 0.5;
+    return max(NdotV, 0.001) / (NdotV * (1.0 - k) + k);
+}
+
+float G_Smith(float NdotV, float NdotL, float roughness)
+{
+    return G1_GGX_Schlick(NdotL, roughness) * G1_GGX_Schlick(NdotV, roughness);
+}
+/*
+vec3 CookTorranceBRDF(Payload hitRec, vec3 lightDir, inout vec3 viewDir)
+{
+    vec3 albedo = hitRec.mat.albedo;
+    float roughness = hitRec.mat.roughness;
+    float metallic = hitRec.mat.metallic;
+    float specular = hitRec.mat.specular;
+    vec3 L = lightDir;
+    vec3 V = viewDir;
+    vec3 N = hitRec.normal;
+    // Halfway vector - unit vector halfway between the view and the light direction
+    vec3 H = normalize(V + L);
+    float NdotV = clamp(dot(N, V), 0.0, 1.0);
+    float NdotL = clamp(dot(N, L), 0.0, 1.0);
+    float NdotH = clamp(dot(N, H), 0.0, 1.0);
+    float VdotH = clamp(dot(V, H), 0.0, 1.0);
+
+    vec3 f0 = vec3(0.16 * (specular * specular));
+    // Lerp between f0 and albedo weighted by the metallic param
+    // For a metallic val of 0.0, use dielectric f0; for 1.0, use albedo value
+    f0 = mix(f0, albedo, metallic);
+
+    // Computing specular component
+    vec3 F = FresnelSchlick(VdotH, f0);
+    float D = D_GGX(NdotH, roughness);
+    float G = G_Smith(NdotV, NdotL, roughness);
+
+    // Use max to prevent division by zero
+    vec3 spec = (F * D * G) / (4.0 * max(NdotV, 0.001) * max(NdotL, 0.001));
+
+    // Computing diffuse component
+    // Only the transmitted fraction should contribute to the diffuse component; the transmitted part is 1.0 - F
+    // To simulate the fact that metallic surfaces don't diffuse light at all we weight by 1-metallic 
+    albedo *= (vec3(1.0) - F) * (1.0 - metallic);
+    vec3 diff = albedo / PI;
+
+    return diff + spec;
+}
+*/
+float BSDF(inout Ray ray, Payload hitRec, out bool isRefractive)
+{
+    isRefractive = false;
+
+    float ior = hitRec.mat.ior;
+    vec3 N = hitRec.normal;
+    vec3 V = ray.direction;
+
+    float specularChance = hitRec.mat.specularChance;
+    float specularRoughness = hitRec.mat.specularRoughness;
+    float refractionChance = hitRec.mat.refractionChance;
+    float refractionRoughness = hitRec.mat.refractionRoughness;
+
+    // Account for Fresnel for specularChance and adjust other chances accordingly
+    // Specular takes priority
+    // chanceMultiplier makes sure we keep diffuse / refraction ratio the same
+    if (specularChance > 0.0)
+    {
+        // n1: ior of the medium the ray start in
+        // n2: ior of the medium the ray enters
+        float n1 = hitRec.fromInside ? ior : 1.0;
+        float n2 = hitRec.fromInside ? 1.0 : ior;
+
+        specularChance = mix(specularChance, 1.0, FresnelReflectAmount(V, N, n1, n2));
+
+        float chanceMultiplier = (1.0 - specularChance) / (1.0 - hitRec.mat.specularChance);
+        refractionChance *= chanceMultiplier;
+    }
+
+    float rayProbability = 1.0;
+    float specularFactor = 0.0;
+    float refractionFactor = 0.0;
+    float raySelectRoll = Rand_01();
+
+    // Determine whether to be specular or diffuse ray
+    if (specularChance > 0.0 && raySelectRoll < specularChance)
+    {
+        specularFactor = 1.0;
+        rayProbability = specularChance;
+    }
+    else if (refractionChance > 0.0 && raySelectRoll < specularChance + refractionChance)
+    {
+        isRefractive = true;
+        refractionFactor = 1.0;
+        rayProbability = refractionChance;
+    }
+    else
+    {
+        // The ray is diffuse
+        rayProbability = 1.0 - (specularChance + refractionChance);
+    }
+
+    // Calculate new ray direction
+    // Rough Specular (Glossy) lerps from smooth specular to rough diffuse by the roughness squared
+    // Squaring the roughness is done to make the roughness feel more linear perceptually
+    vec3 diffuseDir = CosineSampleHemisphere(N);
+    vec3 specularDir = reflect(V, N);
+    specularDir = normalize(mix(specularDir, diffuseDir, specularRoughness * specularRoughness));
+
+    float eta = hitRec.fromInside ? ior : 1.0 / ior;
+    vec3 refractionDir = refract(V, N, eta);
+    refractionDir = normalize(mix(refractionDir, -diffuseDir, refractionRoughness * refractionRoughness));
+
+    // Determine whether scattered direction should be affected by specularity or refraction
+    ray.direction = mix(diffuseDir, specularDir, specularFactor);
+    ray.direction = mix(ray.direction, refractionDir, refractionFactor);
+
+    ray.direction = normalize(ray.direction);
+
+    if (isRefractive)
+    {
+        ray.origin = hitRec.position - N * EPSILON;
+    }
+    else
+    {
+        ray.origin = hitRec.position + N * EPSILON;
+    }
+
+    // Prevent rayProbability from causing a division by zero
+    return max(rayProbability, EPSILON);
 }
 
 Ray ComputeWorldSpaceRay(vec2 uv)
 {
     // Local Space => World Space => View Space => Clip Space => NDC
-    vec4 clip_pos = vec4(uv.xy, 1.0, 1.0);
+    vec4 clip_pos = vec4(uv, -1.0, 0.0);
     vec4 view_pos = u_InverseProjection * clip_pos;
 
     // Ray direction in world space
@@ -137,7 +349,7 @@ Ray ComputeWorldSpaceRay(vec2 uv)
 
     Ray r;
 
-    r.origin = u_RayOrigin; // Ray Origin is already in World Space
+    r.origin = u_RayOrigin;
     r.direction = d;
 
     return r;
@@ -148,8 +360,8 @@ bool RaySphereIntersect(Ray ray, Sphere sphere, out float t1, out float t2)
     t1 = FLT_MAX;
     t2 = FLT_MAX;
 
-    float radius = sphere.position.w;
-    vec3 OC = ray.origin - sphere.position.xyz;
+    float radius = sphere.radius;
+    vec3 OC = ray.origin - sphere.position;
     vec3 D = ray.direction;
 
     // Evaluate intersection points between ray and sphere
@@ -169,10 +381,39 @@ bool RaySphereIntersect(Ray ray, Sphere sphere, out float t1, out float t2)
     return  t1 <= t2;
 }
 
+bool RayAABBIntersect(Ray ray, AABB aabb, out float t1, out float t2)
+{
+    t1 = FLT_MIN;
+    t2 = FLT_MAX;
+
+    vec3 inv_D =  1.0 / ray.direction;
+    vec3 p1 = aabb.minCorner;
+    vec3 p0 = aabb.maxCorner;
+
+    vec3 tLower = (p0 - ray.origin) * inv_D;
+    vec3 tUpper = (p1 - ray.origin) * inv_D;
+
+    vec3 tMins = min(tLower, tUpper);
+    vec3 tMaxes = max(tLower, tUpper);
+
+    t1 = max(t1, max(tMins.x, max(tMins.y, tMins.z)));
+    t2 = min(t2, min(tMaxes.x, min(tMaxes.y, tMaxes.z)));
+
+    return t1 <= t2;
+}
+
+AABB SphereBoundingBox(Sphere sphere)
+{
+    vec3 centre = sphere.position;
+    float radius = sphere.radius;
+
+    return AABB(centre - vec3(radius), centre + vec3(radius));
+}
+
 Payload ClosestHit(Ray ray, float t, int objectIndex)
 {
     Sphere closestSphere = objectData.Spheres[objectIndex];
-    float radius = closestSphere.position.w;
+    float radius = closestSphere.radius;
     Payload HitRec;
     
     HitRec.t = t;
@@ -181,12 +422,13 @@ Payload ClosestHit(Ray ray, float t, int objectIndex)
     HitRec.position = ray.origin + ray.direction * t;
     HitRec.mat = closestSphere.mat; 
 
-    vec3 centre = vec3(closestSphere.position.xyz);
+    vec3 centre = vec3(closestSphere.position);
     vec3 pos = HitRec.position;
     vec3 outward_normal = (pos - centre) / radius;
 
-    HitRec.front_face = dot(ray.direction, outward_normal) < 0;
-    HitRec.normal = HitRec.front_face ? outward_normal : -outward_normal;
+    // Positive dot product means the vectors point in the same direction
+    HitRec.fromInside = dot(ray.direction, outward_normal) > 0.0;
+    HitRec.normal = HitRec.fromInside ? -outward_normal : outward_normal;
 
     return HitRec;
 }
@@ -200,8 +442,8 @@ Payload Miss()
 
 Payload TraceRay(Ray ray)
 {
-    int closestSphereIndex = -1;
-    float t = INFINITY;
+    int closestSphereIdx = -1;
+    float t = FLT_MAX;
     float t1;
     float t2;
 
@@ -211,14 +453,14 @@ Payload TraceRay(Ray ray)
         if (RaySphereIntersect(ray, sphere, t1, t2) && t2 > 0.0 && t1 < t)
         {
             t = t1 < 0 ? t2 : t1;
-            closestSphereIndex = i;
+            closestSphereIdx = i;
         }
     }
 
-    if (closestSphereIndex < 0)
+    if (closestSphereIdx < 0)
         return Miss();
 
-    return ClosestHit(ray, t, closestSphereIndex);
+    return ClosestHit(ray, t, closestSphereIdx);
 }
 
 vec3 PerPixel(Ray ray)
@@ -237,93 +479,49 @@ vec3 PerPixel(Ray ray)
             vec3 D = normalize(ray.direction);
             
             float t = 0.5*(D.y + 1.0);
-            vec3 sky_clr = (1.0-t)*vec3(1.0) + t*vec3(0.5, 0.7, 1.0);
+            vec3 atmosphere;
+            u_Day == 1 ? atmosphere = (1.0-t)*vec3(1.0) + t*vec3(0.5, 0.7, 1.0) : // Day sky
+                    atmosphere = (1.0-t)*vec3(0.0) + t*vec3(0.05, 0.1, 0.3); // Night sky
 
-            radiance += sky_clr * throughput;
+            radiance += atmosphere * throughput;
             break;
         }
-
-        // Closest object to the camera
-        Sphere sphere = objectData.Spheres[HitRec.objectIndex];
-
-        if (HitRec.mat.type.x == LAMBERTIAN)
-        {
-            // Lambert Scattering
-            vec3 N = HitRec.normal;
-            vec3 P = HitRec.position;
-            vec3 albedo = sphere.mat.albedo.xyz;
-
-            vec3 scattered_dir;
-
-            scattered_dir = CosineSampleHemisphere(N);
-
-            ray.origin = P + N * EPSILON;
-            ray.direction = normalize(scattered_dir);
-
-            throughput *= albedo;
-        }
-        else if (HitRec.mat.type.x == METAL)
-        {
-            // Metal Scattering
-            vec3 N = HitRec.normal;
-            vec3 P = HitRec.position;
-            float R = HitRec.mat.roughness;
-            vec3 albedo = sphere.mat.albedo.xyz;
-
-            float r1 = Rand_01();
-            float r2 = Rand_01();
-
-            vec3 reflected;
-
-            reflected = reflect(normalize(ray.direction), N);
-            ray.direction = reflected + R * UniformSampleUnitSphere(r1, r2);
-            ray.origin = P + N * EPSILON;
-
-            throughput *= (dot(ray.direction, N) > 0) ? albedo : vec3(0.0);
-        }
-        
-        else if (HitRec.mat.type.x == DIELECTRIC)
-        {
-            // Glass Scattering
-            throughput *= HitRec.mat.albedo.xyz;
-            vec3 P = HitRec.position;
-            vec3 N = HitRec.normal;
-            vec3 D = normalize(ray.direction);
-            float ior = HitRec.mat.ior;
-
-            // When the incident ray intersects object from the outside, the ray goes from air (ior = 1.0) -> dielectric thus the
-            // ratio is the inverse of the objects ior, otherwise, the ratio is ior/1.0
-            float refraction_ratio = HitRec.front_face ? (1.0 / ior) : ior;
-
-            float cosine_t = min(dot(-D, N), 1.0);
-            float sine_t = sqrt(1.0 - cosine_t*cosine_t);
-
-            // When the incident ray is inside the glass and outside is air, the refraction ratio will be greater than 1.0, thus
-            // there is no solution to Snell's law { sin(t_1) = (ior_1 / ior_2) * sine(t_2) } when the RHS > 1.0 because sine(t_1) 
-            // can't be greater than 1.0. When no solution is available, the glass cannot refract and therefore must reflect
-            bool cannot_refract = refraction_ratio * sine_t > 1.0;
-            vec3 dir;
-            vec3 pos;
-
-            // When looking at glass from a steep angle (near perpendicular) it becomes a mirror. This is caused by the
-            // Fresnel ('Fre-nel') effect which states that reflections are weak when the incident ray is at angles that are
-            // more parallel to the normal and strong at angles that are more perpendicular to the normal. The coefficient of this
-            // effect can be approximated via 'Schlicks Approximation'
-            if (cannot_refract || FresnelSchlick(cosine_t, refraction_ratio) > Rand_01())
-            {
-                dir = reflect(D, N);
-                pos = P + N * EPSILON;
-            }
-            else
-            {
-                dir = refract(D, N, refraction_ratio);
-                pos = P - N * EPSILON;
-            }
-
-            ray.origin = pos;
-            ray.direction = dir;
-        }        
         // return vec3(HitRec.normal * 0.5 + 0.5);
+
+        if (HitRec.fromInside)
+        {
+            // Apply beer's law
+            throughput *= exp(-HitRec.mat.absorption * HitRec.t);
+        }
+
+        // https://blog.demofox.org/2020/06/14/casual-shadertoy-path-tracing-3-fresnel-rough-refraction-absorption-orbit-camera/
+        bool isRefractive;
+        float rayProbability = BSDF(ray, HitRec, isRefractive);
+
+        // Consider emissive objects
+        radiance += HitRec.mat.emissive * HitRec.mat.emissiveStrength * throughput;
+
+        // Refraction doesn't alter the colour
+        if (!isRefractive)
+            throughput *= HitRec.mat.albedo;
+
+        // Since we are choosing to follow only one path (diffuse, specular, refractive)
+        // we must account for not choosing the others
+        throughput *= 1.0 / rayProbability;
+
+        // Russian Roulette
+        // As throughput gets smaller, the probability (p) of terminating the path early increases
+        // given a minimum depth
+        // Surviving paths have their value boosted to compensate for fewer samples being in the average
+        float p = max(throughput.x, max(throughput.y, throughput.z));
+        if (i > 3)
+        {
+            if (Rand_01() > p)
+                break;
+
+            // add energy 'lost' from random path terminations
+            throughput *= 1.0 / p;
+        }
     }
     return vec3(radiance); 
 }
@@ -349,9 +547,12 @@ void main()
         Ray r = ComputeWorldSpaceRay(sub_pixel_jitter);
         
         // Compute Lens Defocus Blur
+        // First find where the ray hits the focal plane (focal point)
         vec3 focal_point = r.origin + r.direction * u_FocalLength;
+        // Pick a random spot on the aperture
         vec2 offset = u_Aperture * 0.5 * UniformSampleUnitCircle();
 
+        // Shoot ray from that random spot towards the focal point
         r.origin += vec3(offset, 0.0);
         r.direction = normalize(focal_point - r.origin);
 
