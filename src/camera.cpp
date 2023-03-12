@@ -120,13 +120,14 @@ bool Camera::FPS(float dt, Window* window)
 {   
     GLFWwindow* glfw_win = window->GetWindow();
 
-    if(glfwGetKey(glfw_win, GLFW_KEY_1) == GLFW_PRESS)
+    if(glfwGetKey(glfw_win, GLFW_KEY_G) == GLFW_PRESS)
     {
         glfwSetInputMode(glfw_win, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
         m_AllowCameraToMove = false;
+        m_MovementMomentum = glm::vec3(0.0f);
     }
 
-    if(glfwGetKey(glfw_win, GLFW_KEY_2) == GLFW_PRESS)
+    if(glfwGetKey(glfw_win, GLFW_KEY_F) == GLFW_PRESS)
     {
         glfwSetInputMode(glfw_win, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
         m_AllowCameraToMove = true;
