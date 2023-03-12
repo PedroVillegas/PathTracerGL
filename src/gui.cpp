@@ -62,9 +62,36 @@ void Gui::Render(Renderer& renderer, Camera& camera, Scene& scene, bool& vsync)
     {
         ImGui::Text("Iterations: %i", renderer.GetIterations());
 
-        if (ImGui::Button("Randomize Scene"))
+        if (ImGui::Button("Day"))
         {
-            scene.Randomize();
+            scene.day = 1;
+            renderer.ResetSamples();
+        }
+
+        if (ImGui::Button("Night"))
+        {
+            scene.day = 0;
+            renderer.ResetSamples();
+        }
+
+        if (ImGui::Button("Custom Scene 1"))
+        {
+            scene.spheres.clear();
+            scene.CustomScene();
+            renderer.ResetSamples();
+        }
+
+        if (ImGui::Button("RTIW Scene"))
+        {
+            scene.spheres.clear();
+            scene.RTIW();
+            renderer.ResetSamples();
+        }
+
+        if (ImGui::Button("Random Scene"))
+        {
+            scene.spheres.clear();
+            scene.RandomizeBRDF();
             renderer.ResetSamples();
         }
 
@@ -75,6 +102,9 @@ void Gui::Render(Renderer& renderer, Camera& camera, Scene& scene, bool& vsync)
             renderer.ResetSamples();
 
         if (ImGui::SliderInt("Max Ray Depth", &scene.maxRayDepth, 1, 50)) 
+            renderer.ResetSamples();
+
+        if (ImGui::SliderFloat3("Light Direction", glm::value_ptr(scene.lightDirection), -1.0f, 1.0f))
             renderer.ResetSamples();
 
         /*
