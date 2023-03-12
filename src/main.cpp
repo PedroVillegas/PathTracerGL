@@ -10,7 +10,6 @@
 #include "scene.h"
 #include "gui.h"
 
-void SetupScene(Scene& scene);
 void SetupUBOs(Renderer& renderer, Scene& scene, uint32_t& ObjectsDataUBO);
 void SetupQuad(uint32_t& VAO, uint32_t& VBO, uint32_t& IBO);
 
@@ -30,8 +29,7 @@ int main(void)
 
     uint32_t VAO, VBO, IBO, ObjectsDataUBO;
     
-    //SetupScene(scene);
-    scene.Randomize();
+    scene.CustomScene();
     SetupQuad(VAO, VBO, IBO);
     SetupUBOs(renderer, scene, ObjectsDataUBO);
 
@@ -95,48 +93,6 @@ int main(void)
     glDeleteBuffers(1, &VBO); GLCall;
     glDeleteBuffers(1, &IBO); GLCall;
     glDeleteBuffers(1, &ObjectsDataUBO); GLCall;
-}
-
-void SetupScene(Scene& scene)
-{
-    // Material types: Lambertian = 0, Metal = 1, Dielectric = 2
-    {
-        Sphere centre_sphere;
-        centre_sphere.mat.type.x = 0; 
-        centre_sphere.position.w = 0.5f;
-        centre_sphere.mat.albedo = { 0.1f, 0.2f, 0.5f, 1.0f };
-        scene.spheres.push_back(centre_sphere);
-    }
-    {
-        Sphere left_sphere;
-        left_sphere.mat.type.x = 2;
-        left_sphere.position = { -1.0f, 0.0f, 0.0f, 0.5f };
-        left_sphere.mat.roughness = 0.0f;
-        left_sphere.mat.ior = 1.5;
-        scene.spheres.push_back(left_sphere);
-    }
-    {
-        Sphere left_sphere;
-        left_sphere.mat.type.x = 2;
-        left_sphere.mat.ior = 1.55;
-        left_sphere.position = { -1.0f, 0.0f, 0.0f, -0.4f };
-        left_sphere.mat.roughness = 0.0f;
-        scene.spheres.push_back(left_sphere);
-    }
-    {
-        Sphere right_sphere;
-        right_sphere.mat.type.x = 1;
-        right_sphere.mat.albedo = { 0.8f, 0.6f, 0.2f, 1.0f };
-        right_sphere.position = { 1.0f, 0.0f, 0.0f, 0.5f };
-        right_sphere.mat.roughness = 0.0f;
-        scene.spheres.push_back(right_sphere);
-    }
-    {
-        Sphere ground_sphere;
-        ground_sphere.mat.albedo = { 0.8f, 0.8f, 0.0f, 1.0f };
-        ground_sphere.position = { 0.0f, -1000.5f, 0.0f, 1000.0f };
-        scene.spheres.push_back(ground_sphere);
-    }
 }
 
 void SetupUBOs(Renderer& renderer, Scene& scene, uint32_t& ObjectsDataUBO)
