@@ -29,6 +29,8 @@ int main(void)
 
     uint32_t VAO, VBO, IBO, ObjectsDataUBO;
     
+    // Initialise scene
+    //scene.RTIW();
     scene.CustomScene();
     SetupQuad(VAO, VBO, IBO);
     SetupUBOs(renderer, scene, ObjectsDataUBO);
@@ -60,10 +62,15 @@ int main(void)
             glBindBuffer(GL_UNIFORM_BUFFER, ObjectsDataUBO); GLCall;
             int offset = 0;
             int ObjCount = scene.spheres.size();
+            std::vector<GPUSphere> spheres;
+            for (int i = 0; i < ObjCount; i++)
+            {
+                spheres.push_back(scene.spheres[i].sphere);
+            }
             // Set Sphere object data
             glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &ObjCount);
             offset += sizeof(glm::vec4);
-            glBufferSubData(GL_UNIFORM_BUFFER, offset, ObjCount * sizeof(Sphere), scene.spheres.data());
+            glBufferSubData(GL_UNIFORM_BUFFER, offset, ObjCount * sizeof(GPUSphere), spheres.data());
         }
 
         renderer.Render(scene, camera, VAO);
@@ -107,16 +114,20 @@ void SetupUBOs(Renderer& renderer, Scene& scene, uint32_t& ObjectsDataUBO)
     glGenBuffers(1, &ObjectsDataUBO); GLCall;
     glBindBuffer(GL_UNIFORM_BUFFER, ObjectsDataUBO); GLCall;
     glBindBufferBase(GL_UNIFORM_BUFFER, bind, ObjectsDataUBO); GLCall;
-    glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::vec4) + ObjCount * sizeof(Sphere), nullptr, GL_STATIC_DRAW); GLCall;
+    glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::vec4) + ObjCount * sizeof(Sphere), nullptr, GL_DYNAMIC_DRAW); GLCall;
 
+    std::vector<GPUSphere> spheres;
+    for (int i = 0; i < ObjCount; i++)
+    {
+        spheres.push_back(scene.spheres[i].sphere);
+    }
     {
         int offset = 0;
 
         // Set Sphere object data
         glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &ObjCount);
         offset += sizeof(glm::vec4);
-
-        glBufferSubData(GL_UNIFORM_BUFFER, offset, ObjCount * sizeof(Sphere), scene.spheres.data());
+        glBufferSubData(GL_UNIFORM_BUFFER, offset, ObjCount * sizeof(GPUSphere), spheres.data());
     }
 
     renderer.GetShader()->Unbind();
