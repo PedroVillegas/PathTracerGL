@@ -21,124 +21,19 @@ void Gui::NewFrame()
 
 void Gui::Render(Renderer& renderer, Camera& camera, Scene& scene, bool& vsync)
 {
-    ImGui::Begin("Overview");
-    ImGui::Text("Viewport: %i x %i", renderer.GetViewportWidth(), renderer.GetViewportHeight());
-    ImGui::Text("[1/2] to toggle movement");
-    ImGui::Checkbox("V-Sync", &vsync);
-    ImGui::Text("Render time %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-
-    if (ImGui::CollapsingHeader("Camera"))
+    if (ImGui::Begin("Overview"))
     {
-        if (ImGui::Combo("Type", &camera.type, "FREE\0CINEMATIC")) 
-        {
-            camera.Reset();
-            renderer.ResetSamples();
-        }
-
-        ImGui::Text("Position : %.2f %.2f %.2f", camera.GetPosition().x, camera.GetPosition().y , camera.GetPosition().z);
-        ImGui::Text("Direction: %.2f %.2f %.2f", camera.GetDirection().x, camera.GetDirection().y , camera.GetDirection().z);
-        ImGui::Text("Momentum : %.2f %.2f %.2f", camera.GetMovementMomentum().x, camera.GetMovementMomentum().y, camera.GetMovementMomentum().z);
-        ImGui::Text("Rotation : %.2f %.2f %.2f", camera.GetRotationMomentum().x, camera.GetRotationMomentum().y, camera.GetRotationMomentum().z);
-        ImGui::SliderFloat("Sensitivity", &camera.sensitivity, 1.0f, 100.0f);
-        ImGui::SliderFloat("Damping Factor", &camera.damping, 0.0f, 0.95f);
-
-        if (ImGui::InputFloat("Focal Length", &camera.focal_length, 0.1f)) 
-            renderer.ResetSamples();
-
-        if (ImGui::InputFloat("Aperture Diameter", &camera.aperture, 0.002f)) 
-            renderer.ResetSamples();
-
-        ImGui::Text("f-number: f/%0.5f", camera.focal_length / camera.aperture);
-
-        if (ImGui::SliderInt("FOV", &camera.horizontalFOV, 45, 120))
-        {
-            camera.SetFov(camera.horizontalFOV);
-            camera.RecalculateProjection();
-            renderer.ResetSamples();
-        }
-    }
-    
-    if (ImGui::CollapsingHeader("Scene"))
-    {
+        ImGui::Text("Viewport: %i x %i", renderer.GetViewportWidth(), renderer.GetViewportHeight());
+        ImGui::Checkbox("V-Sync", &vsync);
+        ImGui::Text("Render time: %.3f ms/frame", 1000.0f / ImGui::GetIO().Framerate);
+        ImGui::Text("Framerate: %.1f FPS", ImGui::GetIO().Framerate);
         ImGui::Text("Iterations: %i", renderer.GetIterations());
-
-        if (ImGui::Button("Day"))
-        {
-            scene.day = 1;
-            renderer.ResetSamples();
-        }
-
-        if (ImGui::Button("Night"))
-        {
-            scene.day = 0;
-            renderer.ResetSamples();
-        }
-
-        if (ImGui::Button("Custom Scene 1"))
-        {
-            scene.spheres.clear();
-            scene.CustomScene();
-            renderer.ResetSamples();
-        }
-
-        if (ImGui::Button("RTIW Scene"))
-        {
-            scene.spheres.clear();
-            scene.RTIW();
-            renderer.ResetSamples();
-        }
-
-        if (ImGui::Button("Random Scene"))
-        {
-            scene.spheres.clear();
-            scene.RandomizeBRDF();
-            renderer.ResetSamples();
-        }
-
-        if (ImGui::Button("Reset Samples")) 
-            renderer.ResetSamples();
-
-        if (ImGui::SliderInt("SPP", &scene.samplesPerPixel, 1, 50)) 
-            renderer.ResetSamples();
-
-        if (ImGui::SliderInt("Max Ray Depth", &scene.maxRayDepth, 1, 50)) 
-            renderer.ResetSamples();
-
-        if (ImGui::SliderFloat3("Light Direction", glm::value_ptr(scene.lightDirection), -1.0f, 1.0f))
-            renderer.ResetSamples();
-
-        /*
-        ImGui::Separator();
-
-        for (int i = 0; i < scene.spheres.size(); i++)
-        {
-            ImGui::PushID(i);
-
-            Sphere& s = scene.spheres[i];
-            if (ImGui::Combo("Material", &s.mat.type.x,"LAMBERTIAN\0METAL\0GLASS")) 
-                renderer.ResetSamples();
-
-            if (ImGui::ColorEdit3("Albedo", glm::value_ptr(s.mat.albedo))) 
-                renderer.ResetSamples();
-
-            if (ImGui::DragFloat3("Position", glm::value_ptr(s.position), 0.1f)) 
-                renderer.ResetSamples();
-
-            if (ImGui::DragFloat("Radius", &s.position.w, 0.05f, -0.5f, 1000.0f)) 
-                renderer.ResetSamples();
-
-            if (ImGui::DragFloat("Roughness", &s.mat.roughness, 0.002f, 0.0f, 1.0f)) 
-                renderer.ResetSamples();
-
-            if (ImGui::DragFloat("IOR", &s.mat.ior, 0.002f, 1.0f, 5.0f)) 
-                renderer.ResetSamples();
-
-            ImGui::Separator();
-            ImGui::PopID();
-        }
-        */
+        ImGui::End();
     }
-    ImGui::End();
+
+    // TODO: Make renderer shared_ptr
+    Gui::CreateCameraWindow(renderer, camera);
+    Gui::CreateSceneWindow(renderer, camera, scene);
 
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -149,6 +44,194 @@ void Gui::Render(Renderer& renderer, Camera& camera, Scene& scene, bool& vsync)
         ImGui::UpdatePlatformWindows();
         ImGui::RenderPlatformWindowsDefault();
         glfwMakeContextCurrent(backup_current_context);
+    }
+}
+
+void Gui::CreateCameraWindow(Renderer& renderer, Camera& camera)
+{
+    if (ImGui::Begin("Camera"))
+    {
+        ImGui::PushItemWidth(ImGui::GetWindowContentRegionWidth());
+        ImGui::Text("Camera Type");
+        if (ImGui::Combo("##combo", &camera.type, "FREE\0CINEMATIC\0")) 
+        {
+            camera.Reset();
+            renderer.ResetSamples();
+        }
+
+        ImGui::Text("Position : %.2f %.2f %.2f", camera.GetPosition().x, camera.GetPosition().y , camera.GetPosition().z);
+        ImGui::Text("Direction: %.2f %.2f %.2f", camera.GetDirection().x, camera.GetDirection().y , camera.GetDirection().z);
+        //ImGui::Text("Momentum : %.2f %.2f %.2f", camera.GetMovementMomentum().x, camera.GetMovementMomentum().y, camera.GetMovementMomentum().z);
+        //ImGui::Text("Rotation : %.2f %.2f %.2f", camera.GetRotationMomentum().x, camera.GetRotationMomentum().y, camera.GetRotationMomentum().z);
+       
+        ImGui::Text("Sensitivity");
+        ImGui::SliderFloat("##Sensitivity", &camera.sensitivity, 1.0f, 100.0f);
+        ImGui::Text("Damping Factor");
+        ImGui::SliderFloat("##DampingFactor", &camera.damping, 0.0f, 0.95f);
+
+        ImGui::Text("Focal Length");
+        if (ImGui::SliderFloat("##FocalLength", &camera.focal_length, 1.0f, 100.0f)) 
+            renderer.ResetSamples();
+
+        ImGui::Text("Aperture Diameter");
+        if (ImGui::SliderFloat("##Aperture", &camera.aperture, 0.0f, 2.0f)) 
+            renderer.ResetSamples();
+
+        ImGui::Text("f-number: f/%0.5f", camera.focal_length / camera.aperture);
+
+        ImGui::Text("FOV");
+        if (ImGui::SliderInt("##FOV", &camera.horizontalFOV, 45, 120))
+        {
+            camera.SetFov(camera.horizontalFOV);
+            camera.RecalculateProjection();
+            renderer.ResetSamples();
+        }
+        ImGui::PopItemWidth();
+        ImGui::End();
+    }
+}
+
+void Gui::CreateSceneWindow(Renderer& renderer, Camera& camera, Scene& scene)
+{
+    if (ImGui::Begin("Scene"))
+    {
+        ImGui::PushItemWidth(ImGui::GetWindowContentRegionWidth());
+        ImGui::Text("Objects in scene: %lu", scene.spheres.size());
+
+        if (ImGui::Button("Day"))
+        {
+            scene.day = 1;
+            renderer.ResetSamples();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Night"))
+        {
+            scene.day = 0;
+            renderer.ResetSamples();
+        }
+
+        if (ImGui::Button("Load Custom Scene 1"))
+        {
+            scene.spheres.clear();
+            scene.CustomScene();
+            renderer.ResetSamples();
+        }
+
+        if (ImGui::Button("Load RTIOW Scene"))
+        {
+            scene.spheres.clear();
+            scene.RTIW();
+            renderer.ResetSamples();
+        }
+
+        if (ImGui::Button("Load Randomized Scene"))
+        {
+            scene.spheres.clear();
+            scene.RandomizeBRDF();
+            renderer.ResetSamples();
+        }
+
+        if (ImGui::Button("Load Circle Scene"))
+        {
+            scene.spheres.clear();
+            scene.CircleScene();
+            renderer.ResetSamples();
+        }
+
+        if (ImGui::Button("Reset Samples")) 
+            renderer.ResetSamples();
+
+        ImGui::Text("SPP");
+        if (ImGui::SliderInt("##SPP", &scene.samplesPerPixel, 1, 10)) 
+            renderer.ResetSamples();
+
+        ImGui::Text("Max Ray Depth");
+        if (ImGui::SliderInt("##MaxRayDepth", &scene.maxRayDepth, 1, 50)) 
+            renderer.ResetSamples();
+
+        ImGui::Text("Directional Light");
+        if (ImGui::SliderFloat3("##DirectionalLight", glm::value_ptr(scene.lightDirection), -1.0f, 1.0f))
+            renderer.ResetSamples();
+
+        if (ImGui::CollapsingHeader("Edit Scene"))
+        {
+            const char* items[scene.spheres.size()];
+            for (int i = 0; i < scene.spheres.size(); i++)
+            {
+                items[i] = scene.spheres[i].label.c_str();
+            }
+
+            static const char* current_item = items[0];
+            ImGui::Text("Selected Obj Idx: %i", m_SelectedInd);
+            ImGui::Text("Select Object");
+            if (ImGui::BeginCombo("##Object", current_item)) // The second parameter is the label previewed before opening the combo.
+            {
+                for (int n = 0; n < IM_ARRAYSIZE(items); n++)
+                {
+                    bool is_selected = (current_item == items[n]); // You can store your selection however you want, outside or inside your objects
+                    if (ImGui::Selectable(items[n], is_selected))
+                        current_item = items[n];
+                    if (is_selected)
+                        m_SelectedInd = n;
+                        ImGui::SetItemDefaultFocus();   // You may set the initial focus when opening the combo (scrolling + for keyboard navigation support)
+                }
+                ImGui::EndCombo();
+            }
+
+            ImGui::PushID(m_SelectedInd);
+            GPUSphere& s = scene.spheres[m_SelectedInd].sphere;
+
+            ImGui::Text("Distance from camera: %.3f", glm::distance(s.position, camera.GetPosition()));
+
+            ImGui::Text("Position");
+            if (ImGui::DragFloat3("##Position", glm::value_ptr(s.position), 0.1f)) 
+                renderer.ResetSamples();
+
+            ImGui::Text("Albedo");
+            if (ImGui::ColorEdit3("##Albedo", glm::value_ptr(s.mat.albedo))) 
+                renderer.ResetSamples();
+
+            ImGui::Text("Absorption");
+            if (ImGui::DragFloat3("##Absorption", glm::value_ptr(s.mat.absorption), 0.1f, 0.0f, 10.0f)) 
+                renderer.ResetSamples();
+
+            ImGui::Text("Radius");
+            if (ImGui::DragFloat("##Radius", &s.radius, 0.05f, 0.2f, 1000.0f)) 
+                renderer.ResetSamples();
+
+            ImGui::Text("Roughness");
+            if (ImGui::SliderFloat("##roughness", &s.mat.roughness, 0.0f, 1.0f)) 
+                renderer.ResetSamples();
+
+            ImGui::Text("Specular Tint");
+            if (ImGui::ColorEdit3("##specularTint", glm::value_ptr(s.mat.specularTint))) 
+                renderer.ResetSamples();
+
+            ImGui::Text("Specular Chance");
+            if (ImGui::SliderFloat("##SpecularChance", &s.mat.specularChance, 0.0f, 1.0f)) 
+                renderer.ResetSamples();
+
+
+            ImGui::Text("IOR");
+            if (ImGui::SliderFloat("##IOR", &s.mat.ior, 1.0f, 2.5f)) 
+                renderer.ResetSamples();
+
+            ImGui::Text("Refraction Chance");
+            if (ImGui::SliderFloat("##RefractionChance", &s.mat.refractionChance, 0.0f, 1.0f)) 
+                renderer.ResetSamples();
+
+            ImGui::Text("Emissive");
+            if (ImGui::ColorEdit3("##Emissive", glm::value_ptr(s.mat.emissive))) 
+                renderer.ResetSamples();
+
+            ImGui::Text("Emissive Strength");
+            if (ImGui::DragFloat("##EmissiveStrength", &s.mat.emissiveStrength, 0.005f, 0.0f, 100.0f)) 
+                renderer.ResetSamples();
+
+            ImGui::PopID();
+        }
+        ImGui::PopItemWidth();
+        ImGui::End();
     }
 }
 
@@ -166,6 +249,7 @@ void Gui::Init()
     io.ConfigWindowsMoveFromTitleBarOnly = true;
 
     ImGui::StyleColorsDark();
+    //SetupStyle();
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 410");
 }
@@ -188,7 +272,7 @@ void Gui::SetupStyle()
 
     style.Colors[ImGuiCol_Text]                  = ImVec4(0.90f, 0.90f, 0.90f, 0.90f);
     style.Colors[ImGuiCol_TextDisabled]          = ImVec4(0.60f, 0.60f, 0.60f, 1.00f);
-    style.Colors[ImGuiCol_WindowBg]              = ImVec4(0.09f, 0.09f, 0.15f, 1.00f);
+    style.Colors[ImGuiCol_WindowBg]              = ImVec4(0.09f, 0.09f, 0.15f, 0.10f);
     style.Colors[ImGuiCol_ChildBg]               = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
     style.Colors[ImGuiCol_PopupBg]               = ImVec4(0.05f, 0.05f, 0.10f, 0.85f);
     style.Colors[ImGuiCol_Border]                = ImVec4(0.70f, 0.70f, 0.70f, 0.65f);
@@ -204,7 +288,7 @@ void Gui::SetupStyle()
     style.Colors[ImGuiCol_ScrollbarGrab]         = ImVec4(0.55f, 0.53f, 0.55f, 0.51f);
     style.Colors[ImGuiCol_ScrollbarGrabHovered]  = ImVec4(0.56f, 0.56f, 0.56f, 1.00f);
     style.Colors[ImGuiCol_ScrollbarGrabActive]   = ImVec4(0.56f, 0.56f, 0.56f, 0.91f);
-    style.Colors[ImGuiCol_PopupBg]               = ImVec4(0.1f, 0.1f, 0.1f, 0.99f);
+    style.Colors[ImGuiCol_PopupBg]               = ImVec4(0.10f, 0.10f, 0.10f, 0.99f);
     style.Colors[ImGuiCol_CheckMark]             = ImVec4(0.90f, 0.90f, 0.90f, 0.83f);
     style.Colors[ImGuiCol_SliderGrab]            = ImVec4(0.70f, 0.70f, 0.70f, 0.62f);
     style.Colors[ImGuiCol_SliderGrabActive]      = ImVec4(0.30f, 0.30f, 0.30f, 0.84f);
@@ -227,40 +311,40 @@ void Gui::SetupStyle()
     style.Colors[ImGuiCol_TextSelectedBg]        = ImVec4(0.00f, 0.00f, 1.00f, 0.35f);
     style.Colors[ImGuiCol_ModalWindowDimBg]      = ImVec4(0.20f, 0.20f, 0.20f, 0.35f);
 
-    /*
+    
     ImGui::GetStyle().FrameRounding = 4.0f;
     ImGui::GetStyle().GrabRounding = 4.0f;
     
-    ImVec4* colors = ImGui::GetStyle().Colors;
-    colors[ImGuiCol_Text] = ImVec4(0.95f, 0.96f, 0.98f, 1.00f);
-    colors[ImGuiCol_TextDisabled] = ImVec4(0.36f, 0.42f, 0.47f, 1.00f);
-    colors[ImGuiCol_WindowBg] = ImVec4(0.11f, 0.15f, 0.17f, 0.37f);
-    colors[ImGuiCol_ChildBg] = ImVec4(0.15f, 0.18f, 0.22f, 0.16f);
-    colors[ImGuiCol_FrameBg] = ImVec4(0.20f, 0.25f, 0.29f, 0.57f);
-    colors[ImGuiCol_FrameBgHovered] = ImVec4(0.12f, 0.20f, 0.28f, 1.00f);
-    colors[ImGuiCol_FrameBgActive] = ImVec4(0.09f, 0.12f, 0.14f, 1.00f);
-    colors[ImGuiCol_TitleBgActive] = ImVec4(0.21f, 0.27f, 0.31f, 1.00f);
-    colors[ImGuiCol_CheckMark] = ImVec4(0.28f, 0.56f, 1.00f, 1.00f);
-    colors[ImGuiCol_SliderGrab] = ImVec4(0.28f, 0.56f, 1.00f, 1.00f);
-    colors[ImGuiCol_SliderGrabActive] = ImVec4(0.55f, 0.73f, 1.00f, 1.00f);
-    colors[ImGuiCol_Button] = ImVec4(0.20f, 0.25f, 0.29f, 1.00f);
-    colors[ImGuiCol_ButtonHovered] = ImVec4(0.28f, 0.56f, 1.00f, 1.00f);
-    colors[ImGuiCol_ScrollbarBg] = ImVec4(0.02f, 0.02f, 0.02f, 0.39f);
-    colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.18f, 0.22f, 0.25f, 1.00f);
-    colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.09f, 0.21f, 0.31f, 1.00f);
-    colors[ImGuiCol_Tab] = ImVec4(0.07f, 0.10f, 0.15f, 0.00f);
-    colors[ImGuiCol_TabActive] = ImVec4(0.19f, 0.41f, 0.78f, 1.00f);
-    colors[ImGuiCol_TabUnfocused] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
-    colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.20f, 0.25f, 0.29f, 0.80f);
-    colors[ImGuiCol_Header] = ImVec4(0.20f, 0.25f, 0.29f, 0.55f);
-    colors[ImGuiCol_Border] = ImVec4(0.08f, 0.10f, 0.12f, 1.00f);
-    colors[ImGuiCol_TitleBg] = ImVec4(0.09f, 0.12f, 0.14f, 0.65f);
-    colors[ImGuiCol_TitleBgActive] = ImVec4(0.08f, 0.10f, 0.12f, 1.00f);
-    colors[ImGuiCol_MenuBarBg] = ImVec4(0.15f, 0.18f, 0.22f, 1.00f);
-    colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.20f, 0.25f, 0.29f, 1.00f);
-    colors[ImGuiCol_Header] = ImVec4(0.20f, 0.25f, 0.29f, 0.55f);
-    colors[ImGuiCol_Separator] = ImVec4(0.20f, 0.25f, 0.29f, 1.00f);
-    */
+    // ImVec4* colors = style.Colors;
+    // colors[ImGuiCol_Text] = ImVec4(0.95f, 0.96f, 0.98f, 1.00f);
+    // colors[ImGuiCol_TextDisabled] = ImVec4(0.36f, 0.42f, 0.47f, 1.00f);
+    // colors[ImGuiCol_WindowBg] = ImVec4(0.11f, 0.15f, 0.17f, 0.37f);
+    // colors[ImGuiCol_ChildBg] = ImVec4(0.15f, 0.18f, 0.22f, 0.16f);
+    // colors[ImGuiCol_FrameBg] = ImVec4(0.20f, 0.25f, 0.29f, 0.57f);
+    // colors[ImGuiCol_FrameBgHovered] = ImVec4(0.12f, 0.20f, 0.28f, 1.00f);
+    // colors[ImGuiCol_FrameBgActive] = ImVec4(0.09f, 0.12f, 0.14f, 1.00f);
+    // colors[ImGuiCol_TitleBgActive] = ImVec4(0.21f, 0.27f, 0.31f, 1.00f);
+    // colors[ImGuiCol_CheckMark] = ImVec4(0.28f, 0.56f, 1.00f, 1.00f);
+    // colors[ImGuiCol_SliderGrab] = ImVec4(0.28f, 0.56f, 1.00f, 1.00f);
+    // colors[ImGuiCol_SliderGrabActive] = ImVec4(0.55f, 0.73f, 1.00f, 1.00f);
+    // colors[ImGuiCol_Button] = ImVec4(0.20f, 0.25f, 0.29f, 1.00f);
+    // colors[ImGuiCol_ButtonHovered] = ImVec4(0.28f, 0.56f, 1.00f, 1.00f);
+    // colors[ImGuiCol_ScrollbarBg] = ImVec4(0.02f, 0.02f, 0.02f, 0.39f);
+    // colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.18f, 0.22f, 0.25f, 1.00f);
+    // colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.09f, 0.21f, 0.31f, 1.00f);
+    // colors[ImGuiCol_Tab] = ImVec4(0.07f, 0.10f, 0.15f, 0.00f);
+    // colors[ImGuiCol_TabActive] = ImVec4(0.19f, 0.41f, 0.78f, 1.00f);
+    // colors[ImGuiCol_TabUnfocused] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+    // colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.20f, 0.25f, 0.29f, 0.80f);
+    // colors[ImGuiCol_Header] = ImVec4(0.20f, 0.25f, 0.29f, 0.55f);
+    // colors[ImGuiCol_Border] = ImVec4(0.08f, 0.10f, 0.12f, 1.00f);
+    // colors[ImGuiCol_TitleBg] = ImVec4(0.09f, 0.12f, 0.14f, 0.65f);
+    // colors[ImGuiCol_TitleBgActive] = ImVec4(0.08f, 0.10f, 0.12f, 1.00f);
+    // colors[ImGuiCol_MenuBarBg] = ImVec4(0.15f, 0.18f, 0.22f, 1.00f);
+    // colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.20f, 0.25f, 0.29f, 1.00f);
+    // colors[ImGuiCol_Header] = ImVec4(0.20f, 0.25f, 0.29f, 0.55f);
+    // colors[ImGuiCol_Separator] = ImVec4(0.20f, 0.25f, 0.29f, 1.00f);
+    
 
     /*
     ImGuiStyle& style = ImGui::GetStyle();
