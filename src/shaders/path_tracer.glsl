@@ -5,10 +5,6 @@
 #define PI          3.14159265358979323
 #define EPSILON     0.0001
 
-#define LAMBERTIAN  0
-#define METAL       1
-#define DIELECTRIC  2
-
 out vec4 colour;
 
 uniform int u_SampleIterations;
@@ -40,11 +36,12 @@ struct Material
     // Dielectric properties
     vec3 absorption;                // Absorption for beer's law
     float refractionChance;         // How transparent it is
-    float refractionRoughness;      // How rough the refractive transmissions are
 
     // Metallic properties
+    vec3 specularTint;              // Colour of reflections
     float specularChance;           // How reflective it is
-    float specularRoughness;        // How rough the reflections are
+
+    float roughness;                // How rough the object is
 };
 
 struct AABB
@@ -128,22 +125,21 @@ vec3 UniformSampleUnitSphere(float u1, float u2)
 
 vec3 CosineSampleHemisphere(vec3 normal)
 {
-    float theta = Rand_01() * 2.0 * PI;
-    float r = sqrt(Rand_01());
-
+    vec3 dir;
     vec3 bitangent = normalize(cross(normal, vec3(0.0, 1.0, 1.0)));
-    vec3 tangent = cross(bitangent, normal);
-    vec3 x = r * cos(theta) * tangent;
-    vec3 y = r * sin(theta) * bitangent;
-    vec3 z = sqrt(1.0 - Rand_01()) * normal;
-
-    return normalize(x + y + z);
+	vec3 tangent = cross(bitangent, normal);
+	float r = sqrt(Rand_01());
+    float phi = 2.0 * PI * Rand_01();
+	vec3 x = r * cos(phi) * bitangent; 
+	vec3 y = r * sin(phi) * tangent;
+	vec3 z = sqrt(1.0 - r*r) * normal;
+    dir = x + y + z;
+    
+    return normalize(dir);
 }
 
 float FresnelSchlick(float cosine_t, float n1, float n2)
 {
-    //float refraction_ratio = n1 / n2;
-    //float r0 = (1.0-refraction_ratio) / (1.0+refraction_ratio);
     float r0 = (n1 - n2) / (n1 + n2);
     r0 = r0 * r0;
     return r0 + (1.0-r0) * pow((1.0-cosine_t), 5.0);
@@ -164,36 +160,17 @@ float FresnelReflectAmount(vec3 V, vec3 N, float n1, float n2)
     if (n1 > n2)
     {
         // Ray originated in a denser medium and is entering a lighter one
+        // e.g when exiting a glass sphere
         float eta = n1 / n2;
         float sine_t = sqrt(1.0 - cosine_t * cosine_t);
 
         if (eta * sine_t > 1.0)
         {
-            // No solution to Snell's law => total internal reflection 
+            // No solution to Snell's law => Ray MUST reflect (total internal reflection)
             return 1.0;
         }
     }
     return FresnelSchlick(cosine_t, n1, n2);
-    
-    // Schlick aproximation
-    // float r0 = (n1 - n2) / (n1 + n2);
-    // r0 *= r0;
-    // float cosine_t = -dot(N, V);
-    // if (n1 > n2)
-    // {
-    //     float eta = n1 / n2;
-    //     float sine_t2 = eta * eta * (1.0 - cosine_t * cosine_t);
-    //     // Total internal reflection
-    //     if (sine_t2 > 1.0)
-    //         return 1.0;
-    //     cosine_t = sqrt(1.0 - sine_t2);
-    // }
-    // float x = 1.0 - cosine_t;
-    // float ret = r0+(1.0-r0)*x*x*x*x*x;
-
-    // // adjust reflect multiplier for object reflectivity
-    // return ret;
-
 }
 
 float D_GGX(float NdotH, float roughness)
@@ -255,7 +232,7 @@ vec3 CookTorranceBRDF(Payload hitRec, vec3 lightDir, inout vec3 viewDir)
     return diff + spec;
 }
 */
-float BSDF(inout Ray ray, Payload hitRec, out bool isRefractive)
+float BSDF(inout Ray ray, Payload hitRec, out bool isRefractive, out float specularFactor)
 {
     isRefractive = false;
 
@@ -264,9 +241,8 @@ float BSDF(inout Ray ray, Payload hitRec, out bool isRefractive)
     vec3 V = ray.direction;
 
     float specularChance = hitRec.mat.specularChance;
-    float specularRoughness = hitRec.mat.specularRoughness;
-    float refractionChance = hitRec.mat.refractionChance;
-    float refractionRoughness = hitRec.mat.refractionRoughness;
+    float refractionChance = hitRec.mat.refractionChance;   
+    float roughness = hitRec.mat.roughness;
 
     // Account for Fresnel for specularChance and adjust other chances accordingly
     // Specular takes priority
@@ -278,14 +254,16 @@ float BSDF(inout Ray ray, Payload hitRec, out bool isRefractive)
         float n1 = hitRec.fromInside ? ior : 1.0;
         float n2 = hitRec.fromInside ? 1.0 : ior;
 
-        specularChance = mix(specularChance, 1.0, FresnelReflectAmount(V, N, n1, n2));
+        // x*(1-a) + y*(a)
+        float fresnelTerm = FresnelReflectAmount(V, N, n1, n2);
+        specularChance = mix(specularChance, 1.0, fresnelTerm);
 
         float chanceMultiplier = (1.0 - specularChance) / (1.0 - hitRec.mat.specularChance);
         refractionChance *= chanceMultiplier;
     }
 
     float rayProbability = 1.0;
-    float specularFactor = 0.0;
+    specularFactor = 0.0;
     float refractionFactor = 0.0;
     float raySelectRoll = Rand_01();
 
@@ -312,11 +290,11 @@ float BSDF(inout Ray ray, Payload hitRec, out bool isRefractive)
     // Squaring the roughness is done to make the roughness feel more linear perceptually
     vec3 diffuseDir = CosineSampleHemisphere(N);
     vec3 specularDir = reflect(V, N);
-    specularDir = normalize(mix(specularDir, diffuseDir, specularRoughness * specularRoughness));
+    specularDir = normalize(mix(specularDir, diffuseDir, roughness * roughness));
 
     float eta = hitRec.fromInside ? ior : 1.0 / ior;
     vec3 refractionDir = refract(V, N, eta);
-    refractionDir = normalize(mix(refractionDir, -diffuseDir, refractionRoughness * refractionRoughness));
+    refractionDir = normalize(mix(refractionDir, -diffuseDir, roughness * roughness));
 
     // Determine whether scattered direction should be affected by specularity or refraction
     ray.direction = mix(diffuseDir, specularDir, specularFactor);
@@ -334,7 +312,8 @@ float BSDF(inout Ray ray, Payload hitRec, out bool isRefractive)
     }
 
     // Prevent rayProbability from causing a division by zero
-    return max(rayProbability, EPSILON);
+    //return max(rayProbability, EPSILON);
+    return rayProbability;
 }
 
 Ray ComputeWorldSpaceRay(vec2 uv)
@@ -486,8 +465,16 @@ vec3 PerPixel(Ray ray)
             radiance += atmosphere * throughput;
             break;
         }
-        // return vec3(HitRec.normal * 0.5 + 0.5);
 
+        // Consider emissive objects
+        if (HitRec.mat.emissive.x > 0.0 || HitRec.mat.emissive.y > 0.0 || HitRec.mat.emissive.z > 0.0)
+        {
+            radiance += HitRec.mat.emissive * HitRec.mat.emissiveStrength * throughput;
+            break;
+        }
+
+        // Debug: confirm object normals work properly
+        // return vec3(HitRec.normal * 0.5 + 0.5);
         if (HitRec.fromInside)
         {
             // Apply beer's law
@@ -495,18 +482,18 @@ vec3 PerPixel(Ray ray)
         }
 
         // https://blog.demofox.org/2020/06/14/casual-shadertoy-path-tracing-3-fresnel-rough-refraction-absorption-orbit-camera/
+        float specularFactor;
         bool isRefractive;
-        float rayProbability = BSDF(ray, HitRec, isRefractive);
-
-        // Consider emissive objects
-        radiance += HitRec.mat.emissive * HitRec.mat.emissiveStrength * throughput;
+        float rayProbability = BSDF(ray, HitRec, isRefractive, specularFactor);
+        //return vec3(BSDF(ray, HitRec, isRefractive));
 
         // Refraction doesn't alter the colour
         if (!isRefractive)
-            throughput *= HitRec.mat.albedo;
+            throughput *= mix(HitRec.mat.albedo, HitRec.mat.specularTint, specularFactor);
 
         // Since we are choosing to follow only one path (diffuse, specular, refractive)
         // we must account for not choosing the others
+        if (rayProbability == 0.0) break;
         throughput *= 1.0 / rayProbability;
 
         // Russian Roulette
@@ -559,7 +546,7 @@ void main()
         pixel_colour += PerPixel(r);
     }
     pixel_colour /= samples_per_pixel;
-    pixel_colour = sqrt(pixel_colour);
+    pixel_colour = pow(pixel_colour, vec3(1.0/2.2));
 
     // Progressive rendering:
     // To calculate the cumulative average we must first get the current pixel's data by sampling the accumulation texture 
