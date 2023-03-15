@@ -44,7 +44,7 @@ int main(void)
         float current_frame = glfwGetTime();
 
         // Input
-        window.ProcessInput();
+        window.ProcessInput(scene.SelectedIdx, scene.spheres.size());
         vsync == true ? glfwSwapInterval(1) : glfwSwapInterval(0);
 
         gui.NewFrame();

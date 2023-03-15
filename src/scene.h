@@ -41,7 +41,8 @@ struct Scene
 {
     int maxRayDepth = 16;
     int samplesPerPixel = 1;
-    char day = 1;
+    char day = 0;
+    int SelectedIdx = 0;
     glm::vec3 lightDirection { 0.0f, 0.0f, 0.0f };
     std::vector<Sphere> spheres;
 

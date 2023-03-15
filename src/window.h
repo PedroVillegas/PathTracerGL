@@ -11,7 +11,7 @@ public:
     Window() {}
     Window(const char* title, uint width, uint height);
     ~Window();
-    void ProcessInput();
+    void ProcessInput(int& SelectedIdx, int ObjectCount);
     void Clear() const;
     void Update() const;
     bool Closed() const;

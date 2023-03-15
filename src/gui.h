@@ -25,5 +25,4 @@ private:
     void CreateSceneWindow(Renderer& renderer, Camera& camera, Scene& scene);
 private:
     Window m_Window;
-    int m_SelectedInd = 0;
 };

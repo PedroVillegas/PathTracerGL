@@ -67,12 +67,16 @@ void WindowResize(GLFWwindow* window, int width, int height)
 
 void CursorPosition(GLFWwindow* window, double xPos, double yPos) {}
 
-void Window::ProcessInput()
+void Window::ProcessInput(int& SelectedIdx, int ObjectCount)
 {
-	if(glfwGetKey(m_Window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-	{
+	if (glfwGetKey(m_Window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		glfwSetWindowShouldClose(m_Window, true);
-	}
+
+    if (glfwGetKey(m_Window, GLFW_KEY_LEFT) == GLFW_PRESS)
+        SelectedIdx = SelectedIdx == 0 ? ObjectCount - 1 : SelectedIdx - 1;
+
+    if (glfwGetKey(m_Window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+        SelectedIdx = SelectedIdx == ObjectCount - 1 ? 0 : SelectedIdx + 1;
 }
 
 void Window::Clear() const

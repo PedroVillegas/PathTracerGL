@@ -5,12 +5,13 @@
 #define PI          3.14159265358979323
 #define EPSILON     0.0001
 
-out vec4 colour;
+out vec4 FragColour;
 
 uniform int u_SampleIterations;
 uniform int u_SamplesPerPixel;
 uniform int u_Depth;
 uniform int u_Day;
+uniform int u_SelectedObjIdx;
 uniform vec3 u_LightDir;
 uniform float u_FocalLength;
 uniform float u_Aperture;
@@ -18,6 +19,7 @@ uniform vec2 u_Resolution;
 uniform vec3 u_RayOrigin;
 uniform mat4 u_InverseProjection;
 uniform mat4 u_InverseView;
+uniform mat4 u_ViewProjection;
 uniform sampler2D u_AccumulationTexture;
 
 uint samples_per_pixel = u_SamplesPerPixel;
@@ -99,7 +101,7 @@ uint PCGHash()
 
 float Rand_01()
 {
-    g_Seed += 1;
+    g_Seed += 2743589;
     return float(PCGHash()) / 4294967295.0;
 }
 
@@ -240,6 +242,7 @@ float BSDF(inout Ray ray, Payload hitRec, out bool isRefractive, out float specu
     vec3 N = hitRec.normal;
     vec3 V = ray.direction;
 
+    float diffuseChance;
     float specularChance = hitRec.mat.specularChance;
     float refractionChance = hitRec.mat.refractionChance;   
     float roughness = hitRec.mat.roughness;
@@ -255,65 +258,55 @@ float BSDF(inout Ray ray, Payload hitRec, out bool isRefractive, out float specu
         float n2 = hitRec.fromInside ? 1.0 : ior;
 
         // x*(1-a) + y*(a)
-        float fresnelTerm = FresnelReflectAmount(V, N, n1, n2);
+        float fresnelTerm = FresnelSchlick(dot(-V, N), n1, n2);
         specularChance = mix(specularChance, 1.0, fresnelTerm);
 
         float chanceMultiplier = (1.0 - specularChance) / (1.0 - hitRec.mat.specularChance);
         refractionChance *= chanceMultiplier;
+
+        diffuseChance = 1.0 - (specularChance + refractionChance);
+        refractionChance = 1.0 - (specularChance + diffuseChance);
     }
 
-    float rayProbability = 1.0;
+    // Determine whether to be specular, diffuse or refraction ray
+    // and calculate the scattered ray direction accordingly
     specularFactor = 0.0;
-    float refractionFactor = 0.0;
+    float rayProbability = 1.0;
     float raySelectRoll = Rand_01();
-
-    // Determine whether to be specular or diffuse ray
+    vec3 diffuseDir = CosineSampleHemisphere(N);
     if (specularChance > 0.0 && raySelectRoll < specularChance)
-    {
+    {   
+        // Reflection ray
         specularFactor = 1.0;
         rayProbability = specularChance;
+
+        // Rough Specular (Glossy) lerps from smooth specular to rough diffuse by the roughness squared
+        // Squaring the roughness is done to make the roughness feel more linear perceptually
+        vec3 specularDir = reflect(V, N);
+        specularDir = normalize(mix(specularDir, diffuseDir, roughness * roughness));
+        ray.direction = specularDir;
     }
-    else if (refractionChance > 0.0 && raySelectRoll < specularChance + refractionChance)
+    else if (refractionChance > 0.0 && raySelectRoll < (specularChance + refractionChance))
     {
+        // Refraction ray
         isRefractive = true;
-        refractionFactor = 1.0;
         rayProbability = refractionChance;
+
+        float eta = hitRec.fromInside ? ior : (1.0 / ior);
+        vec3 refractionDir = refract(V, N, eta);
+        refractionDir = normalize(mix(refractionDir, -diffuseDir, roughness * roughness));
+        ray.direction = refractionDir;
     }
     else
     {
-        // The ray is diffuse
+        // Diffuse ray
+        ray.direction = diffuseDir;
         rayProbability = 1.0 - (specularChance + refractionChance);
     }
 
-    // Calculate new ray direction
-    // Rough Specular (Glossy) lerps from smooth specular to rough diffuse by the roughness squared
-    // Squaring the roughness is done to make the roughness feel more linear perceptually
-    vec3 diffuseDir = CosineSampleHemisphere(N);
-    vec3 specularDir = reflect(V, N);
-    specularDir = normalize(mix(specularDir, diffuseDir, roughness * roughness));
+    ray.origin = isRefractive ? hitRec.position - N * EPSILON : hitRec.position + N * EPSILON;
 
-    float eta = hitRec.fromInside ? ior : 1.0 / ior;
-    vec3 refractionDir = refract(V, N, eta);
-    refractionDir = normalize(mix(refractionDir, -diffuseDir, roughness * roughness));
-
-    // Determine whether scattered direction should be affected by specularity or refraction
-    ray.direction = mix(diffuseDir, specularDir, specularFactor);
-    ray.direction = mix(ray.direction, refractionDir, refractionFactor);
-
-    ray.direction = normalize(ray.direction);
-
-    if (isRefractive)
-    {
-        ray.origin = hitRec.position - N * EPSILON;
-    }
-    else
-    {
-        ray.origin = hitRec.position + N * EPSILON;
-    }
-
-    // Prevent rayProbability from causing a division by zero
-    //return max(rayProbability, EPSILON);
-    return rayProbability;
+    return max(rayProbability, EPSILON);
 }
 
 Ray ComputeWorldSpaceRay(vec2 uv)
@@ -341,11 +334,11 @@ bool RaySphereIntersect(Ray ray, Sphere sphere, out float t1, out float t2)
 
     float radius = sphere.radius;
     vec3 OC = ray.origin - sphere.position;
-    vec3 D = ray.direction;
+    vec3 V = ray.direction;
 
     // Evaluate intersection points between ray and sphere
     // by solving quadratic equation
-    float b = dot(OC, D);
+    float b = dot(OC, V);
     float c = dot(OC, OC) - radius * radius;
 
     // Discriminant hit test (< 0 means no real solution)
@@ -444,8 +437,10 @@ Payload TraceRay(Ray ray)
 
 vec3 PerPixel(Ray ray)
 {
+    // Radiance: the radiant flux emitted, reflected, transmitted or received by a given surface
+    // Throughput: the amount of radiance passing through the ray
     vec3 radiance = vec3(0.0);
-    vec3 throughput = vec3(1.0); // colour sent through the ray
+    vec3 throughput = vec3(1.0); 
 
     for (int i = 0; i < g_depth; i++)
     {
@@ -455,12 +450,13 @@ vec3 PerPixel(Ray ray)
         // If ray misses, object takes on radiance of the sky
         if (HitRec.t < 0)
         {
-            vec3 D = normalize(ray.direction);
+            vec3 V = normalize(ray.direction);
             
-            float t = 0.5*(D.y + 1.0);
+            float t = 0.5*(V.y + 1.0);
             vec3 atmosphere;
-            u_Day == 1 ? atmosphere = (1.0-t)*vec3(1.0) + t*vec3(0.5, 0.7, 1.0) : // Day sky
-                    atmosphere = (1.0-t)*vec3(0.0) + t*vec3(0.05, 0.1, 0.3); // Night sky
+
+            u_Day == 1 ? atmosphere = mix(vec3(1.0), vec3(0.50, 0.70, 1.00), t) :   // Day sky
+                         atmosphere = mix(vec3(0.0), vec3(0.05, 0.10, 0.30), t);    // Night sky
 
             radiance += atmosphere * throughput;
             break;
@@ -469,11 +465,11 @@ vec3 PerPixel(Ray ray)
         // Consider emissive objects
         if (HitRec.mat.emissive.x > 0.0 || HitRec.mat.emissive.y > 0.0 || HitRec.mat.emissive.z > 0.0)
         {
-            radiance += HitRec.mat.emissive * HitRec.mat.emissiveStrength * throughput;
+            radiance += HitRec.mat.emissive * throughput;
             break;
         }
 
-        // Debug: confirm object normals work properly
+        // DEBUG: confirm object normals work properly
         // return vec3(HitRec.normal * 0.5 + 0.5);
         if (HitRec.fromInside)
         {
@@ -485,7 +481,7 @@ vec3 PerPixel(Ray ray)
         float specularFactor;
         bool isRefractive;
         float rayProbability = BSDF(ray, HitRec, isRefractive, specularFactor);
-        //return vec3(BSDF(ray, HitRec, isRefractive));
+        // return vec3(rayProbability);
 
         // Refraction doesn't alter the colour
         if (!isRefractive)
@@ -493,8 +489,7 @@ vec3 PerPixel(Ray ray)
 
         // Since we are choosing to follow only one path (diffuse, specular, refractive)
         // we must account for not choosing the others
-        if (rayProbability == 0.0) break;
-        throughput *= 1.0 / rayProbability;
+        // throughput *= 1.0 / rayProbability;
 
         // Russian Roulette
         // As throughput gets smaller, the probability (p) of terminating the path early increases
@@ -521,7 +516,8 @@ void main()
 
     g_Seed = GenerateSeed();
     
-    vec3 pixel_colour = vec3(0.0);
+    // Irradiance: the radiant flux received by some surface per unit area
+    vec3 irradiance = vec3(0.0);
 
     for (int s = 0; s < samples_per_pixel; s++)
     {
@@ -543,10 +539,10 @@ void main()
         r.origin += vec3(offset, 0.0);
         r.direction = normalize(focal_point - r.origin);
 
-        pixel_colour += PerPixel(r);
+        irradiance += PerPixel(r);
     }
-    pixel_colour /= samples_per_pixel;
-    pixel_colour = pow(pixel_colour, vec3(1.0/2.2));
+    irradiance /= samples_per_pixel;
+    irradiance = pow(irradiance, vec3(1.0/2.2));
 
     // Progressive rendering:
     // To calculate the cumulative average we must first get the current pixel's data by sampling the accumulation texture 
@@ -554,10 +550,10 @@ void main()
     // Now we scale up the data by the number of samples to this pixel.
     vec4 accumulatedScaledUp = texture(u_AccumulationTexture, (uv + 1.0) / 2.0) * u_SampleIterations;
     // Then we can add the new sample, calculated from the current frame, to the previous samples.
-    vec4 newAccumulationContribution = accumulatedScaledUp + vec4(pixel_colour, 1.0);
+    vec4 newAccumulationContribution = accumulatedScaledUp + vec4(irradiance, 1.0);
     // Once we have the new total sum of all samples we can divide (average) by the new number of samples, resulting in 
     // the new average.
     vec4 accumulatedScaledDown = newAccumulationContribution / (u_SampleIterations + 1);
 
-    colour = accumulatedScaledDown;
+    FragColour = accumulatedScaledDown;
 }

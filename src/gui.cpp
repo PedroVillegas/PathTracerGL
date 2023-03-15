@@ -161,8 +161,8 @@ void Gui::CreateSceneWindow(Renderer& renderer, Camera& camera, Scene& scene)
                 items[i] = scene.spheres[i].label.c_str();
             }
 
-            static const char* current_item = items[0];
-            ImGui::Text("Selected Obj Idx: %i", m_SelectedInd);
+            static const char* current_item = items[scene.SelectedIdx];
+            ImGui::Text("Selected Obj Idx: %i", scene.SelectedIdx);
             ImGui::Text("Select Object");
             if (ImGui::BeginCombo("##Object", current_item)) // The second parameter is the label previewed before opening the combo.
             {
@@ -170,16 +170,18 @@ void Gui::CreateSceneWindow(Renderer& renderer, Camera& camera, Scene& scene)
                 {
                     bool is_selected = (current_item == items[n]); // You can store your selection however you want, outside or inside your objects
                     if (ImGui::Selectable(items[n], is_selected))
+                    {
                         current_item = items[n];
+                        scene.SelectedIdx = n;
+                    }
                     if (is_selected)
-                        m_SelectedInd = n;
                         ImGui::SetItemDefaultFocus();   // You may set the initial focus when opening the combo (scrolling + for keyboard navigation support)
                 }
                 ImGui::EndCombo();
             }
 
-            ImGui::PushID(m_SelectedInd);
-            GPUSphere& s = scene.spheres[m_SelectedInd].sphere;
+            ImGui::PushID(scene.SelectedIdx);
+            GPUSphere& s = scene.spheres[scene.SelectedIdx].sphere;
 
             ImGui::Text("Distance from camera: %.3f", glm::distance(s.position, camera.GetPosition()));
 
@@ -210,7 +212,6 @@ void Gui::CreateSceneWindow(Renderer& renderer, Camera& camera, Scene& scene)
             ImGui::Text("Specular Chance");
             if (ImGui::SliderFloat("##SpecularChance", &s.mat.specularChance, 0.0f, 1.0f)) 
                 renderer.ResetSamples();
-
 
             ImGui::Text("IOR");
             if (ImGui::SliderFloat("##IOR", &s.mat.ior, 1.0f, 2.5f)) 
