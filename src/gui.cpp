@@ -70,7 +70,7 @@ void Gui::CreateCameraWindow(Renderer& renderer, Camera& camera)
         ImGui::SliderFloat("##DampingFactor", &camera.damping, 0.0f, 0.95f);
 
         ImGui::Text("Focal Length");
-        if (ImGui::SliderFloat("##FocalLength", &camera.focal_length, 1.0f, 100.0f)) 
+        if (ImGui::InputFloat("##FocalLength", &camera.focal_length, 0.05f, 1.0f)) 
             renderer.ResetSamples();
 
         ImGui::Text("Aperture Diameter");
@@ -112,29 +112,43 @@ void Gui::CreateSceneWindow(Renderer& renderer, Camera& camera, Scene& scene)
 
         if (ImGui::Button("Load Custom Scene 1"))
         {
-            scene.spheres.clear();
+            scene.emptyScene();
             scene.CustomScene();
             renderer.ResetSamples();
         }
 
         if (ImGui::Button("Load RTIOW Scene"))
         {
-            scene.spheres.clear();
+            scene.emptyScene();
             scene.RTIW();
             renderer.ResetSamples();
         }
 
         if (ImGui::Button("Load Randomized Scene"))
         {
-            scene.spheres.clear();
+            scene.emptyScene();
             scene.RandomizeBRDF();
             renderer.ResetSamples();
         }
 
-        if (ImGui::Button("Load Circle Scene"))
+        if (ImGui::Button("Load Grid Showcase Scene"))
         {
-            scene.spheres.clear();
-            scene.CircleScene();
+            scene.emptyScene();
+            scene.GridShowcase();
+            renderer.ResetSamples();
+        }
+        
+        if (ImGui::Button("Load Cornell Box Scene"))
+        {
+            scene.emptyScene();
+            scene.CornellBox();
+            renderer.ResetSamples();
+        }
+
+        if (ImGui::Button("Load Modified Cornell Box Scene"))
+        {
+            scene.emptyScene();
+            scene.ModifiedCornellBox();
             renderer.ResetSamples();
         }
 
@@ -205,8 +219,8 @@ void Gui::CreateSceneWindow(Renderer& renderer, Camera& camera, Scene& scene)
             if (ImGui::SliderFloat("##roughness", &s.mat.roughness, 0.0f, 1.0f)) 
                 renderer.ResetSamples();
 
-            ImGui::Text("Specular Tint");
-            if (ImGui::ColorEdit3("##specularTint", glm::value_ptr(s.mat.specularTint))) 
+            ImGui::Text("Metallic");
+            if (ImGui::SliderFloat("##metallic", &s.mat.metallic, 0.0f, 1.0f)) 
                 renderer.ResetSamples();
 
             ImGui::Text("Specular Chance");
