@@ -44,8 +44,6 @@ bool Camera::Cinematic(float dt, Window* window)
 {
     GLFWwindow* glfw_win = window->GetWindow();
 
-    float speed = 5.0f;
-
     // Rotation delta
     glm::vec3 dr {0.0f}; // {yaw, pitch, roll}
 
@@ -88,7 +86,7 @@ bool Camera::Cinematic(float dt, Window* window)
     dm.x = (glfwGetKey(glfw_win, GLFW_KEY_D) == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_A) == GLFW_PRESS);
     dm.y = (glfwGetKey(glfw_win, GLFW_KEY_SPACE) == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS);
     dm.z = (glfwGetKey(glfw_win, GLFW_KEY_W) == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_S) == GLFW_PRESS);
-    float mlen = glm::sqrt(glm::dot(dm, dm)) / speed; 
+    float mlen = glm::sqrt(glm::dot(dm, dm)) / m_TopSpeed; 
     if (mlen < 1e-3f) mlen = 1.0f;
 
     glm::vec3 f, u, r;
@@ -134,10 +132,11 @@ bool Camera::FPS(float dt, Window* window)
         m_FirstMouse = true;
     }
 
+    if(glfwGetKey(glfw_win, GLFW_KEY_CAPS_LOCK) == GLFW_PRESS) m_TopSpeed = 20.0f;
+    if(glfwGetKey(glfw_win, GLFW_KEY_CAPS_LOCK) == GLFW_RELEASE) m_TopSpeed = 5.0f;
+
     if (m_AllowCameraToMove)
     {
-        float speed = 5.0f;
-
         glm::vec2 delta {0.0f};
 
         double cursor_x = 0.0f;
@@ -178,7 +177,7 @@ bool Camera::FPS(float dt, Window* window)
         M.x = (glfwGetKey(glfw_win, GLFW_KEY_D)     == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_A)          == GLFW_PRESS);
         M.y = (glfwGetKey(glfw_win, GLFW_KEY_SPACE) == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS);
         M.z = (glfwGetKey(glfw_win, GLFW_KEY_W)     == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_S)          == GLFW_PRESS);
-        float mlen = glm::sqrt(glm::dot(M, M)) / speed; 
+        float mlen = glm::sqrt(glm::dot(M, M)) / m_TopSpeed; 
         if (mlen < 1e-3f) mlen = 1.0f;
 
         glm::vec3 f, u, r;

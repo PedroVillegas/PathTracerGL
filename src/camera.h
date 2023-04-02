@@ -42,7 +42,7 @@ public:
     int horizontalFOV = 90;
     float damping = 0.9f;
     float focal_length = 4.0f;
-    float aperture = 0.1f;
+    float aperture = 0.0f;
     float sensitivity = 20.0f;
 private:
     float m_VerticalFOV = 45.0f;
@@ -64,6 +64,7 @@ private:
 
     glm::vec3 m_MovementMomentum { 0.0f, 0.0f, 0.0f };
     glm::vec3 m_RotationMomentum { 0.0f, 0.0f, 0.0f };
+    float m_TopSpeed = 5.0f;
 
     bool m_AllowCameraToMove = false;
     glm::vec2 m_LastMousePosition { 0.0f, 0.0f };
