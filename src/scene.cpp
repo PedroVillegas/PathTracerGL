@@ -1,8 +1,13 @@
 #include "scene.h"
 
-float Rand()
+float Randf01()
 {
     return (float)(std::rand()) / (float)(RAND_MAX);
+}
+
+glm::vec3 RandVec3()
+{
+    return glm::vec3(Randf01(), Randf01(), Randf01());
 }
 
 void Scene::emptyScene()
@@ -30,7 +35,7 @@ void Scene::GridShowcase()
     float panelThickness = 0.1f;
 
     Material panel = Material(glm::vec3(0.5f), 0.0f, glm::vec3(0.0f), 0.0f, glm::vec3(0.0f), 0.0f, 1.0f, 1.0f);
-    Material lightMat = Material(glm::vec3(0.0f), 0.0f, glm::vec3(16.86, 10.76, 8.2), 200.0f, glm::vec3(0.0f), 0.0f, 0.0f, 0.0f);
+    Material lightMat = Material(glm::vec3(0.0f), 0.0f, glm::vec3(16.86, 10.76, 8.2), 1.0f, glm::vec3(0.0f), 0.0f, 0.0f, 0.0f);
 
     GPUAABB ceiling1 = GPUAABB(
         glm::vec3(0.0f, lightHeight + 0.5f * panelThickness + EPSILON, 0.0f),
@@ -432,23 +437,14 @@ void Scene::RandomizeBRDF()
     s_ground.mat.albedo = glm::vec3(0.8f);
     spheres.push_back(ground);
 
-    Sphere light;
-    light.label = "Light";
-    GPUSphere& l = light.sphere;
-    l.position = glm::vec3(0.0f, 10.0f, 0.0f);
-    l.radius = 0.5f;
-    l.mat.emissive = glm::vec3(1.0f);
-    l.mat.emissiveStrength = 100.0f;
-    //spheres.push_back(light);
-
     float radius = 1.0;
     int id = 0;
     for (int a = -3; a < 2; a++) 
     {
         for (int b = -3; b < 2; b++) 
         {
-            float mat_probability = Rand();
-            glm::vec3 pos = glm::vec3(5 * a, 7 * Rand() + 1, 5 * b);
+            float mat_probability = Randf01();
+            glm::vec3 pos = glm::vec3(5 * a, 7 * Randf01() + 1, 5 * b);
             {
                 Sphere sphere;
                 GPUSphere& s = sphere.sphere;
@@ -458,11 +454,10 @@ void Scene::RandomizeBRDF()
                 {
                     // Emissive
                     sphere.label = "Light" + std::to_string(std::abs(a * b));
-                    glm::vec3 albedo = glm::vec3(Rand()*0.5+0.5, Rand()*0.5+0.5, Rand()*0.5+0.5);
                     s.position = pos;
                     s.radius = radius;
-                    s.mat.emissive = albedo;
-                    s.mat.emissiveStrength = 50.0f;
+                    s.mat.emissive = RandVec3();
+                    s.mat.emissiveStrength = Randf01() * 5.0f;
                     spheres.push_back(sphere);
                     lights.push_back(sphere.GetLight());
 
@@ -473,22 +468,22 @@ void Scene::RandomizeBRDF()
                     sphere.label = "Specular" + std::to_string(std::abs(a * b));
                     s.position = pos;
                     s.radius = radius;
-                    s.mat.albedo = glm::vec3(Rand()*0.5+0.3, Rand()*0.5+0.2, Rand()*0.5+0.2);
-                    s.mat.specularChance = Rand() * 0.16f;
-                    s.mat.roughness = Rand() * 0.2f;
-                    s.mat.ior = 1.0f + Rand();
+                    s.mat.albedo = RandVec3();
+                    s.mat.specularChance = Randf01() * 0.16f;
+                    s.mat.roughness = Randf01() * 0.5f;
+                    s.mat.ior = 1.0f + Randf01();
                     spheres.push_back(sphere);
                 } 
                 else 
                 {
                     // Glass
                     sphere.label = "Glass" + std::to_string(std::abs(a * b));
-                    float r = Rand() * 0.0f;
+                    float r = Randf01() * 0.0f;
                     s.position = pos;
                     s.radius = radius;
                     s.mat.ior = 1.55f;
-                    s.mat.refractionChance = 0.98f;
-                    s.mat.absorption = glm::vec3(Rand(), Rand(), Rand()) * 2.0f;
+                    s.mat.refractionChance = 1.0f;
+                    s.mat.absorption = RandVec3() * 2.0f;
                     s.mat.specularChance = 0.02f;
                     s.mat.roughness = r;
                     spheres.push_back(sphere);
