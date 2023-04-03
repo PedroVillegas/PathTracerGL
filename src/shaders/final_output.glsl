@@ -47,13 +47,55 @@ vec3 ACESFilm(vec3 color)
     return clamp((color * (a * color + b)) / (color * (c * color + d) + e), 0.0, 1.0);
 }
 
+// Boolean like functions as described here:
+// http://theorangeduck.com/page/avoiding-shader-conditionals
+
+// return 1 if x > y, 0 otherwise.
+float gt(float x, float y)
+{
+    return max(sign(x-y), 0.0);
+}
+
+// x and y must be either 0 or 1.
+float and(float x, float y)
+{
+	return x * y;
+}
+
+// x and y must be 0 or 1.
+float or(float x, float y)
+{
+    return min(x + y, 1.0);
+}
+
+// x must be 0 or 1
+float not_(float x)
+{
+    return 1.0 - x;
+}
+
 void main()
 {
+    const vec4 crosshairsColor = vec4(vec3(0.7), 1.0);
+    const float thickness = 1.0;
+    const float length = 5.0;
+
     vec2 uv = (gl_FragCoord.xy / u_Resolution);
     vec3 hdrCol = texture(u_PT_Texture, uv).rgb;
     // Map HDR to SDR 
     vec3 mapped = ACESFilm(hdrCol);
     // Apply gamma correction
     mapped = LinearToSRGB(mapped);
-    colour = vec4(mapped, 1.0);
+
+    vec2 centre = u_Resolution * vec2(0.5);
+    vec2 d = abs(centre - gl_FragCoord.xy);
+    
+    float crosshairMask = or(and(gt(thickness, d.x), gt(length, d.y)),
+                             and(gt(thickness, d.y), gt(length, d.x)));
+    
+    float backgroundMask = not_(crosshairMask);
+    
+    colour = crosshairMask * crosshairsColor + backgroundMask * vec4(mapped, 1.0); 
+
+    // colour = vec4(mapped, 1.0);
 }
