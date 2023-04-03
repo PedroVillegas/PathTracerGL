@@ -97,48 +97,6 @@ struct Payload
     int geomID;
 };
 
-vec3 LessThan(vec3 f, float value)
-{
-    return vec3(
-        (f.x < value) ? 1.0 : 0.0,
-        (f.y < value) ? 1.0 : 0.0,
-        (f.z < value) ? 1.0 : 0.0);
-}
-
-vec3 LinearToSRGB(vec3 rgb)
-{
-    rgb = clamp(rgb, 0.0, 1.0);
-    
-    return mix(
-        pow(rgb, vec3(0.4545454545)) * 1.055 - 0.055,
-        rgb * 12.92,
-        LessThan(rgb, 0.0031308)
-    );
-}
-
-vec3 SRGBToLinear(vec3 rgb)
-{   
-    rgb = clamp(rgb, 0.0, 1.0);
-    
-    return mix(
-        pow(((rgb + 0.055) / 1.055), vec3(2.2)),
-        rgb / 12.92,
-        LessThan(rgb, 0.04045)
-	);
-}
-
-// ACES tone mapping curve fit to go from HDR to SDR.
-//https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
-vec3 ACESFilm(vec3 color)
-{
-    float a = 2.51;
-    float b = 0.03;
-    float c = 2.43;
-    float d = 0.59;
-    float e = 0.14;
-    return clamp((color * (a * color + b)) / (color * (c * color + d) + e), 0.0, 1.0);
-}
-
 // -----------------------------------
 // FOR PSEUDO RANDOM NUMBER GENERATION
 // -----------------------------------
@@ -161,19 +119,19 @@ float Randf01()
     return float(PCGHash()) / 4294967295.0;
 }
 
-vec2 UniformSampleUnitCircle()
+vec2 UniformSampleUnitCircle(float r1, float r2)
 {
-    float theta = Randf01() * 2.0 * PI;
-    float r = sqrt(Randf01());
+    float theta = r1 * 2.0 * PI;
+    float r = sqrt(r2);
     return vec2(cos(theta), sin(theta)) * r;
 }
 
 vec3 UniformSampleUnitSphere(float u1, float u2)
 {
     vec3 dir;
-    float theta = u1 * 2 * PI;
+    float theta = u1 * 2.0 * PI;
     float z = u2 * 2.0 - 1.0;
-    float r = sqrt(1.0 - z * z);
+    float r = clamp(sqrt(1.0 - z * z), 0.0, 1.0);
     float x = r * cos(theta);
     float y = r * sin(theta);
     dir = vec3(x, y, z);
@@ -181,30 +139,24 @@ vec3 UniformSampleUnitSphere(float u1, float u2)
     return dir;
 }
 
-vec3 CosineSampleHemisphere(vec3 normal)
+vec3 CosineSampleHemisphere(float r1, float r2, vec3 N)
 {
     vec3 dir;
-    vec3 bitangent = normalize(cross(normal, vec3(0.0, 1.0, 1.0)));
-	vec3 tangent = cross(bitangent, normal);
-	float r = sqrt(Randf01());
-    float phi = 2.0 * PI * Randf01();
-	vec3 x = r * cos(phi) * bitangent; 
-	vec3 y = r * sin(phi) * tangent;
-	vec3 z = sqrt(1.0 - r*r) * normal;
+    vec3 B = normalize(cross(N, vec3(0.0, 1.0, 1.0)));
+	vec3 T = cross(B, N);
+	float r = sqrt(r1);
+    float phi = 2.0 * PI * r2;
+	vec3 x = r * cos(phi) * B; 
+	vec3 y = r * sin(phi) * T;
+	vec3 z = sqrt(1.0 - r*r) * N;
     dir = x + y + z;
     
     return normalize(dir);
 }
 
-vec3 CosineSampleHemisphere(float u1, float u2) 
+vec3 NoTangentCosineHemisphere(float u1, float u2, vec3 N) 
 {
-  vec3 dir;
-  float r = sqrt(u1);
-  float phi = 2.0 * PI * u2;
-  dir.x = r * cos(phi);
-  dir.y = r * sin(phi);
-  dir.z = sqrt(max(0.0, 1.0 - dir.x*dir.x - dir.y*dir.y));
-  return dir;
+    return normalize(N + UniformSampleUnitSphere(u1, u2));
 }
 
 float FresnelSchlick(float cosine_t, float n1, float n2)
@@ -256,7 +208,7 @@ vec3 EvalBSDF(Payload hitrec, inout Ray ray, out float pdf)
     float refractiveFactor = 0.0;
     float rayProbability = 1.0;
     float raySelectRoll = Randf01();
-    vec3 diffuseDir = CosineSampleHemisphere(N);
+    vec3 diffuseDir = NoTangentCosineHemisphere(Randf01(), Randf01(), N);
     if (raySelectRoll < specularChance)
     {   
         // Reflection ray
@@ -422,7 +374,7 @@ vec3 Miss(vec3 V)
 
     u_Day == 1 
             ? atmosphere = mix(vec3(1.0), vec3(0.50, 0.70, 1.00), t)     // Day sky
-            : atmosphere = mix(vec3(0.05), vec3(0.075), t);    // Night sky
+            : atmosphere = vec3(0.0); //mix(vec3(0.05), vec3(0.075), t);    // Night sky
 
     return atmosphere;
 }
@@ -489,8 +441,8 @@ vec3 PerPixel(Ray ray)
         // If ray misses, object takes on radiance of the sky
         if (HitRec.t == FLT_MAX)
         {
-            // radiance += Miss(normalize(ray.direction)) * throughput;
-            radiance += vec3(0.0) * throughput;
+            radiance += Miss(normalize(ray.direction)) * throughput;
+            // radiance += vec3(0.0) * throughput;
             break;
         }
 
@@ -583,21 +535,16 @@ void main()
         // First find where the ray hits the focal plane (focal point)
         vec3 focal_point = r.origin + r.direction * u_FocalLength;
         // Pick a random spot on the aperture
-        vec2 offset = u_Aperture * 0.5 * UniformSampleUnitCircle();
+        vec2 offset = u_Aperture * 0.5 * UniformSampleUnitCircle(r1, r2);
 
         // Shoot ray from that random spot towards the focal point
-        r.origin += vec3(offset, 0.0); //(u_InverseView * vec4(offset, 0.0, 1.0)).xyz;
+        r.origin += vec3(offset, 0.0);
         r.direction = normalize(focal_point - r.origin);
 
         irradiance += PerPixel(r);
     }
 
     irradiance /= samples_per_pixel;
-    irradiance = pow(irradiance, vec3(1.0/2.2));
-
-
-    // vec3 srgb = ACESFilm(irradiance);
-    // vec3 srgb = LinearToSRGB(irradiance);
 
     // Progressive rendering:
     // To calculate the cumulative average we must first get the current pixel's data by sampling the accumulation texture 
