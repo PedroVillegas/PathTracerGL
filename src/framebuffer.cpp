@@ -35,8 +35,8 @@ void Framebuffer::Create()
     glGenTextures(1, &m_TextureID); GLCall; // Generate texture with ID: m_TextureID
     glBindTexture(GL_TEXTURE_2D, m_TextureID); GLCall; // Select texture as current 2D Texture
     glTexImage2D(
-        GL_TEXTURE_2D, 0, GL_RGBA, m_Spec.width, m_Spec.height, 0, GL_RGBA, 
-        GL_UNSIGNED_BYTE, nullptr
+        GL_TEXTURE_2D, 0, GL_RGBA32F, m_Spec.width, m_Spec.height, 0, GL_RGBA, 
+        GL_FLOAT, nullptr
         ); GLCall; // Build texture with specified dimensions
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); GLCall;
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); GLCall;
