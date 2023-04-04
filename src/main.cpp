@@ -19,9 +19,9 @@ int main(void)
     uint32_t ViewportHeight = 600;
     uint32_t ViewportWidth = ViewportHeight * 16/9;
     Window window = Window(Title, ViewportWidth, ViewportHeight);
-    Shader PathTracerShader = Shader("src/shaders/vert.glsl", "src/shaders/path_tracer.glsl");
+    Shader PathTracerShader = Shader("src/shaders/vert.glsl", "src/shaders/pathTracer.glsl");
     Shader AccumShader = Shader("src/shaders/vert.glsl", "src/shaders/accumulation.glsl");
-    Shader FinalOutputShader = Shader("src/shaders/vert.glsl", "src/shaders/final_output.glsl");
+    Shader FinalOutputShader = Shader("src/shaders/vert.glsl", "src/shaders/postProcessing.glsl");
     Renderer renderer = Renderer(PathTracerShader, AccumShader, FinalOutputShader, ViewportWidth, ViewportHeight);
     Gui gui = Gui(window);
     Camera camera = Camera({0.0f, 2.0f, 6.0f}, 90.0f, 0.01f, 100.0f);
