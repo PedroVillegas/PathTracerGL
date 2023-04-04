@@ -22,7 +22,8 @@ private:
     void Shutdown();
     void SetupStyle();
     void CreateCameraWindow(Renderer& renderer, Camera& camera);
-    void CreateSceneWindow(Renderer& renderer, Camera& camera, Scene& scene);
+    void CreateSceneWindow(Renderer& renderer, const Camera& camera, Scene& scene);
+    template <typename T> void EditObjectProperties(T& obj, Renderer& renderer, const Camera& camera);
 private:
     Window m_Window;
 };
