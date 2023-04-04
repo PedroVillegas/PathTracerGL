@@ -26,7 +26,7 @@ uniform sampler2D u_AccumulationTexture;
 uint samples_per_pixel = u_SamplesPerPixel;
 uint g_depth = u_Depth;
 uint g_Seed = 0;
-vec3 g_ObjectCounts = u_ObjectCounts;
+//vec3 g_ObjectCounts = u_ObjectCounts;
 
 struct Material
 {
@@ -43,9 +43,9 @@ struct Material
 
 struct AABB
 {
-    vec3 minCorner;
+    vec3 position;
     float pad0;
-    vec3 maxCorner;
+    vec3 dimensions;
     float pad1;
 
     Material mat;
@@ -71,11 +71,11 @@ struct Light
 
 layout (std140) uniform ObjectData
 {
-    // int sphereCount;
+    int n_Spheres;
     Sphere Spheres[50];
-    // int aabbCount;
+    int n_AABBs;
     AABB aabbs[50];
-    // int lightCount;
+    int n_Lights;
     Light Lights[50];
 } objectData;
 
@@ -97,9 +97,7 @@ struct Payload
     int geomID;
 };
 
-// -----------------------------------
-// FOR PSEUDO RANDOM NUMBER GENERATION
-// -----------------------------------
+//----------------------------------RNG----------------------------------
 
 uint GenerateSeed()
 {
@@ -119,6 +117,10 @@ float Randf01()
     return float(PCGHash()) / 4294967295.0;
 }
 
+//----------------------------------RNG----------------------------------
+
+//--------------------------Sphere/Disc Sampling-------------------------
+
 vec2 UniformSampleUnitCircle(float r1, float r2)
 {
     float theta = r1 * 2.0 * PI;
@@ -136,7 +138,7 @@ vec3 UniformSampleUnitSphere(float u1, float u2)
     float y = r * sin(theta);
     dir = vec3(x, y, z);
 
-    return dir;
+    return normalize(dir);
 }
 
 vec3 CosineSampleHemisphere(float r1, float r2, vec3 N)
@@ -158,6 +160,8 @@ vec3 NoTangentCosineHemisphere(float u1, float u2, vec3 N)
 {
     return normalize(N + UniformSampleUnitSphere(u1, u2));
 }
+
+//--------------------------Sphere/Disc Sampling-------------------------
 
 float FresnelSchlick(float cosine_t, float n1, float n2)
 {
@@ -209,6 +213,7 @@ vec3 EvalBSDF(Payload hitrec, inout Ray ray, out float pdf)
     float rayProbability = 1.0;
     float raySelectRoll = Randf01();
     vec3 diffuseDir = NoTangentCosineHemisphere(Randf01(), Randf01(), N);
+
     if (raySelectRoll < specularChance)
     {   
         // Reflection ray
@@ -244,36 +249,19 @@ vec3 EvalBSDF(Payload hitrec, inout Ray ray, out float pdf)
 
     pdf = max(rayProbability, EPSILON);
     pdf = 1.0;
-    // return mix(mix(albedo, vec3(1.0), specularFactor), vec3(1.0), refractiveFactor);
+
     return mix(mix(albedo, mix(vec3(1.0), albedo, metallic), specularFactor), vec3(1.0), refractiveFactor);
 }
 
 int GetLightIndex(int geomID)
 {
-    for (int i = 0; i < g_ObjectCounts.z; i++)
+    if (objectData.n_Lights == 0) return -1;
+
+    for (int i = 0; i < objectData.n_Lights; i++)
     {
         if (geomID == objectData.Lights[i].geomID)
             return i;
     }
-    return -1;
-}
-
-Ray ComputeWorldSpaceRay(vec2 uv)
-{
-    // Local Space => World Space => View Space => Clip Space => NDC
-    vec4 ndc = vec4(uv, -1.0, 1.0);
-    vec4 clip_pos = u_InverseProjection * ndc;
-    clip_pos.zw = vec2(-1.0, 0.0);
-
-    // Ray direction in world space
-    vec3 d = normalize(u_InverseView * clip_pos).xyz;
-
-    Ray r;
-
-    r.origin = u_RayOrigin;
-    r.direction = d;
-
-    return r;
 }
 
 bool RaySphereIntersect(Ray ray, Sphere sphere, out float t1, out float t2)
@@ -308,11 +296,11 @@ bool RayAABBIntersect(Ray ray, AABB aabb, out float t1, out float t2)
     t2 = FLT_MAX;
 
     vec3 inv_D =  1.0 / ray.direction;
-    vec3 p0 = aabb.minCorner;
-    vec3 p1 = aabb.maxCorner;
+    vec3 bmin = aabb.position - aabb.dimensions * 0.5;
+    vec3 bmax = aabb.position + aabb.dimensions * 0.5;
 
-    vec3 tLower = (p0 - ray.origin) * inv_D;
-    vec3 tUpper = (p1 - ray.origin) * inv_D;
+    vec3 tLower = (bmin - ray.origin) * inv_D;
+    vec3 tUpper = (bmax - ray.origin) * inv_D;
 
     vec3 tMins = min(tLower, tUpper);
     vec3 tMaxes = max(tLower, tUpper);
@@ -325,8 +313,11 @@ bool RayAABBIntersect(Ray ray, AABB aabb, out float t1, out float t2)
 
 vec3 GetAABBNormal(AABB aabb, vec3 surfacePosition)
 {
-    vec3 halfSize = (aabb.maxCorner - aabb.minCorner) * 0.5;
-    vec3 centerSurface = surfacePosition - (aabb.maxCorner + aabb.minCorner) * 0.5;
+    vec3 bmin = aabb.position - aabb.dimensions * 0.5;
+    vec3 bmax = aabb.position + aabb.dimensions * 0.5;
+
+    vec3 halfSize = (bmax - bmin) * 0.5;
+    vec3 centerSurface = surfacePosition - (bmax + bmin) * 0.5;
     
     vec3 normal = vec3(0.0);
     normal += vec3(sign(centerSurface.x), 0.0, 0.0) * step(abs(abs(centerSurface.x) - halfSize.x), EPSILON);
@@ -347,6 +338,24 @@ vec3 GetSphereNormal(Sphere sphere, vec3 surfacePosition)
 
 //     return AABB(centre - vec3(radius), centre + vec3(radius));
 // }
+
+Ray ComputeWorldSpaceRay(vec2 uv)
+{
+    // Local Space => World Space => View Space => Clip Space => NDC
+    vec4 ndc = vec4(uv, -1.0, 1.0);
+    vec4 clip_pos = u_InverseProjection * ndc;
+    clip_pos.zw = vec2(-1.0, 0.0);
+
+    // Ray direction in world space
+    vec3 d = normalize(u_InverseView * clip_pos).xyz;
+
+    Ray r;
+
+    r.origin = u_RayOrigin;
+    r.direction = d;
+
+    return r;
+}
 
 Payload ClosestHit(Ray ray, float t, int objectIndex)
 {
@@ -388,7 +397,7 @@ Payload TraceRay(Ray ray)
     float t1;
     float t2;
 
-    for (int i = 0; i < g_ObjectCounts.x; i++)
+    for (int i = 0; i < objectData.n_Spheres; i++)
     {        
         Sphere sphere = objectData.Spheres[i];
         if (RaySphereIntersect(ray, sphere, t1, t2) && t2 > 0.01 && t1 < hitrec.t)
@@ -406,7 +415,7 @@ Payload TraceRay(Ray ray)
         }
     }
 
-    for (int i = 0; i < g_ObjectCounts.y; i++)
+    for (int i = 0; i < objectData.n_AABBs; i++)
     {        
         AABB aabb = objectData.aabbs[i];
         if (RayAABBIntersect(ray, aabb, t1, t2) && t2 > 0.01 && t1 < hitrec.t)
@@ -442,7 +451,6 @@ vec3 PerPixel(Ray ray)
         if (HitRec.t == FLT_MAX)
         {
             radiance += Miss(normalize(ray.direction)) * throughput;
-            // radiance += vec3(0.0) * throughput;
             break;
         }
 
@@ -455,7 +463,6 @@ vec3 PerPixel(Ray ray)
         // }
         
         // Consider emissive materials
-        // if (any(greaterThan(HitRec.mat.emissive, vec3(0.0))))
         if (HitRec.mat.emissive.x + HitRec.mat.emissive.y + HitRec.mat.emissive.z != 0.0)
         {
             radiance += HitRec.mat.emissive * HitRec.mat.emissiveStrength * throughput;
@@ -498,8 +505,7 @@ vec3 PerPixel(Ray ray)
 
         /* Russian Roulette */
         // As throughput gets smaller, the probability (rrp) of terminating the path early increases
-        // given a minimum depth
-        // Surviving paths have their value boosted to compensate for fewer samples being in the average
+        // Surviving paths have their value boosted to compensate for terminated paths
         float rrp = min(0.95, max(throughput.x, max(throughput.y, throughput.z)));
         if (i > 3)
         {
