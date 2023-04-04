@@ -43,7 +43,7 @@ int main(void)
         float current_frame = glfwGetTime();
 
         // Input
-        window.ProcessInput(scene.SelectedIdx, scene.spheres.size());
+        window.ProcessInput();
         vsync == true ? glfwSwapInterval(1) : glfwSwapInterval(0);
 
         gui.NewFrame();
@@ -60,21 +60,27 @@ int main(void)
         {
             glBindBuffer(GL_UNIFORM_BUFFER, ObjectsDataUBO); GLCall;
             int offset = 0;
-            int sphereCount = scene.spheres.size();
-            int aabbCount = scene.aabbs.size();
-            int lightCount = scene.lights.size();
+            int n_Spheres = scene.spheres.size();
+            int n_AABBs = scene.aabbs.size();
+            int n_Lights = scene.lights.size();
 
             std::vector<GPUSphere> spheres;
-            for (int i = 0; i < sphereCount; i++)
+            for (int i = 0; i < n_Spheres; i++)
             {
                 spheres.push_back(scene.spheres[i].sphere);
             }
-            // Set Sphere object data and Lights data
-            glBufferSubData(GL_UNIFORM_BUFFER, offset, sphereCount * sizeof(GPUSphere), spheres.data());
+            // Update Oject and Lights data
+            glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &n_Spheres);
+            offset += sizeof(glm::vec4);
+            glBufferSubData(GL_UNIFORM_BUFFER, offset, n_Spheres * sizeof(GPUSphere), spheres.data());
             offset += (50) * sizeof(GPUSphere);
-            glBufferSubData(GL_UNIFORM_BUFFER, offset, aabbCount * sizeof(GPUAABB), scene.aabbs.data());
-            // offset += aabbCount * sizeof(GPUAABB);
-            // glBufferSubData(GL_UNIFORM_BUFFER, offset, scene.lights.size() * sizeof(Light), scene.lights.data());
+            glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &n_AABBs);
+            offset += sizeof(glm::vec4);
+            glBufferSubData(GL_UNIFORM_BUFFER, offset, n_AABBs * sizeof(GPUAABB), scene.aabbs.data());
+            offset += (50) * sizeof(GPUAABB);
+            glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &n_Lights);
+            offset += sizeof(glm::vec4);
+            glBufferSubData(GL_UNIFORM_BUFFER, offset, scene.lights.size() * sizeof(Light), scene.lights.data());
         }
 
         renderer.Render(scene, camera, VAO);
@@ -109,9 +115,9 @@ int main(void)
 void SetupUBOs(Renderer& renderer, Scene& scene, uint32_t& ObjectsDataUBO)
 {
     renderer.GetShader()->Bind();
-    int sphereCount = scene.spheres.size();
-    int aabbCount = scene.aabbs.size();
-    int lightCount = scene.lights.size();
+    int n_Spheres = scene.spheres.size();
+    int n_AABBs = scene.aabbs.size();
+    int n_Lights = scene.lights.size();
 
     uint32_t block = glGetUniformBlockIndex(renderer.GetShader()->GetID(), "ObjectData"); GLCall;
     uint32_t bind = 0;
@@ -123,7 +129,7 @@ void SetupUBOs(Renderer& renderer, Scene& scene, uint32_t& ObjectsDataUBO)
     glBufferData(GL_UNIFORM_BUFFER, 50 * sizeof(GPUSphere) + 50 * sizeof(GPUAABB), nullptr, GL_DYNAMIC_DRAW); GLCall;
 
     std::vector<GPUSphere> spheres;
-    for (int i = 0; i < sphereCount; i++)
+    for (int i = 0; i < n_Spheres; i++)
     {
         spheres.push_back(scene.spheres[i].sphere);
     }
@@ -131,11 +137,17 @@ void SetupUBOs(Renderer& renderer, Scene& scene, uint32_t& ObjectsDataUBO)
         int offset = 0;
 
         // Set Sphere object data
-        glBufferSubData(GL_UNIFORM_BUFFER, offset, sphereCount * sizeof(GPUSphere), spheres.data());
-        offset += 50 * sizeof(GPUSphere);
-        glBufferSubData(GL_UNIFORM_BUFFER, offset, aabbCount * sizeof(GPUAABB), scene.aabbs.data());
-        // offset += aabbCount * sizeof(GPUAABB);
-        // glBufferSubData(GL_UNIFORM_BUFFER, offset, lightCount * sizeof(Light), scene.lights.data());
+        glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &n_Spheres);
+        offset += sizeof(glm::vec4);
+        glBufferSubData(GL_UNIFORM_BUFFER, offset, n_Spheres * sizeof(GPUSphere), spheres.data());
+        offset += (50) * sizeof(GPUSphere);
+        glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &n_AABBs);
+        offset += sizeof(glm::vec4);
+        glBufferSubData(GL_UNIFORM_BUFFER, offset, n_AABBs * sizeof(GPUAABB), scene.aabbs.data());
+        offset += (50) * sizeof(GPUAABB);
+        glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &n_Lights);
+        offset += sizeof(glm::vec4);
+        glBufferSubData(GL_UNIFORM_BUFFER, offset, scene.lights.size() * sizeof(Light), scene.lights.data());
     }
 
     renderer.GetShader()->Unbind();
