@@ -75,7 +75,7 @@ void Scene::GridShowcase()
         for (int j = 0; j < side; j++)
         {
             Sphere sp;
-            sp.label = "Sphere " + std::to_string(i);
+            sp.label = "Sphere " + std::to_string(i) + std::to_string(j);
             GPUSphere& s = sp.sphere;
             s.geomID = idOffset;
             s.position = glm::vec3((float)i * delta - offset, 0.0f, (float)j * delta - offset);
