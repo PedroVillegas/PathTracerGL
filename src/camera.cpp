@@ -45,7 +45,7 @@ bool Camera::Cinematic(float dt, Window* window)
     GLFWwindow* glfw_win = window->GetWindow();
 
     // Rotation delta
-    glm::vec3 dr {0.0f}; // {yaw, pitch, roll}
+    glm::vec3 dr { 0.0f }; // {yaw, pitch, roll}
 
     // dr.x = (glfwGetKey(glfw_win, GLFW_KEY_RIGHT) == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_LEFT) == GLFW_PRESS);
     // dr.y = (glfwGetKey(glfw_win, GLFW_KEY_UP) == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_DOWN) == GLFW_PRESS);
@@ -56,7 +56,7 @@ bool Camera::Cinematic(float dt, Window* window)
 
     m_RotationMomentum = (m_RotationMomentum * damping) + (dr * (1-damping));
 
-    float rlen = glm::sqrt(glm::dot(m_RotationMomentum, m_RotationMomentum));
+    float rlen = glm::length(m_RotationMomentum);
     if (rlen > 1e-3f) // still rotating?
     {
         float yaw = -glm::radians(m_RotationMomentum.x) * dt * sensitivity;
@@ -86,17 +86,16 @@ bool Camera::Cinematic(float dt, Window* window)
     dm.x = (glfwGetKey(glfw_win, GLFW_KEY_D) == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_A) == GLFW_PRESS);
     dm.y = (glfwGetKey(glfw_win, GLFW_KEY_SPACE) == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS);
     dm.z = (glfwGetKey(glfw_win, GLFW_KEY_W) == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_S) == GLFW_PRESS);
-    float mlen = glm::sqrt(glm::dot(dm, dm)) / m_TopSpeed; 
+    float mlen = glm::length(dm) / m_TopSpeed; 
     if (mlen < 1e-3f) mlen = 1.0f;
 
-    glm::vec3 f, u, r;
-    f = m_Forward;
-    u = m_Up;
-    r = m_Right;
+    glm::mat3 matOrient;
 
-    m_MovementMomentum.x = m_MovementMomentum.x * damping + (1-damping) * (r.x*dm.x + r.y*dm.y + r.z*dm.z)/mlen;
-    m_MovementMomentum.y = m_MovementMomentum.y * damping + (1-damping) * (u.x*dm.x + u.y*dm.y + u.z*dm.z)/mlen;
-    m_MovementMomentum.z = m_MovementMomentum.z * damping + (1-damping) * (f.x*dm.x + f.y*dm.y + f.z*dm.z)/mlen;
+    matOrient[2] = m_Forward; //m_MatOrientation[0];
+    matOrient[1] = m_Up; //m_MatOrientation[1];
+    matOrient[0] = m_Right; //m_MatOrientation[2];
+
+    m_MovementMomentum = m_MovementMomentum * damping + (1.0f - damping) * matOrient * dm / mlen;
 
     m_Position += m_MovementMomentum * dt;
 
@@ -156,8 +155,8 @@ bool Camera::FPS(float dt, Window* window)
         delta = (cursor_pos - m_LastMousePosition);
         m_LastMousePosition = cursor_pos;
         
-        float dx = glm::radians(delta.x) * dt * sensitivity*0.1;
-        float dy = glm::radians(delta.y) * dt * sensitivity*0.1;
+        float dx = glm::radians(delta.x) * dt * sensitivity * 0.1f;
+        float dy = glm::radians(delta.y) * dt * sensitivity * 0.1f;
 
         if (dx != 0.0f || dy != 0.0f)
         {
@@ -168,28 +167,28 @@ bool Camera::FPS(float dt, Window* window)
 
             m_Forward = glm::normalize(m_QuatOrientation * glm::vec3(0.0f, 0.0f, -1.0f));
             // m_Up = glm::normalize(m_QuatOrientation * glm::vec3(0.0f, 1.0f, 0.0f)); // Rotating the Up vector introduces roll
-            m_Right = glm::normalize(m_QuatOrientation * glm::vec3(1.0f, 0.0f, 0.0f));
+            // m_Right = glm::normalize(m_QuatOrientation * glm::vec3(1.0f, 0.0f, 0.0f));
+            m_Right = glm::normalize(glm::cross(m_Forward, m_Up));
 
             RecalculateView();
         }
 
-        // Momentum delta
+        // Movement delta
         glm::vec3 M {0.0f, 0.0f, 0.0f};
 
         M.x = (glfwGetKey(glfw_win, GLFW_KEY_D)     == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_A)          == GLFW_PRESS);
         M.y = (glfwGetKey(glfw_win, GLFW_KEY_SPACE) == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS);
         M.z = (glfwGetKey(glfw_win, GLFW_KEY_W)     == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_S)          == GLFW_PRESS);
-        float mlen = glm::sqrt(glm::dot(M, M)) / m_TopSpeed; 
+        float mlen = glm::length(M) / m_TopSpeed; 
         if (mlen < 1e-3f) mlen = 1.0f;
 
-        glm::vec3 f, u, r;
-        f = m_Forward; //m_MatOrientation[0];
-        u = m_Up; //m_MatOrientation[1];
-        r = m_Right; //m_MatOrientation[2];
+        glm::mat3 matOrient;
 
-        m_MovementMomentum.x = m_MovementMomentum.x * damping + (1-damping) * (r.x * M.x + r.y * M.y + r.z * M.z) / mlen;
-        m_MovementMomentum.y = m_MovementMomentum.y * damping + (1-damping) * (u.x * M.x + u.y * M.y + u.z * M.z) / mlen;
-        m_MovementMomentum.z = m_MovementMomentum.z * damping + (1-damping) * (f.x * M.x + f.y * M.y + f.z * M.z) / mlen;
+        matOrient[2] = m_Forward; //m_MatOrientation[0];
+        matOrient[1] = m_Up; //m_MatOrientation[1];
+        matOrient[0] = m_Right; //m_MatOrientation[2];
+
+        m_MovementMomentum = m_MovementMomentum * damping + (1.0f - damping) * matOrient * M / mlen;
 
         m_Position += m_MovementMomentum * dt;
 
