@@ -47,11 +47,10 @@ bool Camera::Cinematic(float dt, Window* window)
     // Rotation delta
     glm::vec3 dr { 0.0f }; // {yaw, pitch, roll}
 
-    // dr.x = (glfwGetKey(glfw_win, GLFW_KEY_RIGHT) == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_LEFT) == GLFW_PRESS);
-    // dr.y = (glfwGetKey(glfw_win, GLFW_KEY_UP) == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_DOWN) == GLFW_PRESS);
-
-    dr.x = (glfwGetKey(glfw_win, GLFW_KEY_SEMICOLON) == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_K) == GLFW_PRESS);
-    dr.y = (glfwGetKey(glfw_win, GLFW_KEY_O) == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_L) == GLFW_PRESS);
+    dr.x = (glfwGetKey(glfw_win, GLFW_KEY_RIGHT) == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_LEFT) == GLFW_PRESS);
+    dr.y = (glfwGetKey(glfw_win, GLFW_KEY_UP) == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_DOWN) == GLFW_PRESS);
+    // dr.x = (glfwGetKey(glfw_win, GLFW_KEY_SEMICOLON) == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_K) == GLFW_PRESS);
+    // dr.y = (glfwGetKey(glfw_win, GLFW_KEY_O) == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_L) == GLFW_PRESS);
     dr.z = (glfwGetKey(glfw_win, GLFW_KEY_E) == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_Q) == GLFW_PRESS);
 
     m_RotationMomentum = (m_RotationMomentum * damping) + (dr * (1-damping));

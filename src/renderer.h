@@ -28,8 +28,8 @@ public:
     Framebuffer GetViewportFramebuffer() const { return m_FinalOutputFBO; }
     uint GetIterations() const { return m_SampleIterations; }
 
-    void SetClearColour(const glm::vec4& colour) { glClearColor(colour.r, colour.g, colour.b, colour.a); GLCall; }
-    void Clear() { glClear(GL_COLOR_BUFFER_BIT); GLCall; }
+    void SetClearColour(float r, float g, float b, float a) { glClearColor(r, g, b, a); }
+    void Clear() { glClear(GL_COLOR_BUFFER_BIT); }
 
     void Render(const Scene& scene, const Camera& camera, uint VAO);
     void ResetSamples() { m_SampleIterations = 0; }

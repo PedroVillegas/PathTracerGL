@@ -40,7 +40,8 @@ struct alignas(16) Light
 {
     glm::vec3 position { 0.0f };
     float radius = 1.0f;
-
+    glm::vec3 dimensions { 1.0f };
+    int type = 0;
     glm::vec3 emissive { 0.0f };
     int geomID;
 };
@@ -75,16 +76,6 @@ struct Sphere
 {
     std::string label; 
     GPUSphere sphere;
-
-    Light GetLight()
-    {
-        Light light;
-        light.position = sphere.position;
-        light.radius = sphere.radius;
-        light.emissive = sphere.mat.emissive;
-        light.geomID = sphere.geomID;
-        return light;
-    }
 };
 
 struct Scene

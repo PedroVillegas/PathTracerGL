@@ -52,7 +52,7 @@ void Renderer::OnResize(uint width, uint height)
 
 void Renderer::Render(const Scene& scene, const Camera& camera, uint VAO)
 {
-    SetClearColour(glm::vec4(0.0f));
+    SetClearColour(0.0f, 0.0f, 0.0f, 1.0f); GLCall;
     m_Scene = &scene;
     m_Camera = &camera;
 
@@ -62,46 +62,46 @@ void Renderer::Render(const Scene& scene, const Camera& camera, uint VAO)
     glActiveTexture(GL_TEXTURE0); GLCall;
     glBindTexture(GL_TEXTURE_2D, m_AccumulationFBO.GetTextureID()); GLCall;
 
-    m_PathTraceShader->Bind();
-    m_PathTraceShader->SetUniformInt("u_AccumulationTexture", 0);
-    m_PathTraceShader->SetUniformInt("u_SampleIterations", m_SampleIterations);
-    m_PathTraceShader->SetUniformInt("u_SamplesPerPixel", m_Scene->samplesPerPixel);
-    m_PathTraceShader->SetUniformInt("u_Depth", m_Scene->maxRayDepth);
-    m_PathTraceShader->SetUniformInt("u_Day", m_Scene->day);
-    // m_PathTraceShader->SetUniformInt("u_SelectedObjIdx", m_Scene->SelectedIdx);
-    // m_PathTraceShader->SetUniformVec3("u_LightDir", m_Scene->lightDirection.x, m_Scene->lightDirection.y, m_Scene->lightDirection.z);
-    m_PathTraceShader->SetUniformFloat("u_Aperture", m_Camera->aperture);
-    m_PathTraceShader->SetUniformFloat("u_FocalLength", m_Camera->focal_length);
-    m_PathTraceShader->SetUniformVec2("u_Resolution", float(m_ViewportWidth), float(m_ViewportHeight));
-    m_PathTraceShader->SetUniformVec3("u_RayOrigin", m_Camera->GetPosition().x, m_Camera->GetPosition().y, m_Camera->GetPosition().z);
-    // m_PathTraceShader->SetUniformVec3("u_ObjectCounts", m_Scene->spheres.size(), m_Scene->aabbs.size(), m_Scene->lights.size());
-    m_PathTraceShader->SetUniformMat4("u_InverseProjection", m_Camera->GetInverseProjection());
-    m_PathTraceShader->SetUniformMat4("u_InverseView", m_Camera->GetInverseView());
-    // m_PathTraceShader->SetUniformMat4("u_ViewProjection", m_Camera->GetView() * m_Camera->GetProjection());
+    m_PathTraceShader->Bind(); GLCall;
+    m_PathTraceShader->SetUniformInt("u_AccumulationTexture", 0); GLCall;
+    m_PathTraceShader->SetUniformInt("u_SampleIterations", m_SampleIterations); GLCall;
+    m_PathTraceShader->SetUniformInt("u_SamplesPerPixel", m_Scene->samplesPerPixel); GLCall;
+    m_PathTraceShader->SetUniformInt("u_Depth", m_Scene->maxRayDepth); GLCall;
+    m_PathTraceShader->SetUniformInt("u_Day", m_Scene->day); GLCall;
+    // m_PathTraceShader->SetUniformInt("u_SelectedObjIdx", m_Scene->SelectedIdx); GLCall;
+    // m_PathTraceShader->SetUniformVec3("u_LightDir", m_Scene->lightDirection.x, m_Scene->lightDirection.y, m_Scene->lightDirection.z); GLCall;
+    m_PathTraceShader->SetUniformFloat("u_Aperture", m_Camera->aperture); GLCall;
+    m_PathTraceShader->SetUniformFloat("u_FocalLength", m_Camera->focal_length); GLCall;
+    m_PathTraceShader->SetUniformVec2("u_Resolution", float(m_ViewportWidth), float(m_ViewportHeight)); GLCall;
+    m_PathTraceShader->SetUniformVec3("u_RayOrigin", m_Camera->GetPosition().x, m_Camera->GetPosition().y, m_Camera->GetPosition().z); GLCall;
+    // m_PathTraceShader->SetUniformVec3("u_ObjectCounts", m_Scene->spheres.size(), m_Scene->aabbs.size(), m_Scene->lights.size()); GLCall;
+    m_PathTraceShader->SetUniformMat4("u_InverseProjection", m_Camera->GetInverseProjection()); GLCall;
+    m_PathTraceShader->SetUniformMat4("u_InverseView", m_Camera->GetInverseView()); GLCall;
+    // m_PathTraceShader->SetUniformMat4("u_ViewProjection", m_Camera->GetView() * m_Camera->GetProjection()); GLCall;
 
-    m_PathTraceFBO.Bind();
+    m_PathTraceFBO.Bind(); GLCall;
 
-    Clear();
+    Clear(); GLCall;
     glBindVertexArray(VAO); GLCall;
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); GLCall;
     glBindVertexArray(0); GLCall;
 
-    m_PathTraceFBO.Unbind();
+    m_PathTraceFBO.Unbind(); GLCall;
     m_PathTraceShader->Unbind();
 
     // Second Pass:
     // This pass is used to copy the previous pass' output (m_PathTraceFBO) onto m_AccumulationFBO which will hold the data 
     // until used again for the first pass of the next frame
-    m_AccumShader->Bind();
-    m_AccumulationFBO.Bind();
+    m_AccumShader->Bind(); GLCall;
+    m_AccumulationFBO.Bind(); GLCall;
 
     glActiveTexture(GL_TEXTURE0); GLCall;
     glBindTexture(GL_TEXTURE_2D, m_PathTraceFBO.GetTextureID()); GLCall;
 
-    m_AccumShader->SetUniformInt("u_PathTraceTexture", 0);
-    m_AccumShader->SetUniformVec2("u_Resolution", float(m_ViewportWidth), float(m_ViewportHeight));
+    m_AccumShader->SetUniformInt("u_PathTraceTexture", 0); GLCall;
+    m_AccumShader->SetUniformVec2("u_Resolution", float(m_ViewportWidth), float(m_ViewportHeight)); GLCall;
 
-    Clear();
+    Clear(); GLCall;
     glBindVertexArray(VAO); GLCall;
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); GLCall;
     glBindVertexArray(0); GLCall;
@@ -109,23 +109,23 @@ void Renderer::Render(const Scene& scene, const Camera& camera, uint VAO)
     glActiveTexture(GL_TEXTURE0); GLCall;
     glBindTexture(GL_TEXTURE_2D, m_AccumulationFBO.GetTextureID()); GLCall;
 
+    m_AccumulationFBO.Unbind(); GLCall;
     m_AccumShader->Unbind();
-    m_AccumulationFBO.Unbind();
 
     // Final pass:
     // Now use the texture from either of the other FBO's and divide by the frame count
-    m_FinalOutputShader->Bind();  
-    m_FinalOutputFBO.Bind();
-    m_FinalOutputShader->SetUniformInt("u_PT_Texture", 0);
-    m_FinalOutputShader->SetUniformVec2("u_Resolution", float(m_ViewportWidth), float(m_ViewportHeight));
+    m_FinalOutputShader->Bind(); GLCall;
+    m_FinalOutputFBO.Bind(); GLCall;
+    m_FinalOutputShader->SetUniformInt("u_PT_Texture", 0); GLCall;
+    m_FinalOutputShader->SetUniformVec2("u_Resolution", float(m_ViewportWidth), float(m_ViewportHeight)); GLCall;
 
-    Clear();
+    Clear(); GLCall;
     glBindVertexArray(VAO); GLCall;
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); GLCall;
     glBindVertexArray(0); GLCall;
 
-    m_FinalOutputFBO.Unbind();
-    m_FinalOutputShader->Unbind();  
+    m_FinalOutputFBO.Unbind(); GLCall;
+    m_FinalOutputShader->Unbind();
 
     m_SampleIterations++;
 }

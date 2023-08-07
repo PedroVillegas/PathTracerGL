@@ -17,6 +17,8 @@ void Gui::NewFrame()
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
     ImGui::DockSpaceOverViewport(ImGui::GetMainViewport());
+    // ImGui::ShowDemoWindow();
+
 }
 
 void Gui::Render(Renderer& renderer, Camera& camera, Scene& scene, bool& vsync)
@@ -31,7 +33,6 @@ void Gui::Render(Renderer& renderer, Camera& camera, Scene& scene, bool& vsync)
         ImGui::End();
     }
 
-    // TODO: Make renderer shared_ptr
     Gui::CreateCameraWindow(renderer, camera);
     Gui::CreateSceneWindow(renderer, camera, scene);
 
@@ -80,7 +81,7 @@ void Gui::CreateCameraWindow(Renderer& renderer, Camera& camera)
         ImGui::Text("f-number: f/%0.5f", camera.focal_length / camera.aperture);
 
         ImGui::Text("FOV");
-        if (ImGui::SliderInt("##FOV", &camera.horizontalFOV, 45, 120))
+        if (ImGui::SliderFloat("##FOV", &camera.horizontalFOV, 10.0f, 120.0f))
         {
             camera.SetFov(camera.horizontalFOV);
             camera.RecalculateProjection();
@@ -179,11 +180,11 @@ void Gui::CreateSceneWindow(Renderer& renderer, const Camera& camera, Scene& sce
                 items[i] = scene.spheres[i].label.c_str();
             }
 
-            static const char* current_item = items[scene.SphereIdx];
             if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_LeftArrow))) 
                 scene.SphereIdx = scene.SphereIdx == 0 ? scene.spheres.size() - 1 : scene.SphereIdx - 1;
             if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_RightArrow))) 
                 scene.SphereIdx = scene.SphereIdx == scene.spheres.size() - 1 ? 0 : scene.SphereIdx + 1;
+            static const char* current_item = items[scene.SphereIdx];
                 
             ImGui::Text("Selected Sphere Idx: %i", scene.SphereIdx);
             ImGui::Text("Select Sphere");

@@ -50,7 +50,7 @@ uint Shader::CompileShader(uint type, const std::string& source)
         return 0;
     }
 
-    std::cout << "Successfully compiled " << (type == GL_VERTEX_SHADER ? "vertex" : "fragment") << " shader." << std::endl;
+    // std::cout << "Successfully compiled " << (type == GL_VERTEX_SHADER ? "vertex" : "fragment") << " shader." << std::endl;
 
     return id;
 }
@@ -82,7 +82,7 @@ uint Shader::CreateShader(const std::string& vertexShader, const std::string& fr
         return 0;
     }
 
-    std::cout << "Successfully linked shaders" << std::endl; 
+    // std::cout << "Successfully linked shaders" << std::endl; 
 
     glDeleteShader(vs); GLCall;
     glDeleteShader(fs); GLCall;
@@ -92,42 +92,42 @@ uint Shader::CreateShader(const std::string& vertexShader, const std::string& fr
 
 void Shader::Bind() const
 {
-    glUseProgram(m_ID); GLCall;
+    glUseProgram(m_ID);
 }
 
 void Shader::Unbind() const
 {
-    glUseProgram(0); GLCall;
+    glUseProgram(0);
 }
 
 void Shader::SetUniformInt(const std::string& name, int val)
 {
-    glUniform1i(GetUniformLocation(name), val); GLCall;
+    glUniform1i(GetUniformLocation(name), val);
 }
 
 void Shader::SetUniformFloat(const std::string& name, float val)
 {
-    glUniform1f(GetUniformLocation(name), val); GLCall;
+    glUniform1f(GetUniformLocation(name), val);
 }
 
 void Shader::SetUniformVec2(const std::string& name, float val0, float val1)
 {
-    glUniform2f(GetUniformLocation(name), val0, val1); GLCall;
+    glUniform2f(GetUniformLocation(name), val0, val1);
 }
 
 void Shader::SetUniformVec3(const std::string& name, float val0, float val1, float val2)
 {
-    glUniform3f(GetUniformLocation(name), val0, val1, val2); GLCall;
+    glUniform3f(GetUniformLocation(name), val0, val1, val2);
 }
 
 void Shader::SetUniformVec4(const std::string& name, float val0, float val1, float val2, float val3)
 {
-    glUniform4f(GetUniformLocation(name), val0, val1, val2, val3); GLCall;
+    glUniform4f(GetUniformLocation(name), val0, val1, val2, val3);
 }
 
 void Shader::SetUniformMat4(const std::string& name, const glm::mat4& matrix)
 {
-    glUniformMatrix4fv(GetUniformLocation(name), 1, GL_FALSE, glm::value_ptr(matrix)); GLCall;
+    glUniformMatrix4fv(GetUniformLocation(name), 1, GL_FALSE, glm::value_ptr(matrix));
 }
 
 uint Shader::GetUniformLocation(const std::string &name)
@@ -135,7 +135,7 @@ uint Shader::GetUniformLocation(const std::string &name)
     if (m_UniformLocationCache.find(name) != m_UniformLocationCache.end())
         return m_UniformLocationCache[name];
 
-    uint location = glGetUniformLocation(m_ID, name.c_str()); GLCall;
+    uint location = glGetUniformLocation(m_ID, name.c_str());
     if (location == -1)
         std::cout << "[Warning] Uniform '" << name << "' doesn't exist!" << std::endl;
     

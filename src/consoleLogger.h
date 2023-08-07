@@ -2,13 +2,15 @@
 
 #include <glad/glad.h>
 #include <iostream>
+#include <signal.h>
 
-#define DEBUG_MODE 0
+#define DEBUG 1
 
-#if DEBUG_MODE == 1
-#define GLCall debugGLCall(__FILE__, __LINE__)
+#ifdef DEBUG
+#   define ASSERT(x) if((x) != 0) raise(SIGTRAP);
+#   define GLCall ASSERT(debugGLCall(__FILE__, __LINE__));
 #else
-#define GLCall
+#   define GLCall
 #endif
 
-void debugGLCall(const char* file, uint line);
+GLenum debugGLCall(const char* file, uint line);

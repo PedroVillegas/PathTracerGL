@@ -86,6 +86,8 @@ void main()
     vec3 mapped = ACESFilm(hdrCol);
     // Apply gamma correction
     mapped = LinearToSRGB(mapped);
+    // vignetting
+    mapped *= 0.5 + 0.5*pow( 16.0*uv.x*uv.y*(1.0-uv.x)*(1.0-uv.y), 0.1 );
 
     vec2 centre = u_Resolution * vec2(0.5);
     vec2 d = abs(centre - gl_FragCoord.xy);

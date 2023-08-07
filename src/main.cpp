@@ -56,7 +56,7 @@ int main(void)
         if (camera.type == 1) cameraIsMoving = camera.Cinematic(dt, &window);
 
         if (cameraIsMoving) renderer.ResetSamples();
-
+        
         {
             glBindBuffer(GL_UNIFORM_BUFFER, ObjectsDataUBO); GLCall;
             int offset = 0;
@@ -70,19 +70,18 @@ int main(void)
                 spheres.push_back(scene.spheres[i].sphere);
             }
             // Update Oject and Lights data
-            glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &n_Spheres);
+            glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &n_Spheres); GLCall;
             offset += sizeof(glm::vec4);
-            glBufferSubData(GL_UNIFORM_BUFFER, offset, n_Spheres * sizeof(GPUSphere), spheres.data());
+            glBufferSubData(GL_UNIFORM_BUFFER, offset, n_Spheres * sizeof(GPUSphere), spheres.data()); GLCall;
             offset += (50) * sizeof(GPUSphere);
-            glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &n_AABBs);
+            glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &n_AABBs); GLCall;
             offset += sizeof(glm::vec4);
-            glBufferSubData(GL_UNIFORM_BUFFER, offset, n_AABBs * sizeof(GPUAABB), scene.aabbs.data());
+            glBufferSubData(GL_UNIFORM_BUFFER, offset, n_AABBs * sizeof(GPUAABB), scene.aabbs.data()); GLCall;
             offset += (50) * sizeof(GPUAABB);
-            glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &n_Lights);
-            offset += sizeof(glm::vec4);
-            glBufferSubData(GL_UNIFORM_BUFFER, offset, scene.lights.size() * sizeof(Light), scene.lights.data());
+            // glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &n_Lights); GLCall;
+            // offset += sizeof(glm::vec4);
+            // glBufferSubData(GL_UNIFORM_BUFFER, offset, scene.lights.size() * sizeof(Light), scene.lights.data()); GLCall;
         }
-
         renderer.Render(scene, camera, VAO);
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0.0f, 0.0f});
@@ -114,10 +113,10 @@ int main(void)
 
 void SetupUBOs(Renderer& renderer, Scene& scene, uint32_t& ObjectsDataUBO)
 {
-    renderer.GetShader()->Bind();
+    renderer.GetShader()->Bind(); GLCall;
     int n_Spheres = scene.spheres.size();
     int n_AABBs = scene.aabbs.size();
-    int n_Lights = scene.lights.size();
+    int n_Lights = 0; // scene.lights.size();
 
     uint32_t block = glGetUniformBlockIndex(renderer.GetShader()->GetID(), "ObjectData"); GLCall;
     uint32_t bind = 0;
@@ -137,17 +136,17 @@ void SetupUBOs(Renderer& renderer, Scene& scene, uint32_t& ObjectsDataUBO)
         int offset = 0;
 
         // Set Sphere object data
-        glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &n_Spheres);
+        glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &n_Spheres); GLCall;
         offset += sizeof(glm::vec4);
-        glBufferSubData(GL_UNIFORM_BUFFER, offset, n_Spheres * sizeof(GPUSphere), spheres.data());
+        glBufferSubData(GL_UNIFORM_BUFFER, offset, n_Spheres * sizeof(GPUSphere), spheres.data()); GLCall;
         offset += (50) * sizeof(GPUSphere);
-        glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &n_AABBs);
+        glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &n_AABBs); GLCall;
         offset += sizeof(glm::vec4);
-        glBufferSubData(GL_UNIFORM_BUFFER, offset, n_AABBs * sizeof(GPUAABB), scene.aabbs.data());
+        glBufferSubData(GL_UNIFORM_BUFFER, offset, n_AABBs * sizeof(GPUAABB), scene.aabbs.data()); GLCall;
         offset += (50) * sizeof(GPUAABB);
-        glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &n_Lights);
-        offset += sizeof(glm::vec4);
-        glBufferSubData(GL_UNIFORM_BUFFER, offset, scene.lights.size() * sizeof(Light), scene.lights.data());
+        // glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &n_Lights); GLCall;
+        // offset += sizeof(glm::vec4);
+        // glBufferSubData(GL_UNIFORM_BUFFER, offset, scene.lights.size() * sizeof(Light), scene.lights.data()); GLCall;
     }
 
     renderer.GetShader()->Unbind();

@@ -459,7 +459,6 @@ void Scene::RandomizeBRDF()
                     s.mat.emissive = RandVec3();
                     s.mat.emissiveStrength = Randf01() * 5.0f;
                     spheres.push_back(sphere);
-                    lights.push_back(sphere.GetLight());
 
                 } 
                 else if (mat_probability < 0.2f + 0.4f) 

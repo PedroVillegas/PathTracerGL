@@ -26,7 +26,7 @@ uniform sampler2D u_AccumulationTexture;
 uint samples_per_pixel = u_SamplesPerPixel;
 uint g_depth = u_Depth;
 uint g_Seed = 0;
-//vec3 g_ObjectCounts = u_ObjectCounts;
+// vec3 g_ObjectCounts = u_ObjectCounts;
 
 struct Material
 {
@@ -65,6 +65,8 @@ struct Light
 {
     vec3 position;
     float radius;
+    vec3 dimensions;
+    int type;
     vec3 emissive;
     int geomID;
 };
@@ -106,14 +108,14 @@ uint GenerateSeed()
 
 uint PCGHash()
 {
-    uint state = g_Seed * 747796405 + 2891336453;
+    uint state = g_Seed;
+    g_Seed *= 747796405 + 2891336453;
     uint word = ((state >> ((state >> 28) + 4)) ^ state) * 277803737;
     return (word >> 22) ^ word;
 }
 
 float Randf01()
 {
-    g_Seed += 2743589;
     return float(PCGHash()) / 4294967295.0;
 }
 
@@ -133,7 +135,7 @@ vec3 UniformSampleUnitSphere(float u1, float u2)
     vec3 dir;
     float theta = u1 * 2.0 * PI;
     float z = u2 * 2.0 - 1.0;
-    float r = clamp(sqrt(1.0 - z * z), 0.0, 1.0);
+    float r = sqrt(1.0 - z * z);
     float x = r * cos(theta);
     float y = r * sin(theta);
     dir = vec3(x, y, z);
@@ -201,6 +203,7 @@ vec3 EvalBSDF(Payload hitrec, inout Ray ray, out float pdf)
         // x*(1-a) + y*(a)
         float f = FresnelSchlick(abs(dot(V, N)), n1, n2);
         specularChance = mix(specularChance, 1.0, f);
+        // return vec3(specularChance);
 
         // Need to maintain the same probability ratio for refraction and diffuse later.
         refractionChance *= (1.0 - specularChance) / (1.0 - hitrec.mat.specularChance);
@@ -247,7 +250,7 @@ vec3 EvalBSDF(Payload hitrec, inout Ray ray, out float pdf)
     ray.origin = bool(refractiveFactor) ? hitrec.position - N * 0.001 : hitrec.position + N * 0.001;
     ray.direction = scattered;
 
-    pdf = max(rayProbability, EPSILON);
+    // pdf = max(rayProbability, EPSILON);
     pdf = 1.0;
 
     return mix(mix(albedo, mix(vec3(1.0), albedo, metallic), specularFactor), vec3(1.0), refractiveFactor);
@@ -357,33 +360,16 @@ Ray ComputeWorldSpaceRay(vec2 uv)
     return r;
 }
 
-Payload ClosestHit(Ray ray, float t, int objectIndex)
-{
-    Sphere closestSphere = objectData.Spheres[objectIndex];
-    Payload HitRec;
-    
-    HitRec.t = t;
-    HitRec.objectIndex = objectIndex;
-    HitRec.geomID = closestSphere.geomID;
-    HitRec.position = ray.origin + ray.direction * t;
-    HitRec.mat = closestSphere.mat; 
-    vec3 outward_normal = (HitRec.position - closestSphere.position) / closestSphere.radius;
-
-    // Positive dot product means the vectors point in the same direction
-    HitRec.fromInside = dot(ray.direction, outward_normal) > 0.0;
-    HitRec.normal = HitRec.fromInside ? -outward_normal : outward_normal;
-
-    return HitRec;
-}
-
 vec3 Miss(vec3 V)
 {           
-    float t = 0.75*(V.y + 1.0);
+    float t = 0.7*(V.y + 1.0);
+    vec3 horizonColour = 1.2*vec3(1.00,0.90,0.83);
+    vec3 skyColour = vec3(0.40,0.75,1.00);
     vec3 atmosphere;
 
     u_Day == 1 
-            ? atmosphere = mix(vec3(1.0), vec3(0.50, 0.70, 1.00), t)     // Day sky
-            : atmosphere = vec3(0.0); //mix(vec3(0.05), vec3(0.075), t);    // Night sky
+            ? atmosphere = mix(horizonColour, skyColour, t)
+            : atmosphere = vec3(0.0);
 
     return atmosphere;
 }
@@ -391,8 +377,6 @@ vec3 Miss(vec3 V)
 Payload TraceRay(Ray ray)
 {
     Payload hitrec;
-    // int closestSphereIdx = -1;
-    // float t = FLT_MAX;
     hitrec.t = FLT_MAX;
     float t1;
     float t2;
@@ -402,13 +386,9 @@ Payload TraceRay(Ray ray)
         Sphere sphere = objectData.Spheres[i];
         if (RaySphereIntersect(ray, sphere, t1, t2) && t2 > 0.01 && t1 < hitrec.t)
         {
-            // t = t1 < 0 ? t2 : t1;
-            // closestSphereIdx = i;
-
             hitrec.t = t1 < 0 ? t2 : t1;
             hitrec.position = ray.origin + ray.direction * hitrec.t;
             hitrec.mat = sphere.mat; 
-            hitrec.normal = GetSphereNormal(sphere, hitrec.position);
             hitrec.fromInside = hitrec.t == t2;
             vec3 outward_normal = GetSphereNormal(sphere, hitrec.position);
             hitrec.normal = hitrec.fromInside ? -outward_normal : outward_normal;
@@ -428,11 +408,12 @@ Payload TraceRay(Ray ray)
         }
     }
 
-    // if (closestSphereIdx < 0)
-    //     return Miss();
-
     return hitrec;
-    // return ClosestHit(ray, t, closestSphereIdx);
+}
+
+vec3 DirectLighting()
+{
+    return vec3(1.0);
 }
 
 vec3 PerPixel(Ray ray)
@@ -453,14 +434,6 @@ vec3 PerPixel(Ray ray)
             radiance += Miss(normalize(ray.direction)) * throughput;
             break;
         }
-
-        // // Check if object hit is a light source
-        // int lightIdx = GetLightIndex(HitRec.geomID);
-        // if (lightIdx > -1)
-        // {
-        //     Light light = objectData.Lights[lightIdx];
-        //     radiance += light.emissive * throughput;
-        // }
         
         // Consider emissive materials
         if (HitRec.mat.emissive.x + HitRec.mat.emissive.y + HitRec.mat.emissive.z != 0.0)
@@ -469,25 +442,13 @@ vec3 PerPixel(Ray ray)
             break;
         }
 
-        /* MICROFACET */
-        // vec3 scattered = SampleBSDF(HitRec, -ray.direction, HitRec.normal);
-        // vec3 V = -ray.direction;
-        // vec3 L = scattered;
-        // vec3 N = HitRec.normal;
-        // vec3 H = normalize(V + L);
-
-        // float NdotV = max(dot(N,V), EPSILON);
-        // float NdotL = max(dot(N,L), EPSILON);
-        // float NdotH = max(dot(N,H), 0.0);
-        // float HdotL = max(dot(L,H), 0.0);
-
-        // vec3 f = EvalBRDF(HitRec, NdotV, NdotL, NdotH, HdotL);
-        // float pdf = DisneyPdf(HitRec, NdotH, NdotL, HdotL);
-        // throughput *= f / pdf;
-        /* MICROFACET */
-
         // DEBUG: confirm object normals work properly
-        //return vec3(HitRec.normal * 0.5 + 0.5);
+        // return vec3(HitRec.normal * 0.5 + 0.5);
+
+        // Direct Lighting
+        // vec3 d = DirectLighting();
+
+        // radiance += d * throughput;
 
         // https://blog.demofox.org/2020/06/14/casual-shadertoy-path-tracing-3-fresnel-rough-refraction-absorption-orbit-camera/
         if (HitRec.fromInside)
@@ -498,7 +459,7 @@ vec3 PerPixel(Ray ray)
 
         float pdf;
         vec3 bsdf = EvalBSDF(HitRec, ray, pdf);
-
+        // return bsdf;
         throughput *= bsdf / pdf;
         // ray.direction = scattered;
         // ray.origin = HitRec.position + ray.direction * 0.001;
@@ -564,4 +525,5 @@ void main()
     vec4 accumulatedScaledDown = newAccumulationContribution / (u_SampleIterations + 1);
 
     FragColour = accumulatedScaledDown;
+    // FragColour = vec4(Randf01(), Randf01(), Randf01(), 1.0);
 }

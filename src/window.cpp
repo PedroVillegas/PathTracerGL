@@ -2,6 +2,7 @@
 
 void WindowResize(GLFWwindow* window, int width, int height);
 void CursorPosition(GLFWwindow* window, double xPos, double yPos);
+void ScrollCallback(GLFWwindow* window, double x_Offset, double y_Offset);
 
 Window::Window(const char* title, uint width, uint height)
     :
@@ -54,9 +55,11 @@ bool Window::Init()
         return false;
     }
 
-    std::cout << glGetString(GL_VERSION) << std::endl; GLCall;
-    std::cout << glGetString(GL_RENDERER) << std::endl; GLCall;
-
+    std::cout << "\033[1mOpenGL Path Tracing\033[0m" << std::endl;
+    std::cout << std::endl;
+    std::cout << "\033[1mVendor: \033[0m" << (const char*)(glGetString(GL_VENDOR)) << std::endl;
+    std::cout << "\033[1mRenderer: \033[0m" << (const char*)(glGetString(GL_RENDERER)) << std::endl;
+    std::cout << "\033[1mOpenGL Version: \033[0m" << (const char*)(glGetString(GL_VERSION)) << std::endl;
     return true;
 }
 
@@ -75,7 +78,7 @@ void Window::ProcessInput()
 
 void Window::Clear() const
 {
-    glClear(GL_COLOR_BUFFER_BIT); GLCall;
+    glClear(GL_COLOR_BUFFER_BIT);
 }
 
 void Window::Update() const
