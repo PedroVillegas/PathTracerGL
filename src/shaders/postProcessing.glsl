@@ -47,6 +47,17 @@ vec3 ACESFilm(vec3 color)
     return clamp((color * (a * color + b)) / (color * (c * color + d) + e), 0.0, 1.0);
 }
 
+vec3 ACESApprox(vec3 v)
+{
+    v *= 0.6f;
+    float a = 2.51f;
+    float b = 0.03f;
+    float c = 2.43f;
+    float d = 0.59f;
+    float e = 0.14f;
+    return clamp((v*(a*v+b))/(v*(c*v+d)+e), 0.0f, 1.0f);
+}
+
 // Boolean like functions as described here:
 // http://theorangeduck.com/page/avoiding-shader-conditionals
 
@@ -83,11 +94,12 @@ void main()
     vec2 uv = (gl_FragCoord.xy / u_Resolution);
     vec3 hdrCol = texture(u_PT_Texture, uv).rgb;
     // Map HDR to SDR 
+    // vec3 mapped = ACESApprox(hdrCol);
     vec3 mapped = ACESFilm(hdrCol);
     // Apply gamma correction
     mapped = LinearToSRGB(mapped);
     // vignetting
-    mapped *= 0.5 + 0.5*pow( 16.0*uv.x*uv.y*(1.0-uv.x)*(1.0-uv.y), 0.1 );
+    // mapped *= 0.5 + 0.5*pow( 16.0*uv.x*uv.y*(1.0-uv.x)*(1.0-uv.y), 0.1 );
 
     vec2 centre = u_Resolution * vec2(0.5);
     vec2 d = abs(centre - gl_FragCoord.xy);
