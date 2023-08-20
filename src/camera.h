@@ -1,13 +1,9 @@
 #pragma once
 
-#include "window.h"
-#include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
-#include <vector>
-#include <iostream>
+
+#include "window.h"
 
 class Camera
 {
@@ -20,7 +16,7 @@ public:
     bool Orbital(float dt, Window* window);
     bool Cinematic(float dt, Window* window);
     bool FPS(float dt, Window* window);
-    void OnResize(uint width, uint height);
+    void OnResize(uint32_t width, uint32_t height);
     void Reset();
 
     void SetFov(float HorizontalFOV) { m_VerticalFOV = HorizontalFOV * (m_ViewportWidth / m_ViewportHeight); }
@@ -70,5 +66,5 @@ private:
     glm::vec2 m_LastMousePosition { 0.0f, 0.0f };
     bool m_FirstMouse = true;
 
-    uint m_ViewportWidth = 0, m_ViewportHeight = 0;
+    uint32_t m_ViewportWidth = 0, m_ViewportHeight = 0;
 };

@@ -1,4 +1,10 @@
+#include "window.h"
 #include "camera.h"
+
+#include <GLFW/glfw3.h>
+#include <glm/gtc/matrix_transform.hpp>
+#include <vector>
+#include <iostream>
 
 #define PI 3.14159f
 
@@ -179,7 +185,7 @@ bool Camera::FPS(float dt, Window* window)
         M.y = (glfwGetKey(glfw_win, GLFW_KEY_SPACE) == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS);
         M.z = (glfwGetKey(glfw_win, GLFW_KEY_W)     == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_S)          == GLFW_PRESS);
         float mlen = glm::length(M) / m_TopSpeed; 
-        if (mlen < 1e-3f) mlen = 1.0f;
+        if (mlen < 1e-2f) mlen = 1.0f;
 
         glm::mat3 matOrient;
 
@@ -191,16 +197,34 @@ bool Camera::FPS(float dt, Window* window)
 
         m_Position += m_MovementMomentum * dt;
 
+        // FOV Zoom
+        float zoom = (glfwGetKey(glfw_win, GLFW_KEY_E) == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_Q) == GLFW_PRESS);
+        horizontalFOV -= zoom;
+
+        if (horizontalFOV < 10.0f)
+        {
+            horizontalFOV = 10.0f;
+        }
+        if (horizontalFOV > 120.0f)
+        {
+            horizontalFOV = 120.0f;
+        }
+        if (abs(zoom))
+        {   
+            SetFov(horizontalFOV);
+            RecalculateProjection();
+        }
+
         if (glm::length(m_MovementMomentum) < 1e-1f) 
             m_MovementMomentum = {0.0f, 0.0f, 0.0f};
 
-        if (glm::length(m_MovementMomentum) > 0.0 || dx != 0.0 || dy != 0.0) 
+        if (glm::length(m_MovementMomentum) > 0.0 || dx != 0.0 || dy != 0.0 || abs(zoom)) 
             return true;
     }
     return false;
 }
 
-void Camera::OnResize(uint width, uint height)
+void Camera::OnResize(uint32_t width, uint32_t height)
 {
     if (width == m_ViewportWidth && height == m_ViewportHeight)
         return;
