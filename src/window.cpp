@@ -4,7 +4,7 @@ void WindowResize(GLFWwindow* window, int width, int height);
 void CursorPosition(GLFWwindow* window, double xPos, double yPos);
 void ScrollCallback(GLFWwindow* window, double x_Offset, double y_Offset);
 
-Window::Window(const char* title, uint width, uint height)
+Window::Window(const char* title, uint32_t width, uint32_t height)
     :
     m_Title(title),
     m_Width(width),
@@ -92,12 +92,12 @@ bool Window::Closed() const
     return glfwWindowShouldClose(m_Window);
 }
 
-void Window::SetWidth(uint width)
+void Window::SetWidth(uint32_t width)
 {
     m_Width = width;
 }
 
-void Window::SetHeight(uint height)
+void Window::SetHeight(uint32_t height)
 {
     m_Height = height;
 }

@@ -1,19 +1,15 @@
 #pragma once
 
-#include <glad/glad.h>
-#include <iostream>
-#include "consoleLogger.h"
-
 struct FramebufferSpec
 {
-    uint width, height;
+    uint32_t width, height;
 };
 
 class Framebuffer
 {
 private:
-    uint m_ID = 0;
-    uint m_TextureID = 0;
+    uint32_t m_ID = 0;
+    uint32_t m_TextureID = 0;
     FramebufferSpec m_Spec;
 
 public:
@@ -21,18 +17,18 @@ public:
     Framebuffer(FramebufferSpec& FBspec);
     ~Framebuffer();
     
-    void OnResize(uint width, uint height);
+    void OnResize(uint32_t width, uint32_t height);
 
     void Bind() const;
     void Unbind() const;
     void Create();
     void Destroy();
 
-    void SetWidth(uint width);
-    void SetHeight(uint height);
+    void SetWidth(uint32_t width);
+    void SetHeight(uint32_t height);
 
-    uint GetWidth() { return m_Spec.width; }
-    uint GetHeight() { return m_Spec.height; }
+    uint32_t GetWidth() { return m_Spec.width; }
+    uint32_t GetHeight() { return m_Spec.height; }
     FramebufferSpec GetSpec() { return m_Spec; }
-    uint GetTextureID() { return m_TextureID; }
+    uint32_t GetTextureID() { return m_TextureID; }
 };

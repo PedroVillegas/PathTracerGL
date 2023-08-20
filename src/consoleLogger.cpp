@@ -1,6 +1,8 @@
+#include <iostream>
+
 #include "consoleLogger.h"
 
-GLenum debugGLCall(const char* file, uint line)
+GLenum debugGLCall(const char* file, uint32_t line)
 {
     GLenum err;
     while((err = glGetError()) != GL_NO_ERROR)

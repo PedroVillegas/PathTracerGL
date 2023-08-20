@@ -1,3 +1,11 @@
+#include <glm/glm.hpp>
+#include <iostream>
+#include <vector>
+#include <ctime>
+#include <string>
+
+#include "primitives.h"
+#include "materials.h"
 #include "scene.h"
 
 float Randf01()

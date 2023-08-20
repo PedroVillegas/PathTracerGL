@@ -1,3 +1,8 @@
+#include <glad/glad.h>
+#include <iostream>
+#include <signal.h>
+
+#include "consoleLogger.h"
 #include "framebuffer.h"
 
 Framebuffer::Framebuffer()
@@ -13,7 +18,7 @@ Framebuffer::~Framebuffer()
 {
 }
 
-void Framebuffer::OnResize(uint width, uint height)
+void Framebuffer::OnResize(uint32_t width, uint32_t height)
 {
     m_Spec.width = width;
     m_Spec.height = height;
@@ -68,12 +73,12 @@ void Framebuffer::Unbind() const
     glBindFramebuffer(GL_FRAMEBUFFER, 0); GLCall;
 }
 
-void Framebuffer::SetWidth(uint width)
+void Framebuffer::SetWidth(uint32_t width)
 {
     m_Spec.width = width;
 }
 
-void Framebuffer::SetHeight(uint height)
+void Framebuffer::SetHeight(uint32_t height)
 {
     m_Spec.height = height;
 }

@@ -1,5 +1,7 @@
 #pragma once
 
+#define GLFW_INCLUDE_NONE
+
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
@@ -9,7 +11,7 @@ class Window
 {
 public:
     Window() {}
-    Window(const char* title, uint width, uint height);
+    Window(const char* title, uint32_t width, uint32_t height);
     ~Window();
     void ProcessInput();
     void Clear() const;
@@ -17,14 +19,14 @@ public:
     bool Closed() const;
 
     GLFWwindow* GetWindow() const { return m_Window; }
-    uint GetWidth() const { return m_Width; }
-    void SetWidth(uint width);
-    uint GetHeight() const { return m_Height; }
-    void SetHeight(uint height);
+    uint32_t GetWidth() const { return m_Width; }
+    void SetWidth(uint32_t width);
+    uint32_t GetHeight() const { return m_Height; }
+    void SetHeight(uint32_t height);
 private:
     bool Init();
 private:
     const char* m_Title;
-    uint m_Width, m_Height;
+    uint32_t m_Width, m_Height;
     GLFWwindow* m_Window;
 };

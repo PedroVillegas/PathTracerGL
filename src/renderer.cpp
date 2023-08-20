@@ -1,7 +1,12 @@
-#include "renderer.h"
+#include "imgui/imgui.h"
+#include <glad/glad.h>
+#include <glm/glm.hpp>
 #include <stdio.h>
 
-Renderer::Renderer(Shader& PathTracerShader, Shader& AccumShader, Shader& FinalOutputShader, uint ViewportWidth, uint ViewportHeight)
+#include "consoleLogger.h"
+#include "renderer.h"
+
+Renderer::Renderer(Shader& PathTracerShader, Shader& AccumShader, Shader& FinalOutputShader, uint32_t ViewportWidth, uint32_t ViewportHeight)
     :
     m_PathTraceShader(&PathTracerShader),
     m_AccumShader(&AccumShader),
@@ -26,17 +31,17 @@ Renderer::~Renderer()
     m_FinalOutputFBO.Destroy();
 }
 
-void Renderer::SetViewportWidth(uint width)
+void Renderer::SetViewportWidth(uint32_t width)
 {
     m_ViewportWidth = width;
 }
 
-void Renderer::SetViewportHeight(uint height)
+void Renderer::SetViewportHeight(uint32_t height)
 {
     m_ViewportWidth = height;
 }
 
-void Renderer::OnResize(uint width, uint height)
+void Renderer::OnResize(uint32_t width, uint32_t height)
 {
     if (width == m_ViewportWidth && height == m_ViewportHeight)
         return;
@@ -50,7 +55,7 @@ void Renderer::OnResize(uint width, uint height)
     ResetSamples();
 }
 
-void Renderer::Render(const Scene& scene, const Camera& camera, uint VAO)
+void Renderer::Render(const Scene& scene, const Camera& camera, uint32_t VAO)
 {
     SetClearColour(0.0f, 0.0f, 0.0f, 1.0f); GLCall;
     m_Scene = &scene;
