@@ -1,14 +1,5 @@
 #pragma once
 
-#include "imgui/imgui.h"
-#include "imgui/imgui_impl_glfw.h"
-#include "imgui/imgui_impl_opengl3.h"
-
-#include "window.h"
-#include "renderer.h"
-#include "camera.h"
-#include "scene.h"
-
 class Gui
 {
 public:

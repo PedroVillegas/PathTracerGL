@@ -1,3 +1,13 @@
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_glfw.h"
+#include "imgui/imgui_impl_opengl3.h"
+
+#include <glm/gtc/type_ptr.hpp>
+
+#include "window.h"
+#include "renderer.h"
+#include "camera.h"
+#include "scene.h"
 #include "gui.h"
 
 Gui::Gui(Window& window)
@@ -60,6 +70,7 @@ void Gui::CreateCameraWindow(Renderer& renderer, Camera& camera)
             renderer.ResetSamples();
         }
 
+        ImGui::Text("Velocity : %.2f", glm::length(camera.GetMovementMomentum()));
         ImGui::Text("Position : %.2f %.2f %.2f", camera.GetPosition().x, camera.GetPosition().y , camera.GetPosition().z);
         ImGui::Text("Direction: %.2f %.2f %.2f", camera.GetDirection().x, camera.GetDirection().y , camera.GetDirection().z);
         // ImGui::Text("Momentum : %.2f %.2f %.2f", camera.GetMovementMomentum().x, camera.GetMovementMomentum().y, camera.GetMovementMomentum().z);
@@ -155,6 +166,12 @@ void Gui::CreateSceneWindow(Renderer& renderer, const Camera& camera, Scene& sce
 
         if (ImGui::Button("Reset Samples")) 
             renderer.ResetSamples();
+        
+        if (ImGui::Button("Reload Shader"))
+        {
+            renderer.GetShader()->ReloadShader();
+            renderer.ResetSamples();
+        }
 
         ImGui::Text("SPP");
         if (ImGui::SliderInt("##SPP", &scene.samplesPerPixel, 1, 10)) 

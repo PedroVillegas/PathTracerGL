@@ -1,7 +1,20 @@
+#include <glad/glad.h>
+#include <glm/gtc/type_ptr.hpp>
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <sstream>
+#include <string>
+#include <unordered_map>
+
+#include "consoleLogger.h"
 #include "shader.h"
+
 
 Shader::Shader(const char* vs_path, const char* fs_path)
 {
+    m_VSPath = vs_path;
+    m_FSPath = fs_path;
     std::string vs = ParseShader(vs_path);
     std::string fs = ParseShader(fs_path);
     m_ID = CreateShader(vs, fs);
@@ -13,6 +26,14 @@ Shader::~Shader()
     m_ID = 0;
 }
 
+void Shader::ReloadShader()
+{
+    glDeleteProgram(m_ID); GLCall;
+    std::string vs = ParseShader(m_VSPath);
+    std::string fs = ParseShader(m_FSPath);
+    m_ID = CreateShader(vs, fs);
+}
+
 std::string Shader::ParseShader(const std::string& filepath)
 {
     std::ifstream stream(filepath); // opens file
@@ -22,15 +43,25 @@ std::string Shader::ParseShader(const std::string& filepath)
 
     while (getline(stream, line))
     {
-        ss << line << "\n";
+        if (line.find("#include") != std::string::npos && line.find("//") == std::string::npos)
+        {
+            uint32_t start = line.find_first_of("<") + 1;
+            uint32_t end = line.find_first_of(">");
+            std::string includeFile = line.substr(start, end - start);
+            ss << ParseShader("src/shaders/" + includeFile);
+        }
+        else
+        {
+            ss << line << "\n";
+        }
     }
 
     return ss.str();
 }
 
-uint Shader::CompileShader(uint type, const std::string& source)
+uint32_t Shader::CompileShader(uint32_t type, const std::string& source)
 {
-    uint id = glCreateShader(type); GLCall;
+    uint32_t id = glCreateShader(type); GLCall;
     const char* src = source.c_str();
     glShaderSource(id, 1, &src, NULL); GLCall;
     glCompileShader(id); GLCall;
@@ -55,12 +86,12 @@ uint Shader::CompileShader(uint type, const std::string& source)
     return id;
 }
 
-uint Shader::CreateShader(const std::string& vertexShader, const std::string& fragmentShader)
+uint32_t Shader::CreateShader(const std::string& vertexShader, const std::string& fragmentShader)
 {
     // create program for shaders to link to
-    uint programID = glCreateProgram(); GLCall;
-    uint vs = CompileShader(GL_VERTEX_SHADER, vertexShader);
-    uint fs = CompileShader(GL_FRAGMENT_SHADER, fragmentShader);
+    uint32_t programID = glCreateProgram(); GLCall;
+    uint32_t vs = CompileShader(GL_VERTEX_SHADER, vertexShader);
+    uint32_t fs = CompileShader(GL_FRAGMENT_SHADER, fragmentShader);
 
     // link shaders into one program
     glAttachShader(programID, vs); GLCall;
@@ -130,12 +161,12 @@ void Shader::SetUniformMat4(const std::string& name, const glm::mat4& matrix)
     glUniformMatrix4fv(GetUniformLocation(name), 1, GL_FALSE, glm::value_ptr(matrix));
 }
 
-uint Shader::GetUniformLocation(const std::string &name)
+uint32_t Shader::GetUniformLocation(const std::string &name)
 {
     if (m_UniformLocationCache.find(name) != m_UniformLocationCache.end())
         return m_UniformLocationCache[name];
 
-    uint location = glGetUniformLocation(m_ID, name.c_str());
+    uint32_t location = glGetUniformLocation(m_ID, name.c_str());
     if (location == -1)
         std::cout << "[Warning] Uniform '" << name << "' doesn't exist!" << std::endl;
     
