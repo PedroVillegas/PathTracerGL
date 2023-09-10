@@ -15,6 +15,10 @@
 void SetupQuad(uint32_t& VAO, uint32_t& VBO, uint32_t& IBO);
 void CreateAndBindBuffer(const Renderer& renderer, const char* name, uint32_t& buffer, uint32_t bind);
 void UpdateObjectsUBO(const Scene& scene);
+void DrawBbox(Shader& shader, BVH_Node node, uint32_t vao);
+void DrawTree(Shader& shader, BVH_Node* node, uint32_t vao);
+
+const uint32_t MAX_SPHERES = 500;
 
 int main(void) 
 {
@@ -25,40 +29,77 @@ int main(void)
     Shader PathTracerShader = Shader("src/shaders/vert.glsl", "src/shaders/pathTracer.glsl");
     Shader AccumShader = Shader("src/shaders/vert.glsl", "src/shaders/accumulation.glsl");
     Shader FinalOutputShader = Shader("src/shaders/vert.glsl", "src/shaders/postProcessing.glsl");
+    Shader DebugBVH = Shader("src/shaders/debugVert.glsl", "src/shaders/debug.glsl");
     Renderer renderer = Renderer(PathTracerShader, AccumShader, FinalOutputShader, ViewportWidth, ViewportHeight);
     Gui gui = Gui(window);
     Camera camera = Camera({0.0f, 2.0f, 6.0f}, 90.0f, 0.01f, 100.0f);
     Scene scene = Scene();
 
     uint32_t VAO, VBO, IBO, ObjectsDataUBO, BVH_UBO;
-    
+
     // Pre-render setup, e.g. Load scene, Build BVH...
     scene.RTIW();
     BVH bvh = BVH(scene.spheres);
     int treeSize = bvh.CountNodes(bvh.bvh_root);
-
-    LinearBVH_Node* flatten = new LinearBVH_Node[treeSize];
+    renderer.BVH = &bvh;
 
     renderer.GetShader()->Bind(); GLCall;
 
     CreateAndBindBuffer(renderer, "ObjectData", ObjectsDataUBO, 0);
-    glBufferData(GL_UNIFORM_BUFFER, 50 * sizeof(GPUSphere) + 50 * sizeof(GPUAABB), nullptr, GL_DYNAMIC_DRAW); GLCall;
+    int mem = 2 * sizeof(glm::vec4) + MAX_SPHERES * sizeof(GPUSphere) + 50 * sizeof(GPUAABB);
+    glBufferData(GL_UNIFORM_BUFFER, mem, nullptr, GL_DYNAMIC_DRAW); GLCall;
     UpdateObjectsUBO(scene);
 
     CreateAndBindBuffer(renderer, "BVH", BVH_UBO, 1);
-    glBufferData(GL_UNIFORM_BUFFER, treeSize * sizeof(LinearBVH_Node), flatten, GL_STATIC_DRAW); GLCall;
+    glBufferData(GL_UNIFORM_BUFFER, treeSize * sizeof(LinearBVH_Node), bvh.flat_root, GL_STATIC_DRAW); GLCall;
 
     renderer.GetShader()->Unbind(); GLCall;
 
+    // Unit Cube centered about the origin
+    float vertices[] = {
+        -0.5f, -0.5f, -0.5f, 1.0f,
+         0.5f, -0.5f, -0.5f, 1.0f,
+         0.5f,  0.5f, -0.5f, 1.0f,
+        -0.5f,  0.5f, -0.5f, 1.0f,
+        -0.5f, -0.5f,  0.5f, 1.0f,
+         0.5f, -0.5f,  0.5f, 1.0f,
+         0.5f,  0.5f,  0.5f, 1.0f,
+        -0.5f,  0.5f,  0.5f, 1.0f,
+    };
+
+    uint32_t elements[] = {
+        0, 1, 2, 3,
+        4, 5, 6, 7,
+        0, 4, 1, 5, 
+        2, 6, 3, 7
+    };
+
+    uint32_t debug_vao;
+    glGenVertexArrays(1, &debug_vao); GLCall;
+    glBindVertexArray(debug_vao); GLCall;
+
+    uint32_t vbo_vertices;
+    glGenBuffers(1, &vbo_vertices); GLCall;
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_vertices); GLCall;
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW); GLCall;
+
+    uint32_t ibo_elements;
+    glGenBuffers(1, &ibo_elements); GLCall;
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo_elements); GLCall;
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(elements), elements, GL_STATIC_DRAW); GLCall;
+
+    glEnableVertexAttribArray(0); GLCall;
+    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, (void*)0); GLCall;
+
     SetupQuad(VAO, VBO, IBO);
 
-    float last_frame = 0.0f;
-    float dt = 0.0333f;
-    bool vsync = true;
+    float LastFrame = 0.0f;
+    float dt = 0.0f;
+    bool vsync = false;
 
     while (!window.Closed())
     {
-        float current_frame = glfwGetTime();
+        float CurrentFrame = glfwGetTime();
 
         // Input
         window.ProcessInput();
@@ -72,18 +113,39 @@ int main(void)
         bool cameraIsMoving;
         if (camera.type == 0) 
             cameraIsMoving = camera.FPS(dt, &window);
+
         if (camera.type == 1) 
             cameraIsMoving = camera.Cinematic(dt, &window);
 
         if (cameraIsMoving) 
             renderer.ResetSamples();
         
-        // Update UBOs
-        glBindBuffer(GL_UNIFORM_BUFFER, ObjectsDataUBO); GLCall;
-        UpdateObjectsUBO(scene);
+        if (!renderer.b_Pause)
+        {
+            // Update UBOs
+            glBindBuffer(GL_UNIFORM_BUFFER, ObjectsDataUBO); GLCall;
+            UpdateObjectsUBO(scene);
 
-        // MAKE APP RENDER MEMBER FUNCTION
-        renderer.Render(scene, camera, VAO);
+            renderer.Render(scene, camera, VAO);
+
+            if (vsync)
+            {
+                renderer.GetViewportFramebuffer().Bind(); 
+                glViewport(0, 0, ViewportWidth, ViewportHeight);
+                
+                DebugBVH.Bind();
+
+                DebugBVH.SetUniformMat4("u_View", camera.GetView());
+                DebugBVH.SetUniformMat4("u_Projection", camera.GetProjection());
+                // DebugBVH.SetUniformVec2("u_Resolution", (float)ViewportWidth, (float)ViewportHeight);
+
+                // std::cout << "\nRoot of Tree" << std::endl;
+                DrawTree(DebugBVH, bvh.bvh_root, debug_vao);
+                DebugBVH.Unbind();
+
+                renderer.GetViewportFramebuffer().Unbind();  
+            }
+        }
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0.0f, 0.0f});
         ImGui::Begin("Viewport", 0, ImGuiWindowFlags_NoTitleBar);
@@ -92,19 +154,37 @@ int main(void)
         ViewportHeight = ImGui::GetContentRegionAvail().y;
 
         uint32_t image = renderer.GetViewportFramebuffer().GetTextureID();
-
-        if (image)
-            ImGui::Image((void*)(intptr_t)image, { (float)ViewportWidth, (float)ViewportHeight }, {0, 1}, {1, 0});
+        ImGui::Image((void*)(intptr_t)image, {(float)ViewportWidth, (float)ViewportHeight}, {0, 1}, {1, 0});
 
         ImGui::End();
         ImGui::PopStyleVar();
 
         gui.Render(renderer, camera, scene, vsync);
-        // MAKE APP RENDER MEMBER FUNCTION
+
+        renderer.GetShader()->Bind(); GLCall;
+        if (renderer.GetShader()->b_Reloaded)
+        {
+            renderer.BVH->b_Rebuilt = true;
+            std::cout << "Shader Reloaded" << std::endl;
+            int mem = 2 * sizeof(glm::vec4) + MAX_SPHERES * sizeof(GPUSphere) + 50 * sizeof(GPUAABB);
+            glBufferData(GL_UNIFORM_BUFFER, mem, nullptr, GL_DYNAMIC_DRAW); GLCall;
+            UpdateObjectsUBO(scene);
+            renderer.GetShader()->b_Reloaded = false;
+        }
+
+        if (renderer.BVH->b_Rebuilt)
+        {
+            treeSize = renderer.BVH->CountNodes(renderer.BVH->bvh_root);
+            // std::cout << treeSize << std::endl;
+            glBindBuffer(GL_UNIFORM_BUFFER, BVH_UBO); GLCall;
+            glBufferData(GL_UNIFORM_BUFFER, treeSize * sizeof(LinearBVH_Node), renderer.BVH->flat_root, GL_STATIC_DRAW); GLCall;
+            renderer.BVH->b_Rebuilt = false;
+        }
+        renderer.GetShader()->Unbind(); GLCall;
 
         window.Update();
-        dt = current_frame - last_frame;
-        last_frame = current_frame;
+        dt = CurrentFrame - LastFrame;
+        LastFrame = CurrentFrame;
     }
 
     glDeleteVertexArrays(1, &VAO); GLCall;
@@ -178,7 +258,7 @@ void UpdateObjectsUBO(const Scene& scene)
     glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &n_Spheres); GLCall;
     offset += sizeof(glm::vec4);
     glBufferSubData(GL_UNIFORM_BUFFER, offset, n_Spheres * sizeof(GPUSphere), spheres.data()); GLCall;
-    offset += (50) * sizeof(GPUSphere);
+    offset += (MAX_SPHERES) * sizeof(GPUSphere);
     glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &n_AABBs); GLCall;
     offset += sizeof(glm::vec4);
     glBufferSubData(GL_UNIFORM_BUFFER, offset, n_AABBs * sizeof(GPUAABB), scene.aabbs.data()); GLCall;
@@ -187,3 +267,45 @@ void UpdateObjectsUBO(const Scene& scene)
     // offset += sizeof(glm::vec4);
     // glBufferSubData(GL_UNIFORM_BUFFER, offset, scene.lights.size() * sizeof(Light), scene.lights.data()); GLCall;
 }
+
+void DrawBbox(Shader& shader, BVH_Node node, uint32_t vao)
+{
+    glm::vec3 scale = node.bbox.bMax - node.bbox.bMin;
+    glm::vec3 center = glm::vec3(
+        (node.bbox.bMin.x + node.bbox.bMax.x) / 2, 
+        (node.bbox.bMin.y + node.bbox.bMax.y) / 2, 
+        (node.bbox.bMin.z + node.bbox.bMax.z) / 2);
+    glm::mat4 model = glm::translate(glm::mat4(1.0f), center) * glm::scale(glm::mat4(1.0f), scale);
+
+    // std::cout << "dim: vec3(" 
+    //     << scale.x << ", " 
+    //     << scale.y << ", " 
+    //     << scale.z << ")" << std::endl;
+    // std::cout << "pos: vec3("
+    //     << center.x << ", " 
+    //     << center.y << ", " 
+    //     << center.z << ")" << std::endl;
+    // std::cout << std::endl;
+
+    shader.SetUniformMat4("u_Model", model);
+
+    glBindVertexArray(vao); GLCall;
+    glDrawElements(GL_LINE_LOOP, 4, GL_UNSIGNED_INT, 0); GLCall;
+    glDrawElements(GL_LINE_LOOP, 4, GL_UNSIGNED_INT, (GLvoid*)(4 * sizeof(uint32_t))); GLCall;
+    glDrawElements(GL_LINES, 8, GL_UNSIGNED_INT, (GLvoid*)(8 * sizeof(uint32_t))); GLCall;
+    glBindVertexArray(0); GLCall;
+}
+
+void DrawTree(Shader& shader, BVH_Node* node, uint32_t vao)
+{
+    if (node == nullptr)
+        return;
+    
+    // std::cout << "Calling DrawBbox" << std::endl;
+    DrawBbox(shader, *node, vao);
+
+    DrawTree(shader, node->left, vao);
+    DrawTree(shader, node->right, vao);
+}
+
+
