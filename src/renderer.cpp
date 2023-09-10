@@ -52,12 +52,13 @@ void Renderer::OnResize(uint32_t width, uint32_t height)
     m_AccumulationFBO.OnResize(m_ViewportWidth, m_ViewportHeight);
     m_PathTraceFBO.OnResize(m_ViewportWidth, m_ViewportHeight);
     m_FinalOutputFBO.OnResize(m_ViewportWidth, m_ViewportHeight);
+    b_Pause = false;
     ResetSamples();
 }
 
 void Renderer::Render(const Scene& scene, const Camera& camera, uint32_t VAO)
 {
-    SetClearColour(0.0f, 0.0f, 0.0f, 1.0f); GLCall;
+    SetClearColour(1.0f, 0.0f, 1.0f, 1.0f); GLCall;
     m_Scene = &scene;
     m_Camera = &camera;
 
@@ -74,15 +75,13 @@ void Renderer::Render(const Scene& scene, const Camera& camera, uint32_t VAO)
     m_PathTraceShader->SetUniformInt("u_Depth", m_Scene->maxRayDepth); GLCall;
     m_PathTraceShader->SetUniformInt("u_Day", m_Scene->day); GLCall;
     // m_PathTraceShader->SetUniformInt("u_SelectedObjIdx", m_Scene->SelectedIdx); GLCall;
-    // m_PathTraceShader->SetUniformVec3("u_LightDir", m_Scene->lightDirection.x, m_Scene->lightDirection.y, m_Scene->lightDirection.z); GLCall;
+    m_PathTraceShader->SetUniformVec3("u_SunDir", m_Scene->lightDirection.x, m_Scene->lightDirection.y, m_Scene->lightDirection.z); GLCall;
     m_PathTraceShader->SetUniformFloat("u_Aperture", m_Camera->aperture); GLCall;
     m_PathTraceShader->SetUniformFloat("u_FocalLength", m_Camera->focal_length); GLCall;
     m_PathTraceShader->SetUniformVec2("u_Resolution", float(m_ViewportWidth), float(m_ViewportHeight)); GLCall;
     m_PathTraceShader->SetUniformVec3("u_RayOrigin", m_Camera->GetPosition().x, m_Camera->GetPosition().y, m_Camera->GetPosition().z); GLCall;
-    // m_PathTraceShader->SetUniformVec3("u_ObjectCounts", m_Scene->spheres.size(), m_Scene->aabbs.size(), m_Scene->lights.size()); GLCall;
     m_PathTraceShader->SetUniformMat4("u_InverseProjection", m_Camera->GetInverseProjection()); GLCall;
     m_PathTraceShader->SetUniformMat4("u_InverseView", m_Camera->GetInverseView()); GLCall;
-    // m_PathTraceShader->SetUniformMat4("u_ViewProjection", m_Camera->GetView() * m_Camera->GetProjection()); GLCall;
 
     m_PathTraceFBO.Bind(); GLCall;
 
@@ -118,7 +117,7 @@ void Renderer::Render(const Scene& scene, const Camera& camera, uint32_t VAO)
     m_AccumShader->Unbind();
 
     // Final pass:
-    // Now use the texture from either of the other FBO's and divide by the frame count
+    // Now use the texture from either of the previously used FBO and divide by the frame count
     m_FinalOutputShader->Bind(); GLCall;
     m_FinalOutputFBO.Bind(); GLCall;
     m_FinalOutputShader->SetUniformInt("u_PT_Texture", 0); GLCall;

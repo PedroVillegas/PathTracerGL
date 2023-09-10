@@ -33,7 +33,7 @@ void Scene::GridShowcase()
     Material floorMat = Material(glm::vec3(1.0f, 0.95f, 0.8f), 0.0f, glm::vec3(0.0f), 0.0f, glm::vec3(0.0f), 0.0f, 1.0f, 1.0f);
     GPUAABB floor = GPUAABB(
         glm::vec3(0.0f, -(1.0f + 0.5f * floorThickness), 0.0f),
-        glm::vec3(50.0f, floorThickness, 50.0f), floorMat);
+        glm::vec3(100'000.0f, floorThickness, 100'000.0f), floorMat);
     aabbs.push_back(floor);
 
     float EPSILON = 1e-3f;
@@ -107,7 +107,7 @@ void Scene::CustomScene()
     Material floorMat = Material(glm::vec3(1.0f, 0.95f, 0.8f), 0.0f, glm::vec3(0.0f), 0.0f, glm::vec3(0.0f), 0.0f, 1.0f, 1.0f);
     GPUAABB floor = GPUAABB(
         glm::vec3(0.0f, -(1.0f + 0.5f * floorThickness), 0.0f),
-        glm::vec3(50.0f, floorThickness, 50.0f), floorMat);
+        glm::vec3(100'000.0f, floorThickness, 100'000.0f), floorMat);
     aabbs.push_back(floor);
 
     float EPSILON = 1e-3f;
@@ -223,7 +223,7 @@ void Scene::RTIW()
     Material floorMat = Material(glm::vec3(1.0f, 0.95f, 0.8f), 0.0f, glm::vec3(0.0f), 0.0f, glm::vec3(0.0f), 0.0f, 1.0f, 1.0f);
     GPUAABB floor = GPUAABB(
         glm::vec3(0.0f, -(1.0f + 0.5f * floorThickness), 0.0f),
-        glm::vec3(50.0f, floorThickness, 50.0f), floorMat);
+        glm::vec3(100'000.0f, floorThickness, 100'000.0f), floorMat);
     aabbs.push_back(floor);
 
     float EPSILON = 1e-3f;
@@ -256,6 +256,7 @@ void Scene::RTIW()
     Sphere centre_sphere;
     centre_sphere.label = "Centre";
     GPUSphere& s_centre = centre_sphere.sphere;
+    // s_centre.radius = 0.6;
     s_centre.geomID = 2;
     s_centre.mat.albedo = glm::vec3(0.1f, 0.2f, 0.5f);
     spheres.push_back(centre_sphere);
@@ -275,6 +276,7 @@ void Scene::RTIW()
     Sphere right_sphere;
     right_sphere.label = "Right";
     GPUSphere& s_right = right_sphere.sphere;
+    // s_right.radius = 0.3;
     s_right.geomID = 4;
     s_right.position = glm::vec3(2.0f, 0.0f, 0.0f);
     s_right.mat.albedo = { 0.8f, 0.6f, 0.2f };
@@ -397,7 +399,7 @@ void Scene::CornellBox()
     float lightWidth = boxWidth * 0.3334;
     float lightDepth = boxDepth * 0.3334;
     Material lightMat = Material(glm::vec3(0.0f), 0.0f, glm::vec3(16.86, 10.76, 8.2), 1.0f, glm::vec3(0.0f), 0.0f, 0.0f, 0.0f);
-    GPUAABB light = GPUAABB(glm::vec3(0.0f, (boxHeight / 2.0f) - epsilon / 2.0f, 0.0f), glm::vec3(lightWidth, 0.01f, lightDepth), lightMat);
+    GPUAABB light = GPUAABB(glm::vec3(0.0f, (0.5f * boxHeight) - (epsilon * 0.55f), 0.0f), glm::vec3(lightWidth, 0.01f, lightDepth), lightMat);
     aabbs.push_back(light);
 
     Sphere sp1;
@@ -436,20 +438,22 @@ void Scene::RandomizeBRDF()
 {
     std::srand(time(0));
 
-    // Sphere with large radius acts as a plane
-    Sphere ground;
-    ground.label = "Ground";
-    GPUSphere& s_ground = ground.sphere;
-    s_ground.position = glm::vec3(0.0f, -1001.0f, 0.0f);
-    s_ground.radius = 1000.0f;
-    s_ground.mat.albedo = glm::vec3(0.8f);
-    spheres.push_back(ground);
+    float floorThickness = 0.5f;
+    Material floorMat = Material(glm::vec3(1.0f, 0.95f, 0.8f), 0.0f, glm::vec3(0.0f), 0.0f, glm::vec3(0.0f), 0.0f, 1.0f, 1.0f);
+    GPUAABB floor = GPUAABB(
+        glm::vec3(0.0f, -(1.0f + 0.5f * floorThickness), 0.0f),
+        glm::vec3(100'000.0f, floorThickness, 100'000.0f), floorMat);
+    aabbs.push_back(floor);
+
+    float LightDist = 0.2f;
+    float DiffuseDist = 0.5f;
+    // float SpecDist = 1.0f - DiffuseDist - LightDist;
 
     float radius = 1.0;
     int id = 0;
-    for (int a = -3; a < 2; a++) 
+    for (int a = -10; a < 10; a++) 
     {
-        for (int b = -3; b < 2; b++) 
+        for (int b = -10; b < 10; b++) 
         {
             float mat_probability = Randf01();
             glm::vec3 pos = glm::vec3(5 * a, 7 * Randf01() + 1, 5 * b);
@@ -458,26 +462,26 @@ void Scene::RandomizeBRDF()
                 GPUSphere& s = sphere.sphere;
                 s.geomID = id;
 
-                if (mat_probability < 0.2f) 
+                if (mat_probability < LightDist) 
                 {
                     // Emissive
                     sphere.label = "Light" + std::to_string(std::abs(a * b));
                     s.position = pos;
                     s.radius = radius;
                     s.mat.emissive = RandVec3();
-                    s.mat.emissiveStrength = Randf01() * 5.0f;
+                    s.mat.emissiveStrength = Randf01() * 10.0f;
                     spheres.push_back(sphere);
 
                 } 
-                else if (mat_probability < 0.2f + 0.4f) 
+                else if (mat_probability < LightDist + DiffuseDist) 
                 {
-                    // Specular
-                    sphere.label = "Specular" + std::to_string(std::abs(a * b));
+                    // Diffuse
+                    sphere.label = "Diffuse" + std::to_string(std::abs(a * b));
                     s.position = pos;
                     s.radius = radius;
                     s.mat.albedo = RandVec3();
-                    s.mat.specularChance = Randf01() * 0.16f;
-                    s.mat.roughness = Randf01() * 0.5f;
+                    s.mat.specularChance = 0.0f; // Randf01() * 0.16f;
+                    s.mat.roughness = Randf01() * 0.5f + 0.5f;
                     s.mat.ior = 1.0f + Randf01();
                     spheres.push_back(sphere);
                 } 

@@ -16,7 +16,7 @@ GLenum debugGLCall(const char* file, uint32_t line)
             case GL_OUT_OF_MEMORY:                 error = "OUT_OF_MEMORY"; break;
             case GL_INVALID_FRAMEBUFFER_OPERATION: error = "INVALID_FRAMEBUFFER_OPERATION"; break;
         }
-        std::cout << "[ERROR] " << error << " :: " << file << " :: " << line << std::endl;
+        std::cout << "\e[1;31m[ERROR]\e[0;37m " << error << " :: " << file << " :: " << line << std::endl;
         return err;
     }
     return 0;

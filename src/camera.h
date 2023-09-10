@@ -19,8 +19,7 @@ public:
     void OnResize(uint32_t width, uint32_t height);
     void Reset();
 
-    void SetFov(float HorizontalFOV) { m_VerticalFOV = HorizontalFOV * (m_ViewportWidth / m_ViewportHeight); }
-
+    void SetFov(float HorizontalFOV);
     const glm::mat4& GetProjection() const { return m_Projection; }
     const glm::mat4& GetInverseProjection() const { return m_InverseProjection; }
     const glm::mat4& GetView() const { return m_View; }
@@ -46,17 +45,17 @@ private:
     float m_FarClip = 100.0f;
     float m_AspectRatio;
 
+    glm::vec3 m_Position { 0.0f, 0.0f, 0.0f };
+    glm::vec3 m_Forward { 0.0f, 0.0f, -1.0f };
+    glm::vec3 m_Up { 0.0f, 1.0f, 0.0f };
+    glm::vec3 m_Right { 1.0f, 0.0f, 0.0f };
+
     glm::mat4 m_Projection { 0.0f };
     glm::mat4 m_View { 0.0f };
     glm::mat4 m_InverseProjection { 0.0f };
     glm::mat4 m_InverseView { 0.0f };
 
     glm::quat m_QuatOrientation = glm::quat();
-
-    glm::vec3 m_Position { 0.0f, 0.0f, 0.0f };
-    glm::vec3 m_Forward { 0.0f, 0.0f, -1.0f };
-    glm::vec3 m_Up { 0.0f, 1.0f, 0.0f };
-    glm::vec3 m_Right { 1.0f, 0.0f, 0.0f };
 
     glm::vec3 m_MovementMomentum { 0.0f, 0.0f, 0.0f };
     glm::vec3 m_RotationMomentum { 0.0f, 0.0f, 0.0f };

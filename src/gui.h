@@ -14,7 +14,7 @@ private:
     void SetupStyle();
     void CreateCameraWindow(Renderer& renderer, Camera& camera);
     void CreateSceneWindow(Renderer& renderer, const Camera& camera, Scene& scene);
-    template <typename T> void EditObjectProperties(T& obj, Renderer& renderer, const Camera& camera);
+    template <typename T> void EditObjectProperties(T& obj, Renderer& renderer, Scene& scene, const Camera& camera);
 private:
     Window m_Window;
 };

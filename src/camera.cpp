@@ -175,7 +175,7 @@ bool Camera::FPS(float dt, Window* window)
             // m_Right = glm::normalize(m_QuatOrientation * glm::vec3(1.0f, 0.0f, 0.0f));
             m_Right = glm::normalize(glm::cross(m_Forward, m_Up));
 
-            RecalculateView();
+            // RecalculateView();
         }
 
         // Movement delta
@@ -209,7 +209,7 @@ bool Camera::FPS(float dt, Window* window)
         {
             horizontalFOV = 120.0f;
         }
-        if (abs(zoom))
+        if (glm::abs(zoom))
         {   
             SetFov(horizontalFOV);
             RecalculateProjection();
@@ -218,8 +218,11 @@ bool Camera::FPS(float dt, Window* window)
         if (glm::length(m_MovementMomentum) < 1e-1f) 
             m_MovementMomentum = {0.0f, 0.0f, 0.0f};
 
-        if (glm::length(m_MovementMomentum) > 0.0 || dx != 0.0 || dy != 0.0 || abs(zoom)) 
+        if (glm::length(m_MovementMomentum) > 0.0 || dx != 0.0 || dy != 0.0 || glm::abs(zoom))
+        {
+            RecalculateView();
             return true;
+        }
     }
     return false;
 }
@@ -250,7 +253,7 @@ void Camera::Reset()
 
 void Camera::RecalculateProjection()
 {
-    m_Projection = glm::perspectiveFov(glm::radians(m_VerticalFOV), (float)m_ViewportWidth, (float)m_ViewportHeight, m_NearClip, m_FarClip);
+    m_Projection = glm::perspective(glm::radians(m_VerticalFOV), m_AspectRatio, m_NearClip, m_FarClip);
 	m_InverseProjection = glm::inverse(m_Projection);
 }
 
@@ -259,3 +262,8 @@ void Camera::RecalculateView()
     m_View = glm::lookAt(m_Position, m_Position + m_Forward, m_Up);
     m_InverseView = glm::inverse(m_View);
 }
+
+void Camera::SetFov(float HorizontalFOV) 
+    { 
+        m_VerticalFOV = HorizontalFOV;
+    }

@@ -23,7 +23,7 @@ bool Window::Init()
 {
     if (!glfwInit())
     {
-        std::cout << "\e[1;33m[ERROR]\e[1;37m Failed to initialise GLFW" << std::endl;
+        std::cout << "\e[1;31m[ERROR]\e[1;37m Failed to initialise GLFW" << std::endl;
         return false;
     }
 
@@ -37,7 +37,7 @@ bool Window::Init()
     m_Window = glfwCreateWindow(m_Width, m_Height, m_Title, NULL, NULL);
     if (!m_Window)
     {
-        std::cout << "\e[1;33m[ERROR]\e[1;37m Failed to create GLFW window" << std::endl;
+        std::cout << "\e[1;31m[ERROR]\e[0;37m Failed to create GLFW window" << std::endl;
         return false;
     }
 
@@ -51,15 +51,16 @@ bool Window::Init()
     // glad: load all OpenGL function pointers
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
-	    std::cout << "\e[1;33m[ERROR]\e[1;37m Failed to load OpenGL extensions" << std::endl;
+	    std::cout << "\e[1;31m[ERROR]\e[0;37m Failed to load OpenGL extensions" << std::endl;
         return false;
     }
 
-    std::cout << "\033[1mOpenGL Path Tracing\033[0m" << std::endl;
+    std::cout << "\033[1;33mOpenGL Path Tracing\033[0m" << std::endl;
     std::cout << std::endl;
-    std::cout << "\033[1mVendor: \033[0m" << (const char*)(glGetString(GL_VENDOR)) << std::endl;
-    std::cout << "\033[1mRenderer: \033[0m" << (const char*)(glGetString(GL_RENDERER)) << std::endl;
-    std::cout << "\033[1mOpenGL Version: \033[0m" << (const char*)(glGetString(GL_VERSION)) << std::endl;
+    std::cout << "\033[1;33mVendor: \033[0m" << (const char*)(glGetString(GL_VENDOR)) << std::endl;
+    std::cout << "\033[1;33mRenderer: \033[0m" << (const char*)(glGetString(GL_RENDERER)) << std::endl;
+    std::cout << "\033[1;33mOpenGL Version: \033[0m" << (const char*)(glGetString(GL_VERSION)) << std::endl;
+    std::cout << std::endl;
     return true;
 }
 

@@ -4,6 +4,7 @@
 #include "framebuffer.h"
 #include "scene.h"
 #include "camera.h"
+#include "bvh.h"
 
 class Renderer
 {
@@ -28,7 +29,9 @@ public:
 
     void Render(const Scene& scene, const Camera& camera, uint32_t VAO);
     void ResetSamples() { m_SampleIterations = 0; }
-
+public:
+    BVH* BVH = nullptr;
+    bool b_Pause = false;
 private:
     uint32_t m_SampleIterations = 0;
     const Camera* m_Camera = nullptr;

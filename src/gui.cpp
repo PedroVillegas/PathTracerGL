@@ -40,6 +40,7 @@ void Gui::Render(Renderer& renderer, Camera& camera, Scene& scene, bool& vsync)
         ImGui::Text("Render time: %.3f ms/frame", 1000.0f / ImGui::GetIO().Framerate);
         ImGui::Text("Framerate: %.1f FPS", ImGui::GetIO().Framerate);
         ImGui::Text("Iterations: %i", renderer.GetIterations());
+        ImGui::Checkbox("Pause", &renderer.b_Pause);
         ImGui::End();
     }
 
@@ -126,6 +127,7 @@ void Gui::CreateSceneWindow(Renderer& renderer, const Camera& camera, Scene& sce
         {
             scene.emptyScene();
             scene.CustomScene();
+            renderer.BVH->RebuildBVH(scene.spheres);
             renderer.ResetSamples();
         }
 
@@ -133,6 +135,7 @@ void Gui::CreateSceneWindow(Renderer& renderer, const Camera& camera, Scene& sce
         {
             scene.emptyScene();
             scene.RTIW();
+            renderer.BVH->RebuildBVH(scene.spheres);
             renderer.ResetSamples();
         }
 
@@ -140,6 +143,7 @@ void Gui::CreateSceneWindow(Renderer& renderer, const Camera& camera, Scene& sce
         {
             scene.emptyScene();
             scene.RandomizeBRDF();
+            renderer.BVH->RebuildBVH(scene.spheres);
             renderer.ResetSamples();
         }
 
@@ -147,6 +151,7 @@ void Gui::CreateSceneWindow(Renderer& renderer, const Camera& camera, Scene& sce
         {
             scene.emptyScene();
             scene.GridShowcase();
+            renderer.BVH->RebuildBVH(scene.spheres);
             renderer.ResetSamples();
         }
         
@@ -154,6 +159,7 @@ void Gui::CreateSceneWindow(Renderer& renderer, const Camera& camera, Scene& sce
         {
             scene.emptyScene();
             scene.CornellBox();
+            renderer.BVH->RebuildBVH(scene.spheres);
             renderer.ResetSamples();
         }
 
@@ -161,6 +167,7 @@ void Gui::CreateSceneWindow(Renderer& renderer, const Camera& camera, Scene& sce
         {
             scene.emptyScene();
             scene.ModifiedCornellBox();
+            renderer.BVH->RebuildBVH(scene.spheres);
             renderer.ResetSamples();
         }
 
@@ -170,6 +177,7 @@ void Gui::CreateSceneWindow(Renderer& renderer, const Camera& camera, Scene& sce
         if (ImGui::Button("Reload Shader"))
         {
             renderer.GetShader()->ReloadShader();
+            renderer.BVH->RebuildBVH(scene.spheres);
             renderer.ResetSamples();
         }
 
@@ -221,7 +229,7 @@ void Gui::CreateSceneWindow(Renderer& renderer, const Camera& camera, Scene& sce
                 ImGui::EndCombo();
             }
             GPUSphere& obj = scene.spheres[scene.SphereIdx].sphere;
-            EditObjectProperties(obj, renderer, camera);
+            EditObjectProperties(obj, renderer, scene, camera);
         }
 
         if (ImGui::CollapsingHeader("Edit AABBs"))
@@ -263,7 +271,7 @@ void Gui::CreateSceneWindow(Renderer& renderer, const Camera& camera, Scene& sce
                 ImGui::EndCombo();
             }
             GPUAABB& obj = scene.aabbs[scene.AABBIdx];
-            EditObjectProperties(obj, renderer, camera);
+            EditObjectProperties(obj, renderer, scene, camera);
         }
 
         ImGui::PopItemWidth();
@@ -272,13 +280,16 @@ void Gui::CreateSceneWindow(Renderer& renderer, const Camera& camera, Scene& sce
 }
 
 template <typename T> 
-void Gui::EditObjectProperties(T& obj, Renderer& renderer, const Camera& camera)
+void Gui::EditObjectProperties(T& obj, Renderer& renderer, Scene& scene, const Camera& camera)
 {
     ImGui::Text("Distance from camera: %.3f", glm::distance(obj.position, camera.GetPosition()));
 
     ImGui::Text("Position");
-    if (ImGui::DragFloat3("##Position", glm::value_ptr(obj.position), 0.1f)) 
+    if (ImGui::DragFloat3("##Position", glm::value_ptr(obj.position), 0.1f))
+    {
+        renderer.BVH->RebuildBVH(scene.spheres);
         renderer.ResetSamples();
+    }
     
     if constexpr (std::is_same_v<T, GPUAABB>)
     {
@@ -290,8 +301,11 @@ void Gui::EditObjectProperties(T& obj, Renderer& renderer, const Camera& camera)
     if constexpr (std::is_same_v<T, GPUSphere>)
     {
         ImGui::Text("Radius");
-        if (ImGui::DragFloat("##Radius", &obj.radius, 0.1f, 0.1f, 100.0f, "%.3f", ImGuiSliderFlags_Logarithmic)) 
+        if (ImGui::DragFloat("##Radius", &obj.radius, 0.1f, 0.1f, 100.0f, "%.3f", ImGuiSliderFlags_Logarithmic))
+        {
+            renderer.BVH->RebuildBVH(scene.spheres);
             renderer.ResetSamples();
+        }
     }
 
     ImGui::Text("Albedo");
