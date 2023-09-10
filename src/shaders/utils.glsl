@@ -4,7 +4,6 @@
 #define EPSILON     1e-3
 
 uint g_Seed = 0;
-// vec3 g_ObjectCounts = u_ObjectCounts;
 
 uint GenerateSeed()
 {

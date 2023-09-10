@@ -85,6 +85,7 @@ float not_(float x)
     return 1.0 - x;
 }
 
+// https://64.github.io/tonemapping/#aces
 void main()
 {
     const vec4 crosshairsColor = vec4(vec3(0.7), 1.0);

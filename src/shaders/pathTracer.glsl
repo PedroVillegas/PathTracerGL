@@ -1,11 +1,11 @@
 #version 410 core
 
-// #include <structs.glsl> in data.glsl
-#include <data.glsl>
-#include <utils.glsl>
-
-#include <miss.glsl>
-#include <traceRay.glsl>
+#include <structs.glsl>     // line 3 - 73
+#include <data.glsl>        // line 74 - 104
+#include <utils.glsl>       // line 105 - 188
+#include <bvh.glsl>         // line 189 - 247
+#include <miss.glsl>        // line 248 - 261
+#include <traceRay.glsl>    // line 262 - 384
 
 out vec4 FragColour;
 
@@ -75,7 +75,7 @@ vec3 EvalBSDF(Payload hitrec, inout Ray ray, out float pdf)
         // return vec3(F);
 
         // Need to maintain the same probability ratio for refraction and diffuse later.
-        refractionChance *= (1.0 - specularChance) / (1.0 - hitrec.mat.specularChance);
+        // refractionChance *= (1.0 - specularChance) / (1.0 - hitrec.mat.specularChance);
     }
 
     // Determine whether to be specular, diffuse or refraction ray
@@ -102,7 +102,7 @@ vec3 EvalBSDF(Payload hitrec, inout Ray ray, out float pdf)
     {
         // Refraction ray
         refractiveFactor = 1.0;
-        rayProbability = refractionChance;
+        rayProbability = 1.0;
 
         float eta = hitrec.fromInside ? ior : (1.0 / ior);
         vec3 refractionDir = refract(V, N, eta);

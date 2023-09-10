@@ -1,49 +1,56 @@
-bool RaySphereIntersect(Ray ray, Sphere sphere, out float t1, out float t2);
-bool RayAABBIntersect(Ray ray, AABB aabb, out float t1, out float t2);
+bool RaySphereIntersect(Ray ray, Sphere sphere, out float tFar, out float tNear);
+bool RayAABBIntersect(Ray ray, AABB aabb, out float tFar, out float tNear);
 vec3 GetAABBNormal(AABB aabb, vec3 surfacePosition);
 vec3 GetSphereNormal(Sphere sphere, vec3 surfacePosition);
+
+#define BVH_ENABLED
 
 Payload TraceRay(Ray ray)
 {
     Payload hitrec;
     hitrec.t = FLT_MAX;
-    float t1; // Near plane
-    float t2;
+    float tNear = FLT_MIN;
+    float tFar = FLT_MAX;
 
+#ifdef BVH_ENABLED
+    float closestSoFar = BVHTraversal(ray, tNear, tFar, hitrec);
+    hitrec.t = closestSoFar;
+#endif
+#ifndef BVH_ENABLED
     for (int i = 0; i < objectData.n_Spheres; i++)
     {        
         Sphere sphere = objectData.Spheres[i];
-        if (RaySphereIntersect(ray, sphere, t1, t2) && t2 > 0.01 && t1 < hitrec.t)
+        if (RaySphereIntersect(ray, sphere, tNear, tFar) && tNear > 0.01 && tFar < hitrec.t)
         {
-            hitrec.t = t1 < 0 ? t2 : t1;
+            hitrec.t = tNear < 0 ? tFar : tNear;
             hitrec.position = ray.origin + ray.direction * hitrec.t;
             hitrec.mat = sphere.mat; 
-            hitrec.fromInside = hitrec.t == t2;
+            hitrec.fromInside = hitrec.t == tFar;
             vec3 outward_normal = GetSphereNormal(sphere, hitrec.position);
             hitrec.normal = hitrec.fromInside ? -outward_normal : outward_normal;
         }
     }
+#endif
 
     for (int i = 0; i < objectData.n_AABBs; i++)
     {        
         AABB aabb = objectData.aabbs[i];
-        if (RayAABBIntersect(ray, aabb, t1, t2) && t2 > 0.01 && t1 < hitrec.t)
+        if (RayAABBIntersect(ray, aabb, tNear, tFar) && tNear > 0.01 && tFar < hitrec.t)
         {
-            hitrec.t = t1 < 0 ? t2 : t1;
+            hitrec.t = tNear < 0 ? tFar : tNear;
             hitrec.position = ray.origin + ray.direction * hitrec.t;
             hitrec.mat = aabb.mat;
             hitrec.normal = GetAABBNormal(aabb, hitrec.position);
-            hitrec.fromInside = hitrec.t == t2;
+            hitrec.fromInside = hitrec.t == tFar;
         }
     }
 
     return hitrec;
 }
 
-bool RaySphereIntersect(Ray ray, Sphere sphere, out float t1, out float t2)
+bool RaySphereIntersect(Ray ray, Sphere sphere, out float tNear, out float tFar)
 {
-    t1 = FLT_MAX;
-    t2 = FLT_MAX;
+    // tNear = tFar = FLT_MAX;
 
     float radius = sphere.radius;
     vec3 OC = ray.origin - sphere.position;
@@ -60,31 +67,31 @@ bool RaySphereIntersect(Ray ray, Sphere sphere, out float t1, out float t2)
         return false;
     
     discriminant = sqrt(discriminant);
-    t1 = -b - discriminant;
-    t2 = -b + discriminant;
+    tNear = -b - discriminant;
+    tFar = -b + discriminant;
 
-    return  t1 <= t2;
+    return tNear <= tFar;
 }
 
-bool RayAABBIntersect(Ray ray, AABB aabb, out float t1, out float t2)
+bool RayAABBIntersect(Ray ray, AABB aabb, out float tNear, out float tFar)
 {
-    t1 = FLT_MIN;
-    t2 = FLT_MAX;
+    tNear = FLT_MIN;
+    tFar = FLT_MAX;
 
-    vec3 inv_D =  1.0 / ray.direction;
+    vec3 inv_D = 1.0 / ray.direction;
     vec3 bmin = aabb.position - aabb.dimensions * 0.5;
     vec3 bmax = aabb.position + aabb.dimensions * 0.5;
 
     vec3 tLower = (bmin - ray.origin) * inv_D;
     vec3 tUpper = (bmax - ray.origin) * inv_D;
 
-    vec3 tMins = min(tLower, tUpper);
-    vec3 tMaxes = max(tLower, tUpper);
+    vec3 tMin = min(tLower, tUpper);
+    vec3 tMax = max(tLower, tUpper);
 
-    t1 = max(t1, max(tMins.x, max(tMins.y, tMins.z)));
-    t2 = min(t2, min(tMaxes.x, min(tMaxes.y, tMaxes.z)));
+    tNear = max(tNear, max(tMin.x, max(tMin.y, tMin.z)));
+    tFar = min(tFar, min(tMax.x, min(tMax.y, tMax.z)));
 
-    return t1 <= t2;
+    return tNear <= tFar;
 }
 
 vec3 GetAABBNormal(AABB aabb, vec3 surfacePosition)
