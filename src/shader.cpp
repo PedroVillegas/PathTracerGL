@@ -18,6 +18,7 @@ Shader::Shader(const char* vs_path, const char* fs_path)
     std::string vs = ParseShader(vs_path);
     std::string fs = ParseShader(fs_path);
     m_ID = CreateShader(vs, fs);
+    std::cout << std::endl;
 }
 
 Shader::~Shader()
@@ -28,10 +29,16 @@ Shader::~Shader()
 
 void Shader::ReloadShader()
 {
-    glDeleteProgram(m_ID); GLCall;
     std::string vs = ParseShader(m_VSPath);
     std::string fs = ParseShader(m_FSPath);
-    m_ID = CreateShader(vs, fs);
+    uint32_t tempID = CreateShader(vs, fs);
+    if (tempID)
+    {
+        glDeleteProgram(m_ID); GLCall;
+        m_ID = tempID;
+        b_Reloaded = true;
+        std::cout << std::endl;
+    }
 }
 
 std::string Shader::ParseShader(const std::string& filepath)
@@ -43,7 +50,7 @@ std::string Shader::ParseShader(const std::string& filepath)
 
     while (getline(stream, line))
     {
-        if (line.find("#include") != std::string::npos && line.find("//") == std::string::npos)
+        if (line.find("#include") != std::string::npos && line.rfind("//", 0) == std::string::npos)
         {
             uint32_t start = line.find_first_of("<") + 1;
             uint32_t end = line.find_first_of(">");
@@ -74,14 +81,16 @@ uint32_t Shader::CompileShader(uint32_t type, const std::string& source)
         glGetShaderiv(id, GL_INFO_LOG_LENGTH, &length); GLCall;
         char* message = (char*)alloca(length * sizeof(char));
         glGetShaderInfoLog(id, length, &length, message); GLCall;
-        std::cout << "Failed to compile " << (type == GL_VERTEX_SHADER ? "vertex" : "fragment") << " shader." << std::endl;
+        std::cout << "\e[1;31m[ERROR]\e[0;37m " << (type == GL_VERTEX_SHADER ? "Vertex" : "Frag") << " Shader Did Not Compile - ";
+        std::cout << (type == GL_VERTEX_SHADER ? m_VSPath : m_FSPath) << std::endl;
         std::cout << message << std::endl;
         glDeleteShader(id); GLCall;
 
         return 0;
     }
 
-    // std::cout << "Successfully compiled " << (type == GL_VERTEX_SHADER ? "vertex" : "fragment") << " shader." << std::endl;
+    std::cout << "\e[1;32m[SUCCESS]\e[0;37m " << (type == GL_VERTEX_SHADER ? "Vertex" : "Frag") << " Shader Compiled - ";
+    std::cout << (type == GL_VERTEX_SHADER ? m_VSPath : m_FSPath) << std::endl;
 
     return id;
 }
@@ -92,6 +101,9 @@ uint32_t Shader::CreateShader(const std::string& vertexShader, const std::string
     uint32_t programID = glCreateProgram(); GLCall;
     uint32_t vs = CompileShader(GL_VERTEX_SHADER, vertexShader);
     uint32_t fs = CompileShader(GL_FRAGMENT_SHADER, fragmentShader);
+
+    if (!vs || !fs) 
+        return 0;
 
     // link shaders into one program
     glAttachShader(programID, vs); GLCall;
