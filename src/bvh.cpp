@@ -5,7 +5,7 @@
 #include "scene.h"
 #include "bvh.h"
 
-bool box_compare(Sphere a, Sphere b, int axis)
+bool box_compare(GPUSphere a, GPUSphere b, int axis)
 {
     AABB b0;
     AABB b1; 
@@ -16,22 +16,22 @@ bool box_compare(Sphere a, Sphere b, int axis)
     return b0.bMin[axis] < b1.bMin[axis];
 }
 
-bool box_x_compare(Sphere a, Sphere b)
+bool box_x_compare(GPUSphere a, GPUSphere b)
 {
     return box_compare(a, b, 0);
 }
 
-bool box_y_compare(Sphere a, Sphere b)
+bool box_y_compare(GPUSphere a, GPUSphere b)
 {
     return box_compare(a, b, 1);
 }
 
-bool box_z_compare(Sphere a, Sphere b)
+bool box_z_compare(GPUSphere a, GPUSphere b)
 {
     return box_compare(a, b, 2);
 }
 
-BVH::BVH(std::vector<Sphere> &spheres)
+BVH::BVH(std::vector<GPUSphere> &spheres)
 {
     bvh_root = RecursiveBuild(spheres, 0, spheres.size());
     int size = CountNodes(bvh_root);
@@ -59,7 +59,7 @@ void BVH::DeleteBVHTree(BVH_Node* node)
     delete node;
 }
 
-void BVH::RebuildBVH(std::vector<Sphere> &spheres)
+void BVH::RebuildBVH(std::vector<GPUSphere> &spheres)
 {
     DeleteBVHTree(bvh_root);
     delete flat_root;
@@ -74,7 +74,7 @@ void BVH::RebuildBVH(std::vector<Sphere> &spheres)
     b_Rebuilt = true;
 }
 
-BVH_Node* BVH::RecursiveBuild(std::vector<Sphere>& spheres, int start, int end)
+BVH_Node* BVH::RecursiveBuild(std::vector<GPUSphere>& spheres, int start, int end)
 {
     BVH_Node* node = new BVH_Node();
 

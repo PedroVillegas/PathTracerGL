@@ -1,8 +1,6 @@
 .vscode/*
-.DS_Store
 PathTracerGL.dSYM/*
 PathTracerGL
-
-bvh.cpp
-bvh.h
 pbr.glsl
+.DS_Store
+imgui.ini

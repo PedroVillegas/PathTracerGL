@@ -38,7 +38,7 @@ float BVHTraversal(in Ray r, float tNear, float tFar, inout Payload hitrec)
 			if(node.bMin.w == -1.0 || node.bMax.w == -1.0)
 			{
 				int i = node.primitiveOffset;
-                Sphere sphere = objectData.Spheres[i];
+                Sphere sphere = Prims.Spheres[i];
                 float t1, t2;
                 if (RaySphereIntersect(r, sphere, t1, t2) && t1 > 0.01 && t2 < closestSoFar)
                 {

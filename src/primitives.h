@@ -7,20 +7,29 @@
 
 struct AABB;
 
+enum 
+{
+    PRIM_SPHERE = 0,
+    PRIM_AABB = 1
+};
+
+struct alignas(16) Primitive
+{
+    int id;
+    int type;
+    alignas(16) glm::vec3 position;
+    float radius;
+    alignas(16) glm::vec3 dimensions;
+    Material mat;          
+};
+
 struct alignas(16) GPUSphere
 {
     glm::vec3 position { 0.0f };
     float radius = 1.0f;
     glm::vec3 padding { 0.0f };
-    int geomID;
 
     Material mat;
-};
-
-struct Sphere
-{
-    std::string label; 
-    GPUSphere sphere;
 
     void BoundingBox(AABB* out);
 };

@@ -47,15 +47,11 @@ vec3 ACESFilm(vec3 color)
     return clamp((color * (a * color + b)) / (color * (c * color + d) + e), 0.0, 1.0);
 }
 
-vec3 ACESApprox(vec3 v)
-{
-    v *= 0.6f;
-    float a = 2.51f;
-    float b = 0.03f;
-    float c = 2.43f;
-    float d = 0.59f;
-    float e = 0.14f;
-    return clamp((v*(a*v+b))/(v*(c*v+d)+e), 0.0f, 1.0f);
+vec3 jodieReinhardTonemap(vec3 c){
+    // From: https://www.shadertoy.com/view/tdSXzD
+    float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+    vec3 tc = c / (c + 1.0);
+    return mix(c / (l + 1.0), tc, tc);
 }
 
 // Boolean like functions as described here:
@@ -95,7 +91,7 @@ void main()
     vec2 uv = (gl_FragCoord.xy / u_Resolution);
     vec3 hdrCol = texture(u_PT_Texture, uv).rgb;
     // Map HDR to SDR 
-    // vec3 mapped = ACESApprox(hdrCol);
+    // vec3 mapped = jodieReinhardTonemap(hdrCol);
     vec3 mapped = ACESFilm(hdrCol);
     // Apply gamma correction
     mapped = LinearToSRGB(mapped);

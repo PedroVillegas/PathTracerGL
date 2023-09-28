@@ -21,6 +21,16 @@ struct LinearBVHNode
     int axis;
 };
 
+struct Primitive
+{
+    int id;
+    int type;
+    vec3 position;
+    float radius;
+    vec3 dimensions;
+    Material mat;
+};
+
 struct AABB
 {
     vec3 position;
@@ -43,12 +53,10 @@ struct Sphere
 
 struct Light
 {
-    vec3 position;
-    float radius;
-    vec3 dimensions;
     int type;
-    vec3 emissive;
-    int geomID;
+    int PrimitiveOffset;
+    int pad0;
+    int pad1;
 };
 
 struct Ray
@@ -64,7 +72,5 @@ struct Payload
     vec3 normal;
     bool fromInside;
     Material mat;
-
-    int objectIndex;
-    int geomID;
+    int primID;
 };

@@ -1,129 +1,82 @@
 #version 410 core
 
-#include <structs.glsl>     // line 3 - 73
-#include <data.glsl>        // line 74 - 104
-#include <utils.glsl>       // line 105 - 188
-#include <bvh.glsl>         // line 189 - 247
-#include <miss.glsl>        // line 248 - 261
-#include <traceRay.glsl>    // line 262 - 384
+#include <structs.glsl>
+#include <data.glsl>
+#include <utils.glsl>
+#include <bvh.glsl>
+#include <miss.glsl>
+#include <traceRay.glsl>
+#include <tracePrims.glsl>
+#include <bsdf.glsl>
+#include <anyHit.glsl>
+
+#define LIGHT_SPHERE 0
+#define LIGHT_AREA 1
 
 out vec4 FragColour;
 
-uint g_depth = u_Depth;
-
-float FresnelSchlick(float cosine_t, float n_1, float n_2)
+vec3 EstimateDirect(Sphere light, Payload hitrec, Ray ray)
 {
-    float r_0 = (n_1 - n_2) / (n_1 + n_2);
-    r_0 = r_0 * r_0;
-    return r_0 + (1.0 - r_0) * pow((1.0 - cosine_t), 5.0);
+    vec3 DL = vec3(0.0);
+    vec3 dir = normalize(light.position - hitrec.position);
+    vec3 Li = vec3(1.0);// light.mat.emissive * light.mat.emissiveStrength;
+    if (any(notEqual(Scene.SunDirection, vec3(0.0)))) dir = normalize(Scene.SunDirection);
+    vec3 SampledDir = GetConeSample(dir, 1e-5);
+    
+    // Generate shadow ray surface to light
+    Ray SR;
+    SR.origin = hitrec.position + hitrec.normal * 0.001;
+    SR.direction = SampledDir;
+    vec3 SamplePointOnLight = SR.origin + SR.direction * (distance(light.position, hitrec.position) - light.radius);
+    float DistanceFromLight = distance(SR.origin, SamplePointOnLight);
+    float SunLight = dot(SampledDir, hitrec.normal);
+    if (SunLight > 0.0 && !AnyHit(SR, DistanceFromLight))
+    {
+        // Only sample if bsdf is non-specular
+        DL += EvalBSDF(hitrec, ray, SampledDir) * Li;
+    }
+    return DL;
 }
 
-float FresnelSchlick(float cosine_t)
+vec3 EstimateDirect(AABB light, Payload hitrec, Ray ray)
 {
-    return pow((1.0-cosine_t), 5.0);
+    vec3 DL = vec3(0.0);
+    vec3 Li = light.mat.emissive;// * light.mat.emissiveStrength;
+    vec3 SamplePointOnLight = GetAreaLightSample(light);
+    vec3 SampledDir = normalize(SamplePointOnLight - hitrec.position);
+
+    // Generate shadow ray surface to light
+    Ray SR;
+    SR.origin = hitrec.position;
+    SR.direction = SampledDir;
+    float DistanceFromLight = distance(SR.origin, SamplePointOnLight);
+    if (!AnyHit(SR, DistanceFromLight))
+    {
+        // Only sample if bsdf is non-specular
+        DL += EvalBSDF(hitrec, ray, SampledDir) * Li;
+    }
+    return DL;
 }
 
-float FresnelReflectAmount(float n1, float n2, vec3 N, vec3 V, float f_0, float f_90)
+// https://computergraphics.stackexchange.com/questions/5152/progressive-path-tracing-with-explicit-light-sampling
+vec3 SampleLights(Payload hitrec, Ray ray)
 {
-        // Schlick aproximation
-        float r0 = (n1-n2) / (n1+n2);
-        r0 *= r0;
-        float cosX = -dot(N, V);
-        if (n1 > n2)
+    vec3 DL = vec3(0.0);
+    for (int i = 0; i < Prims.n_Lights; i++)
+    {
+        Light l = Prims.Lights[i];
+        if (l.type == LIGHT_SPHERE)
         {
-            float n = n1/n2;
-            float sinT2 = n*n*(1.0-cosX*cosX);
-            // Total internal reflection
-            if (sinT2 > 1.0)
-                return f_90;
-            cosX = sqrt(1.0-sinT2);
+            Sphere light = Prims.Spheres[l.PrimitiveOffset];
+            DL += EstimateDirect(light, hitrec, ray);
         }
-        float x = 1.0-cosX;
-        float ret = r0+(1.0-r0)*x*x*x*x*x;
- 
-        // adjust reflect multiplier for object reflectivity
-        return mix(f_0, f_90, ret);
-}
-
-vec3 EvalBSDF(Payload hitrec, inout Ray ray, out float pdf)
-{
-    vec3 V = ray.direction;
-    vec3 N = hitrec.normal;
-
-    vec3 scattered;
-    vec3 albedo = hitrec.mat.albedo;
-    float specularChance = hitrec.mat.specularChance;
-    float refractionChance = hitrec.mat.refractionChance;  
-    float roughness = hitrec.mat.roughness;
-    float metallic = hitrec.mat.metallic;
-    float ior = hitrec.mat.ior;
-
-    // Account for Fresnel for specularChance and adjust other chances accordingly
-    // Specular takes priority
-    // chanceMultiplier makes sure we keep diffuse / refraction ratio the same
-    if (specularChance > 0.0)
-    {
-        // n_1: ior of the medium the ray start in
-        // n_2: ior of the medium the ray enters
-        float n_1 = hitrec.fromInside ? ior : 1.0;
-        float n_2 = hitrec.fromInside ? 1.0 : ior;
-
-        // x*(1-a) + y*(a)
-        // float F = FresnelSchlick(abs(dot(V, N)) + EPSILON, n_1, n_2);
-        float F = FresnelReflectAmount(n_1, n_2, N, V, specularChance, 1.0);
-        specularChance = mix(specularChance, 1.0, F);
-        // return vec3(F);
-
-        // Need to maintain the same probability ratio for refraction and diffuse later.
-        // refractionChance *= (1.0 - specularChance) / (1.0 - hitrec.mat.specularChance);
+        if (l.type == LIGHT_AREA)
+        {
+            AABB light = Prims.aabbs[l.PrimitiveOffset];
+            DL += EstimateDirect(light, hitrec, ray);
+        }
     }
-
-    // Determine whether to be specular, diffuse or refraction ray
-    // and calculate the scattered ray direction accordingly
-    float specularFactor = 0.0;
-    float refractiveFactor = 0.0;
-    float rayProbability = 1.0;
-    float raySelectRoll = Randf01();
-    vec3 diffuseDir = NoTangentCosineHemisphere(Randf01(), Randf01(), N);
-
-    if (specularChance > 0.0 && raySelectRoll < specularChance)
-    {   
-        // Reflection ray
-        specularFactor = 1.0;
-        rayProbability = specularChance;
-
-        // Rough Specular (Glossy) lerps from smooth specular to rough diffuse by the roughness squared
-        // Squaring the roughness is done to make the roughness feel more linear perceptually
-        vec3 specularDir = reflect(V, N);
-        specularDir = normalize(mix(specularDir, diffuseDir, roughness * roughness));
-        scattered = specularDir;
-    }
-    else if (refractionChance > 0.0 && raySelectRoll < (specularChance + refractionChance))
-    {
-        // Refraction ray
-        refractiveFactor = 1.0;
-        rayProbability = 1.0;
-
-        float eta = hitrec.fromInside ? ior : (1.0 / ior);
-        vec3 refractionDir = refract(V, N, eta);
-        refractionDir = normalize(mix(refractionDir, -diffuseDir, roughness * roughness));
-        scattered = refractionDir;
-    }
-    else
-    {
-        // Diffuse ray
-        scattered = diffuseDir;
-        rayProbability = 1.0 - (specularChance + refractionChance);
-    }
-
-    ray.origin = bool(refractiveFactor) ? hitrec.position - N * 0.001 : hitrec.position + N * 0.001;
-    ray.direction = scattered;
-
-    pdf = max(rayProbability, EPSILON);
-    // return vec3(pdf);
-    pdf = 1.0;
-
-    return mix(mix(albedo, vec3(1.0), specularFactor), vec3(1.0), refractiveFactor);
+    return DL;
 }
 
 vec3 RayGen(Ray ray)
@@ -132,11 +85,13 @@ vec3 RayGen(Ray ray)
     // Throughput: the amount of radiance passing through the ray
     vec3 radiance = vec3(0.0);
     vec3 throughput = vec3(1.0); 
-
-    for (int i = 0; i < g_depth; i++)
+    
+    for (int bounce = 0; bounce < Scene.Depth; bounce++)
     {
         // Keep track of ray intersection point, direction etc
-        Payload HitRec = TraceRay(ray);
+        // Payload HitRec = TraceRay(ray);
+        Payload HitRec = TracePrims(ray);
+        // return vec3(HitRec.t);
 
         // If ray misses, object takes on radiance of the sky
         if (HitRec.t == FLT_MAX)
@@ -146,7 +101,7 @@ vec3 RayGen(Ray ray)
         }
         
         // Consider emissive materials
-        if (HitRec.mat.emissive.x + HitRec.mat.emissive.y + HitRec.mat.emissive.z != 0.0)
+        if (any(greaterThan(HitRec.mat.emissive, vec3(0.0))))
         {
             radiance += HitRec.mat.emissive * HitRec.mat.emissiveStrength * throughput;
             break;
@@ -162,20 +117,20 @@ vec3 RayGen(Ray ray)
             throughput *= exp(-HitRec.mat.absorption * HitRec.t);
         }
 
-        float pdf;
-        vec3 bsdf = EvalBSDF(HitRec, ray, pdf);
-        // return bsdf;
+        // Calculate direct lighting
+        // vec3 direct = SampleLights(HitRec, ray);
+        // radiance += throughput * direct;
+        // return direct;
 
-        throughput *= bsdf / pdf;
-
-        // ray.direction = scattered;
-        // ray.origin = HitRec.position + ray.direction * 0.001;
+        // Calculate indirect lighting
+        vec3 indirect = EvalIndirect(HitRec, ray);
+        throughput *= indirect;
 
         /* Russian Roulette */
         // As throughput gets smaller, the probability (rrp) of terminating the path early increases
         // Surviving paths have their value boosted to compensate for terminated paths
         float rrp = min(0.95, max(throughput.x, max(throughput.y, throughput.z)));
-        if (i > 3)
+        if (bounce > 3)
         {
             if (Randf01() > rrp) 
                 break;
@@ -210,9 +165,9 @@ void main()
     
         // Compute Bokeh Blur (Depth of Field)
         // First find where the ray hits the focal plane (focal point)
-        vec3 focal_point = r.origin + r.direction * u_FocalLength;
+        vec3 focal_point = r.origin + r.direction * Camera.focalLength;
         // Pick a random spot on the lens (aperture)
-        vec2 offset = u_Aperture * 0.5 * UniformSampleUnitCircle(r_1, r_2);
+        vec2 offset = Camera.aperture * 0.5 * UniformSampleUnitCircle(r_1, r_2);
 
         // Shoot ray from that random spot towards the focal point
         r.origin += vec3(offset, 0.0);
@@ -222,7 +177,6 @@ void main()
     }
 
     irradiance /= spp;
-
     // Progressive rendering:
     // To calculate the cumulative average we must first get the current pixel's data by sampling the accumulation texture 
     // (which holds data of all samples for each pixel which is then averaged out) with the current uv coordinates.
@@ -235,5 +189,6 @@ void main()
     vec4 accumulatedScaledDown = newAccumulationContribution / (u_SampleIterations + 1);
 
     FragColour = accumulatedScaledDown;
+    // FragColour = vec4(Camera.position,1.0);
     // FragColour = vec4(Randf01(), Randf01(), Randf01(), 1.0);
 }

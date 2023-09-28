@@ -32,13 +32,10 @@ void Shader::ReloadShader()
     std::string vs = ParseShader(m_VSPath);
     std::string fs = ParseShader(m_FSPath);
     uint32_t tempID = CreateShader(vs, fs);
-    if (tempID)
-    {
-        glDeleteProgram(m_ID); GLCall;
-        m_ID = tempID;
-        b_Reloaded = true;
-        std::cout << std::endl;
-    }
+    glDeleteProgram(m_ID); GLCall;
+    m_ID = tempID;
+    b_Reloaded = true;
+    std::cout << std::endl;
 }
 
 std::string Shader::ParseShader(const std::string& filepath)
@@ -171,6 +168,12 @@ void Shader::SetUniformVec4(const std::string& name, float val0, float val1, flo
 void Shader::SetUniformMat4(const std::string& name, const glm::mat4& matrix)
 {
     glUniformMatrix4fv(GetUniformLocation(name), 1, GL_FALSE, glm::value_ptr(matrix));
+}
+   
+void Shader::SetUBO(const std::string& name, uint32_t bind)
+{
+    uint32_t block = glGetUniformBlockIndex(m_ID, name.c_str());
+    glUniformBlockBinding(m_ID, block, bind);
 }
 
 uint32_t Shader::GetUniformLocation(const std::string &name)

@@ -29,6 +29,7 @@ public:
     void SetUniformVec3(const std::string& name, float val0, float val1, float val2);
     void SetUniformVec4(const std::string& name, float val0, float val1, float val2, float val3);
     void SetUniformMat4(const std::string& name, const glm::mat4& matrix);
+    void SetUBO(const std::string& name, uint32_t bind);
 public:
     bool b_Reloaded = false;
 private:

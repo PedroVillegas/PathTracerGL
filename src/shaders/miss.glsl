@@ -6,6 +6,10 @@ vec3 calc(float x, vec3 a, vec3 b, vec3 c, vec3 d)
 
 vec3 Miss(vec3 V)
 {           
+    float alp = normalize(V.y) * 0.5 + 0.5;
+    vec3 da = mix(vec3(1.0), vec3(82.0,102.0,130.0)/255.0, alp);
+    return mix(vec3(0.0), da, Scene.Day);
+
     vec3 atmosphere;
     vec3 p_dark[4] = vec3[4](
         vec3(0.3720705374951474, 0.3037080684557225, 0.26548632969565816),
@@ -23,17 +27,20 @@ vec3 Miss(vec3 V)
 
     float uvx = V.x * 0.5 + 0.5;
     float night = .3 + .7 * sin(uvx * radians(60.) + (0. - 4.) * radians(30.));
-    float x = mix(night, V.y, u_Day);
+    float x = mix(night, V.y, Scene.Day);
 
     vec3 a = mix(p_dark[0], p_bright[0], x);
     vec3 b = mix(p_dark[1], p_bright[1], x);
     vec3 c = mix(p_dark[2], p_bright[2], x);
     vec3 d = mix(p_dark[3], p_bright[3], x);
 
-    if (dot(V, vec3(0, 1, 0)) > .005) {
+    if (dot(V, vec3(0, 1, 0)) > .005) 
+    {
         atmosphere = calc(V.y, a, b, c, d);
-    } else {
-        atmosphere = mix(vec3(0.0), vec3(0.333), u_Day);
+    } 
+    else 
+    {
+        atmosphere = mix(vec3(0.0), vec3(0.333), Scene.Day);
     }
 
     return atmosphere;

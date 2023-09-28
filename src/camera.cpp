@@ -3,6 +3,7 @@
 
 #include <GLFW/glfw3.h>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/glm.hpp>
 #include <vector>
 #include <iostream>
 
@@ -16,7 +17,7 @@ Camera::Camera(float verticalFOV, float nearClip, float farClip)
 {
     m_Forward = glm::vec3(0, 0, -1);
     m_Position = glm::vec3(0, 0, 3);
-    RecalculateView();
+    Init();
 }
 
 Camera::Camera(glm::vec3 position, float verticalFOV, float nearClip, float farClip)
@@ -27,7 +28,7 @@ Camera::Camera(glm::vec3 position, float verticalFOV, float nearClip, float farC
     m_Position(position)
 {
     m_Forward = glm::vec3(0, 0, -1);
-    RecalculateView();
+    Init();
 }
 
 Camera::Camera(glm::vec3 position, glm::vec3 forwardDirection, float verticalFOV, float nearClip, float farClip)
@@ -38,7 +39,42 @@ Camera::Camera(glm::vec3 position, glm::vec3 forwardDirection, float verticalFOV
     m_Position(position),
     m_Forward(forwardDirection)
 {
+    Init();
+}
+
+void Camera::Init()
+{
     RecalculateView();
+    RecalculateProjection();
+    UpdateParams();
+}
+
+void Camera::UpdateParams()
+{
+    params.InverseProjection = m_InverseProjection;
+    params.InverseView = m_InverseView;
+    params.position = m_Position;
+    params.aperture = aperture;
+    params.focalLength = focal_length;
+}
+
+bool Camera::OnUpdate(float dt, Window* window)
+{
+    bool IsCamMoving;
+    switch (type)
+    {
+        case CAM_TYPE_FPS:
+            IsCamMoving = FPS(dt, window);
+            UpdateParams();
+            break;
+        case CAM_TYPE_CINEMATIC:
+            IsCamMoving = Cinematic(dt, window);
+            break;
+        case CAM_TYPE_ORBITAL:
+            IsCamMoving = Orbital(dt, window);
+            break;
+    }
+    return IsCamMoving;
 }
 
 bool Camera::Orbital(float dt, Window* window)
@@ -91,7 +127,7 @@ bool Camera::Cinematic(float dt, Window* window)
     dm.x = (glfwGetKey(glfw_win, GLFW_KEY_D) == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_A) == GLFW_PRESS);
     dm.y = (glfwGetKey(glfw_win, GLFW_KEY_SPACE) == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS);
     dm.z = (glfwGetKey(glfw_win, GLFW_KEY_W) == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_S) == GLFW_PRESS);
-    float mlen = glm::length(dm) / m_TopSpeed; 
+    float mlen = glm::length(dm) / MaxVelocity; 
     if (mlen < 1e-3f) mlen = 1.0f;
 
     glm::mat3 matOrient;
@@ -136,11 +172,6 @@ bool Camera::FPS(float dt, Window* window)
         m_FirstMouse = true;
     }
 
-    if (glfwGetKey(glfw_win, GLFW_KEY_CAPS_LOCK) == GLFW_PRESS) m_TopSpeed = 20.0f;
-    else if (glfwGetKey(glfw_win, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) m_TopSpeed = 2.0f;
-    else if (glfwGetKey(glfw_win, GLFW_KEY_CAPS_LOCK) == GLFW_RELEASE
-            && glfwGetKey(glfw_win, GLFW_KEY_LEFT_CONTROL) == GLFW_RELEASE) m_TopSpeed = 5.0f;
-
     if (m_AllowCameraToMove)
     {
         glm::vec2 delta {0.0f};
@@ -174,9 +205,25 @@ bool Camera::FPS(float dt, Window* window)
             // m_Up = glm::normalize(m_QuatOrientation * glm::vec3(0.0f, 1.0f, 0.0f)); // Rotating the Up vector introduces roll
             // m_Right = glm::normalize(m_QuatOrientation * glm::vec3(1.0f, 0.0f, 0.0f));
             m_Right = glm::normalize(glm::cross(m_Forward, m_Up));
-
-            // RecalculateView();
         }
+
+        // bool Sprinting = false;
+        // float TargetFOV = horizontalFOV;
+        float Velocity = MaxVelocity;
+        if (glfwGetKey(glfw_win, GLFW_KEY_CAPS_LOCK) == GLFW_PRESS)
+        {
+            Velocity = MaxVelocity * 5.0f;
+            // TargetFOV = horizontalFOV + 10.0f;
+            // Sprinting = true;
+        } 
+        else if (glfwGetKey(glfw_win, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) 
+        {
+            Velocity = MaxVelocity * 0.5f;
+        } 
+        // else if (glfwGetKey(glfw_win, GLFW_KEY_CAPS_LOCK) == GLFW_RELEASE && glfwGetKey(glfw_win, GLFW_KEY_LEFT_CONTROL) == GLFW_RELEASE) 
+        // {
+        //     Velocity = MaxVelocity * 1.0f;
+        // }
 
         // Movement delta
         glm::vec3 M {0.0f, 0.0f, 0.0f};
@@ -184,7 +231,7 @@ bool Camera::FPS(float dt, Window* window)
         M.x = (glfwGetKey(glfw_win, GLFW_KEY_D)     == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_A)          == GLFW_PRESS);
         M.y = (glfwGetKey(glfw_win, GLFW_KEY_SPACE) == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS);
         M.z = (glfwGetKey(glfw_win, GLFW_KEY_W)     == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_S)          == GLFW_PRESS);
-        float mlen = glm::length(M) / m_TopSpeed; 
+        float mlen = glm::length(M); 
         if (mlen < 1e-2f) mlen = 1.0f;
 
         glm::mat3 matOrient;
@@ -193,9 +240,17 @@ bool Camera::FPS(float dt, Window* window)
         matOrient[1] = m_Up; //m_MatOrientation[1];
         matOrient[0] = m_Right; //m_MatOrientation[2];
 
-        m_MovementMomentum = m_MovementMomentum * damping + (1.0f - damping) * matOrient * M / mlen;
-
+        m_MovementMomentum = m_MovementMomentum * damping + (1.0f - damping) * matOrient * M * Velocity / mlen;
         m_Position += m_MovementMomentum * dt;
+
+        // if (Sprinting)
+        // {
+        //     float t = glm::length(m_MovementMomentum) / Velocity;
+        //     // horizontalFOV = glm::mix(horizontalFOV, TargetFOV, glm::sin(t * (3.1415f / 2)));
+        //     float AnimatedFOV = glm::mix(horizontalFOV, TargetFOV, exp(t));
+        //     SetFov(AnimatedFOV);
+        //     RecalculateProjection();
+        // }
 
         // FOV Zoom
         float zoom = (glfwGetKey(glfw_win, GLFW_KEY_E) == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_Q) == GLFW_PRESS);

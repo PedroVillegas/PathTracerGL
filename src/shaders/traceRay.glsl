@@ -1,9 +1,9 @@
-bool RaySphereIntersect(Ray ray, Sphere sphere, out float tFar, out float tNear);
-bool RayAABBIntersect(Ray ray, AABB aabb, out float tFar, out float tNear);
+bool RaySphereIntersect(Ray ray, Sphere sphere, out float tNear, out float tFar);
+bool RayAABBIntersect(Ray ray, AABB aabb, out float tNear, out float tFar);
 vec3 GetAABBNormal(AABB aabb, vec3 surfacePosition);
 vec3 GetSphereNormal(Sphere sphere, vec3 surfacePosition);
 
-#define BVH_ENABLED
+// #define BVH_ENABLED
 
 Payload TraceRay(Ray ray)
 {
@@ -17,10 +17,10 @@ Payload TraceRay(Ray ray)
     hitrec.t = closestSoFar;
 #endif
 #ifndef BVH_ENABLED
-    for (int i = 0; i < objectData.n_Spheres; i++)
+    for (int i = 0; i < Prims.n_Spheres; i++)
     {        
-        Sphere sphere = objectData.Spheres[i];
-        if (RaySphereIntersect(ray, sphere, tNear, tFar) && tNear > 0.01 && tFar < hitrec.t)
+        Sphere sphere = Prims.Spheres[i];
+        if (RaySphereIntersect(ray, sphere, tNear, tFar) && tFar > 0.001 && tNear < hitrec.t)
         {
             hitrec.t = tNear < 0 ? tFar : tNear;
             hitrec.position = ray.origin + ray.direction * hitrec.t;
@@ -32,10 +32,10 @@ Payload TraceRay(Ray ray)
     }
 #endif
 
-    for (int i = 0; i < objectData.n_AABBs; i++)
+    for (int i = 0; i < Prims.n_AABBs; i++)
     {        
-        AABB aabb = objectData.aabbs[i];
-        if (RayAABBIntersect(ray, aabb, tNear, tFar) && tNear > 0.01 && tFar < hitrec.t)
+        AABB aabb = Prims.aabbs[i];
+        if (RayAABBIntersect(ray, aabb, tNear, tFar) && tFar > 0.001 && tNear < hitrec.t)
         {
             hitrec.t = tNear < 0 ? tFar : tNear;
             hitrec.position = ray.origin + ray.direction * hitrec.t;
@@ -44,7 +44,6 @@ Payload TraceRay(Ray ray)
             hitrec.fromInside = hitrec.t == tFar;
         }
     }
-
     return hitrec;
 }
 
@@ -85,11 +84,11 @@ bool RayAABBIntersect(Ray ray, AABB aabb, out float tNear, out float tFar)
     vec3 tLower = (bmin - ray.origin) * inv_D;
     vec3 tUpper = (bmax - ray.origin) * inv_D;
 
-    vec3 tMin = min(tLower, tUpper);
-    vec3 tMax = max(tLower, tUpper);
+    vec3 tMins = min(tLower, tUpper);
+    vec3 tMaxes = max(tLower, tUpper);
 
-    tNear = max(tNear, max(tMin.x, max(tMin.y, tMin.z)));
-    tFar = min(tFar, min(tMax.x, min(tMax.y, tMax.z)));
+    tNear = max(tNear, max(tMins.x, max(tMins.y, tMins.z)));
+    tFar = min(tFar, min(tMaxes.x, min(tMaxes.y, tMaxes.z)));
 
     return tNear <= tFar;
 }

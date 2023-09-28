@@ -1,26 +1,37 @@
 uniform int u_SampleIterations;
 uniform int u_SamplesPerPixel;
-uniform int u_Depth;
-uniform int u_Day;
-uniform int u_SelectedObjIdx;
-uniform vec3 u_SunDir;
-uniform float u_FocalLength;
-uniform float u_Aperture;
-uniform vec2 u_Resolution;
-uniform vec3 u_RayOrigin;
-uniform mat4 u_InverseProjection;
-uniform mat4 u_InverseView;
 uniform sampler2D u_AccumulationTexture;
-
-layout (std140) uniform ObjectData
+uniform vec2 u_Resolution;
+layout (std140) uniform PrimsBlock
 {
     int n_Spheres;
-    Sphere Spheres[500];
     int n_AABBs;
-    AABB aabbs[50];
-    // int n_Lights;
-    // Light Lights[50];
-} objectData;
+    int n_Lights;
+    int n_Primitives;
+    Sphere Spheres[100];
+    AABB aabbs[100];
+    Light Lights[100];
+    Primitive Primitives[100];
+} Prims;
+
+layout (std140) uniform SceneBlock
+{
+    vec3 SunDirection;
+    int pad;
+    int Depth;
+    int SelectedPrimIdx;
+    int Day;
+} Scene;
+
+layout (std140) uniform CameraBlock
+{
+    mat4 InverseProjection;
+    mat4 InverseView;
+    vec3 position;
+    float pad;
+    float aperture;
+    float focalLength;
+} Camera;
 
 layout (std140) uniform BVH
 {

@@ -5,32 +5,45 @@
 
 struct alignas(16) Light
 {
-    glm::vec3 position { 0.0f };
-    float radius = 1.0f;
-    glm::vec3 dimensions { 1.0f };
-    int type = 0;
-    glm::vec3 emissive { 0.0f };
-    int geomID;
+    int type;
+    int PrimitiveOffset;
+    int pad0;
+    int pad1;
 };
+
+struct SceneBlock
+{
+    glm::vec3 SunDirection;
+    int pad;
+    int Depth;
+    int SelectedPrimIdx;
+    int Day;
+};
+
+const uint32_t MAX_SPHERES = 100;
+const uint32_t MAX_AABBS = 100;
+const uint32_t MAX_LIGHTS = 100;
 
 struct Scene
 {
+    SceneBlock Data;
     int maxRayDepth = 16;
     int samplesPerPixel = 1;
     char day = 0;
     int SphereIdx = 0;
     int AABBIdx = 0;
     int SceneIdx = 0;
-    glm::vec3 lightDirection { 0.0f, 0.0f, 0.0f };
-    std::vector<Sphere> spheres;
+    glm::vec3 lightDirection { -1.0f, 1.0f, 1.0f };
+    std::vector<GPUSphere> spheres;
     std::vector<GPUAABB> aabbs;
     std::vector<Light> lights;
+    std::vector<Primitive> primitives;
 
-    void GridShowcase();
-    void CustomScene();
-    void ModifiedCornellBox();
+    void AddDefaultSphere();
+    void AddDefaultCube();
+
     void CornellBox();
     void RTIW();
-    void RandomizeBRDF();
+    void TestPrims();
     void emptyScene();
 };

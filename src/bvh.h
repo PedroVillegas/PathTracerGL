@@ -24,24 +24,24 @@ struct LinearBVH_Node
     int axis = 0;
 };
 
-bool box_compare(Sphere a, Sphere b, int axis);
-bool box_x_compare(Sphere a, Sphere b);
-bool box_y_compare(Sphere a, Sphere b);
-bool box_z_compare(Sphere a, Sphere b);
+bool box_compare(GPUSphere a, GPUSphere b, int axis);
+bool box_x_compare(GPUSphere a, GPUSphere b);
+bool box_y_compare(GPUSphere a, GPUSphere b);
+bool box_z_compare(GPUSphere a, GPUSphere b);
 
 class BVH
 {
 public:
-    BVH(std::vector<Sphere> &spheres);
+    BVH(std::vector<GPUSphere> &spheres);
     ~BVH();
     int CountNodes(BVH_Node* root);
-    void RebuildBVH(std::vector<Sphere> &spheres);
+    void RebuildBVH(std::vector<GPUSphere> &spheres);
 public:
     BVH_Node* bvh_root = nullptr;
     LinearBVH_Node* flat_root = nullptr;
     bool b_Rebuilt = false;
 private:
-    BVH_Node* RecursiveBuild(std::vector<Sphere>& spheres, int start, int end);
+    BVH_Node* RecursiveBuild(std::vector<GPUSphere>& spheres, int start, int end);
     void DeleteBVHTree(BVH_Node* node);
     int FlattenBVHTree(LinearBVH_Node* flatten, BVH_Node* root, int* offset, int depth);
 };
