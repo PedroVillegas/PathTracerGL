@@ -9,6 +9,7 @@ struct Material
     float ior;                      // Index of Refraction - how refractive it is
     float metallic;                 // A material is either metallic or it's not
     float roughness;                // How rough the object is
+    float pad;
 };
 
 struct LinearBVHNode
@@ -31,32 +32,10 @@ struct Primitive
     Material mat;
 };
 
-struct AABB
-{
-    vec3 position;
-    float pad0;
-    vec3 dimensions;
-    float pad1;
-
-    Material mat;
-};
-
-struct Sphere
-{
-    vec3 position;
-    float radius;
-    vec3 padding;
-    int geomID;
-
-    Material mat;
-};
-
 struct Light
 {
-    int type;
-    int PrimitiveOffset;
-    int pad0;
-    int pad1;
+    int id;
+    vec3 le;
 };
 
 struct Ray

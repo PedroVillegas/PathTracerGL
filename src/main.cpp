@@ -17,7 +17,7 @@ void SetupQuad(uint32_t& VAO, uint32_t& VBO, uint32_t& IBO);
 int main(void) 
 {
     const char* Title = "Path Tracing";
-    uint32_t ViewportHeight = 600;
+    uint32_t ViewportHeight = 720;
     uint32_t ViewportWidth = ViewportHeight * 16/9;
     Window window = Window(Title, ViewportWidth, ViewportHeight);
     Gui gui = Gui(window);
@@ -47,34 +47,31 @@ int main(void)
     };
 
     uint32_t debug_vao;
-    glGenVertexArrays(1, &debug_vao); GLCall;
-    glBindVertexArray(debug_vao); GLCall;
+    glGenVertexArrays(1, &debug_vao); 
+    glBindVertexArray(debug_vao); 
 
     uint32_t vbo_vertices;
-    glGenBuffers(1, &vbo_vertices); GLCall;
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_vertices); GLCall;
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW); GLCall;
+    glGenBuffers(1, &vbo_vertices); 
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_vertices); 
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW); 
 
     uint32_t ibo_elements;
-    glGenBuffers(1, &ibo_elements); GLCall;
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo_elements); GLCall;
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(elements), elements, GL_STATIC_DRAW); GLCall;
+    glGenBuffers(1, &ibo_elements); 
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo_elements); 
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(elements), elements, GL_STATIC_DRAW); 
 
-    glEnableVertexAttribArray(0); GLCall;
-    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, (void*)0); GLCall;
+    glEnableVertexAttribArray(0); 
+    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, (void*)0); 
 
     renderer.debugVAO = debug_vao;
 
     SetupQuad(VAO, VBO, IBO);
 
-    float LastFrame = 0.0f;
     float dt = 0.0f;
-    bool vsync = false;
+    bool vsync = true;
 
     while (!window.Closed())
     {
-        float CurrentFrame = glfwGetTime();
-
         // Input
         window.ProcessInput();
         vsync == true ? glfwSwapInterval(1) : glfwSwapInterval(0);
@@ -91,7 +88,7 @@ int main(void)
         {
             scene.Data.SunDirection = scene.lightDirection;
             scene.Data.Depth = scene.maxRayDepth;
-            scene.Data.SelectedPrimIdx = scene.SphereIdx;
+            scene.Data.SelectedPrimIdx = scene.PrimitiveIdx;
             scene.Data.Day = scene.day;
 
             renderer.Render(scene, camera, VAO);
@@ -113,14 +110,15 @@ int main(void)
 
 
         window.Update();
-        dt = CurrentFrame - LastFrame;
-        LastFrame = CurrentFrame;
+        dt = 1.0f / ImGui::GetIO().Framerate; // In seconds
     }
 
-    glDeleteVertexArrays(1, &VAO); GLCall;
-    glDeleteBuffers(1, &VBO); GLCall;
-    glDeleteBuffers(1, &IBO); GLCall;
-    glDeleteBuffers(1, &BVH_UBO); GLCall;
+    glDeleteVertexArrays(1, &VAO); 
+    glDeleteBuffers(1, &VBO); 
+    glDeleteBuffers(1, &IBO); 
+    glDeleteBuffers(1, &BVH_UBO); 
+
+    return -1;
 }
 
 void SetupQuad(uint32_t& VAO, uint32_t& VBO, uint32_t& IBO)
@@ -140,23 +138,23 @@ void SetupQuad(uint32_t& VAO, uint32_t& VBO, uint32_t& IBO)
         2, 3, 0
     };
  
-    glGenVertexArrays  (1, &VAO); GLCall;
-    glGenBuffers       (1, &VBO); GLCall;
-    glGenBuffers       (1, &IBO); GLCall;
+    glGenVertexArrays  (1, &VAO); 
+    glGenBuffers       (1, &VBO); 
+    glGenBuffers       (1, &IBO); 
     
-    glBindVertexArray  (VAO); GLCall;
-    glBindBuffer       (GL_ARRAY_BUFFER, VBO); GLCall;
-    glBufferData       (GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW); GLCall;
+    glBindVertexArray  (VAO); 
+    glBindBuffer       (GL_ARRAY_BUFFER, VBO); 
+    glBufferData       (GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW); 
     
-    glBindBuffer       (GL_ELEMENT_ARRAY_BUFFER, IBO); GLCall;
-    glBufferData       (GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW); GLCall;
+    glBindBuffer       (GL_ELEMENT_ARRAY_BUFFER, IBO); 
+    glBufferData       (GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW); 
 
     // position attrib
-    glVertexAttribPointer      (0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0); GLCall;
-    glEnableVertexAttribArray  (0); GLCall;
+    glVertexAttribPointer      (0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0); 
+    glEnableVertexAttribArray  (0); 
 
     // colour attrib  
-    glVertexAttribPointer      (1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3* sizeof(float))); GLCall;
-    glEnableVertexAttribArray  (1); GLCall;
+    glVertexAttribPointer      (1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3* sizeof(float))); 
+    glEnableVertexAttribArray  (1); 
 }
 

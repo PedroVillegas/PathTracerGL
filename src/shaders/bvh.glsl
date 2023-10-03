@@ -1,7 +1,6 @@
-bool RaySphereIntersect(Ray ray, Sphere sphere, out float tFar, out float tNear);
-bool RayAABBIntersect(Ray ray, AABB aabb, out float tFar, out float tNear);
-vec3 GetAABBNormal(AABB aabb, vec3 surfacePosition);
-vec3 GetSphereNormal(Sphere sphere, vec3 surfacePosition);
+bool IntersectSphere(vec3 position, float radius, Ray ray, inout float tNear, inout float tFar);
+bool IntersectAABB(vec3 position, vec3 dimensions, Ray ray, inout float tNear, inout float tFar);
+bool Intersect(Ray ray, Primitive prim, inout Payload payload);
 
 bool Slabs(in vec3 bMin, in vec3 bMax, in Ray r, in float tNear, in float tFar) 
 {
@@ -17,53 +16,58 @@ bool Slabs(in vec3 bMin, in vec3 bMax, in Ray r, in float tNear, in float tFar)
     tFar = min(tFar, min(tMaxes.x, min(tMaxes.y, tMaxes.z)));
 
     return tNear <= tFar;
-}   
+}
 
-float BVHTraversal(in Ray r, float tNear, float tFar, inout Payload hitrec)
+bool TraverseBVH(in Ray r, inout Payload payload)
 {
+    bool hit = false;
+    float tNear = INF;
+    float tFar = INF;
+
 	// Stack traversal without pointer
 	int stack[64];	
-	int stackAddr = 0;	
-	stack[stackAddr] = 0;
+	int stackAdrr = 0;	
+	stack[stackAdrr] = 0;
 
 	float closestSoFar = tFar;
 
-	while(stackAddr >= 0 && stackAddr < 64) 
+	while (stackAdrr >= 0 && stackAdrr < 64) 
 	{
-		LinearBVHNode node = bvh.bvh[stack[stackAddr]];
-		stackAddr -= 1;
+		LinearBVHNode node = bvh.bvh[7];
+        payload.position = Prims.Primitives[node.primitiveOffset].mat.albedo;
+        // return true;
+		stackAdrr -= 1;
 
-		if(Slabs(node.bMin.xyz, node.bMax.xyz, r, tNear, closestSoFar))
+		if (Slabs(node.bMin.xyz, node.bMax.xyz, r, tNear, closestSoFar))
 		{
-			if(node.bMin.w == -1.0 || node.bMax.w == -1.0)
+            return true;
+			if (node.bMin.w == -1.0 || node.bMax.w == -1.0)
 			{
-				int i = node.primitiveOffset;
-                Sphere sphere = Prims.Spheres[i];
-                float t1, t2;
-                if (RaySphereIntersect(r, sphere, t1, t2) && t1 > 0.01 && t2 < closestSoFar)
+                // Node is a leaf (No Children)
+                if (node.n_Primitives > 0)
                 {
-                    hitrec.t = t1 < 0 ? t2 : t1;
-                    hitrec.position = r.origin + r.direction * hitrec.t;
-                    hitrec.mat = sphere.mat; 
-                    hitrec.fromInside = hitrec.t == t2;
-                    vec3 outward_normal = GetSphereNormal(sphere, hitrec.position);
-                    hitrec.normal = hitrec.fromInside ? -outward_normal : outward_normal;
-                    closestSoFar = hitrec.t;
+                    int i = node.primitiveOffset;
+                    Payload tempHit;
+                    if (Intersect(r, Prims.Primitives[i], tempHit))
+                    {
+                        hit = true;
+                        closestSoFar = tempHit.t;
+                        payload = tempHit;
+                    }
                 }
 			}
 
-			if(node.bMin.w != -1.0)
+			if (node.bMin.w != -1.0)
 			{
-				stackAddr += 1;
-				stack[stackAddr] = int(node.bMin.w);
+				stackAdrr += 1;
+				stack[stackAdrr] = int(node.bMin.w);
 			}
-			if(node.bMax.w != -1.0)
+			if (node.bMax.w != -1.0)
 			{
-				stackAddr += 1;
-				stack[stackAddr] = int(node.bMax.w);
+				stackAdrr += 1;
+				stack[stackAdrr] = int(node.bMax.w);
 			}
 		}
 	}
-
-	return closestSoFar;
+	return hit;
 }

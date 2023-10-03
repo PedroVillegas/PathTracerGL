@@ -1,4 +1,4 @@
-#version 410 core
+#version 460 core
 
 layout(location = 0) in vec4 vert;
 uniform mat4 u_Model;

@@ -4,12 +4,8 @@ uniform sampler2D u_AccumulationTexture;
 uniform vec2 u_Resolution;
 layout (std140) uniform PrimsBlock
 {
-    int n_Spheres;
-    int n_AABBs;
     int n_Lights;
     int n_Primitives;
-    Sphere Spheres[100];
-    AABB aabbs[100];
     Light Lights[100];
     Primitive Primitives[100];
 } Prims;

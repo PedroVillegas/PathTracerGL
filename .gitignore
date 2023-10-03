@@ -1,6 +1,6 @@
-.vscode/*
 PathTracerGL.dSYM/*
 PathTracerGL
 pbr.glsl
 .DS_Store
 imgui.ini
+PTGL.exe

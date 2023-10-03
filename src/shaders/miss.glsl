@@ -6,9 +6,9 @@ vec3 calc(float x, vec3 a, vec3 b, vec3 c, vec3 d)
 
 vec3 Miss(vec3 V)
 {           
-    float alp = normalize(V.y) * 0.5 + 0.5;
-    vec3 da = mix(vec3(1.0), vec3(82.0,102.0,130.0)/255.0, alp);
-    return mix(vec3(0.0), da, Scene.Day);
+    // float alp = normalize(V.y) * 0.5 + 0.5;
+    // vec3 da = mix(vec3(1.0), vec3(82.0,102.0,130.0)/255.0, alp);
+    return mix(vec3(0.0), vec3(82.0,102.0,130.0)/255.0, Scene.Day);
 
     vec3 atmosphere;
     vec3 p_dark[4] = vec3[4](

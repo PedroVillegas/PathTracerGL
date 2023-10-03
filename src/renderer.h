@@ -36,6 +36,7 @@ public:
     void ResetSamples() { m_SampleIterations = 0; }
 public:
     BVH* m_BVH = nullptr;
+    int BVHDepth = 0;
     bool b_Pause = false;
     bool b_DrawBVH = false;
     uint32_t debugVAO = 0;

@@ -36,12 +36,17 @@ void Gui::Render(Renderer& renderer, Camera& camera, Scene& scene, bool& vsync)
     if (ImGui::Begin("Overview"))
     {
         ImGui::Text("Viewport: %i x %i", renderer.GetViewportWidth(), renderer.GetViewportHeight());
-        ImGui::Checkbox("V-Sync", &vsync);
+        // int res[2] = { int(renderer.GetViewportWidth()), int(renderer.GetViewportHeight()) };
+        // if (ImGui::InputInt2("Resolution: ", res))
+        //     renderer.OnResize(res[0], res[1]);
         ImGui::Text("Render time: %.3f ms/frame", 1000.0f / ImGui::GetIO().Framerate);
         ImGui::Text("Framerate: %.1f FPS", ImGui::GetIO().Framerate);
         ImGui::Text("Iterations: %i", renderer.GetIterations());
+        ImGui::Checkbox("V-Sync", &vsync);
         ImGui::Checkbox("Pause", &renderer.b_Pause);
         ImGui::Checkbox("Draw BVH", &renderer.b_DrawBVH);
+        ImGui::Text("BVH Depth");
+        ImGui::SliderInt("##BVH-Depth", &renderer.BVHDepth, 0, 10);
         ImGui::End();
     }
 
@@ -72,7 +77,7 @@ void Gui::CreateCameraWindow(Renderer& renderer, Camera& camera)
             renderer.ResetSamples();
         }
 
-        ImGui::Text("Velocity : %.2f", glm::length(camera.GetMovementMomentum()));
+        ImGui::Text("Velocity : %.2f", glm::length(camera.GetVelocity()));
         ImGui::Text("Position : %.2f %.2f %.2f", camera.GetPosition().x, camera.GetPosition().y , camera.GetPosition().z);
         ImGui::Text("Direction: %.2f %.2f %.2f", camera.GetDirection().x, camera.GetDirection().y , camera.GetDirection().z);
         // ImGui::Text("Momentum : %.2f %.2f %.2f", camera.GetMovementMomentum().x, camera.GetMovementMomentum().y, camera.GetMovementMomentum().z);
@@ -112,13 +117,21 @@ void Gui::CreateSceneWindow(Renderer& renderer, const Camera& camera, Scene& sce
     if (ImGui::Begin("Scene"))
     {
         ImGui::PushItemWidth(ImGui::GetWindowContentRegionWidth());
-        ImGui::Text("Objects in scene: %lu", scene.spheres.size() + scene.aabbs.size());
+        ImGui::Text("Objects in scene: %llu", scene.primitives.size());
 
         if (ImGui::Button("Add Sphere"))
+        {
             scene.AddDefaultSphere();
-
+            renderer.m_BVH->RebuildBVH(scene.primitives);
+            renderer.ResetSamples();
+        }
+        ImGui::SameLine();
         if (ImGui::Button("Add Cube"))
+        {
             scene.AddDefaultCube();
+            renderer.m_BVH->RebuildBVH(scene.primitives);
+            renderer.ResetSamples();
+        }
 
         if (ImGui::Button("Day"))
         {
@@ -134,17 +147,17 @@ void Gui::CreateSceneWindow(Renderer& renderer, const Camera& camera, Scene& sce
 
         if (ImGui::Button("Load RTIOW Scene"))
         {
-            scene.emptyScene();
+            scene.EmptyScene();
             scene.RTIW();
-            renderer.m_BVH->RebuildBVH(scene.spheres);
+            renderer.m_BVH->RebuildBVH(scene.primitives);
             renderer.ResetSamples();
         }
         
         if (ImGui::Button("Load Cornell Box Scene"))
         {
-            scene.emptyScene();
+            scene.EmptyScene();
             scene.CornellBox();
-            renderer.m_BVH->RebuildBVH(scene.spheres);
+            renderer.m_BVH->RebuildBVH(scene.primitives);
             renderer.ResetSamples();
         }
 
@@ -172,185 +185,81 @@ void Gui::CreateSceneWindow(Renderer& renderer, const Camera& camera, Scene& sce
         if (ImGui::SliderFloat3("##DirectionalLight", glm::value_ptr(scene.lightDirection), -1.0f, 1.0f))
             renderer.ResetSamples();
 
-        if (ImGui::CollapsingHeader("Edit Spheres"))
+        if (ImGui::CollapsingHeader("Edit Object Properties"))
         {
-            // if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_LeftArrow))) 
-            //     scene.SphereIdx = scene.SphereIdx == 0 ? scene.spheres.size() - 1 : scene.SphereIdx - 1;
-            // if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_RightArrow))) 
-            //     scene.SphereIdx = scene.SphereIdx == scene.spheres.size() - 1 ? 0 : scene.SphereIdx + 1;
-            
-            // GPUSphere& obj = scene.spheres[scene.SphereIdx];
-            // ImGui::PushID(&obj);
-            // EditObjectProperties(obj, renderer, scene, camera);
-            // ImGui::PopID();
-            
-            ImGui::Separator();
-
-            for (int i = 0; i < scene.spheres.size(); i++)
-            {
-                ImGui::PushID(i);
-                GPUSphere& s = scene.spheres[i];
-                ImGui::Text("Distance from camera: %.3f", glm::distance(s.position, camera.GetPosition()));
-
-                ImGui::Text("Position");
-                if (ImGui::DragFloat3("##Position", glm::value_ptr(s.position), 0.1f)) 
-                    renderer.ResetSamples();
-
-                ImGui::Text("Radius");
-                if (ImGui::DragFloat("##Radius", &s.radius, 0.05f, 0.1f, 1000.0f)) 
-                    renderer.ResetSamples();
-
-                ImGui::Text("Albedo");
-                if (ImGui::ColorEdit3("##Albedo", glm::value_ptr(s.mat.albedo))) 
-                    renderer.ResetSamples();
-
-                ImGui::Text("Absorption");
-                if (ImGui::DragFloat3("##Absorption", glm::value_ptr(s.mat.absorption), 0.1f, 0.0f, 10.0f)) 
-                    renderer.ResetSamples();
-
-                ImGui::Text("Roughness");
-                if (ImGui::SliderFloat("##roughness", &s.mat.roughness, 0.0f, 1.0f)) 
-                    renderer.ResetSamples();
-
-                ImGui::Text("Metallic");
-                if (ImGui::SliderFloat("##metallic", &s.mat.metallic, 0.0f, 1.0f)) 
-                    renderer.ResetSamples();
-
-                ImGui::Text("Specular Chance");
-                if (ImGui::SliderFloat("##SpecularChance", &s.mat.specularChance, 0.0f, 1.0f)) 
-                    renderer.ResetSamples();
-
-                ImGui::Text("IOR");
-                if (ImGui::SliderFloat("##IOR", &s.mat.ior, 1.0f, 2.5f)) 
-                    renderer.ResetSamples();
-
-                ImGui::Text("Refraction Chance");
-                if (ImGui::SliderFloat("##RefractionChance", &s.mat.refractionChance, 0.0f, 1.0f)) 
-                    renderer.ResetSamples();
-
-                ImGui::Text("Emissive");
-                if (ImGui::ColorEdit3("##Emissive", glm::value_ptr(s.mat.emissive))) 
-                    renderer.ResetSamples();
-
-                ImGui::Text("Emissive Strength");
-                if (ImGui::DragFloat("##EmissiveStrength", &s.mat.emissiveStrength, 0.005f, 0.0f, 100.0f)) 
-                    renderer.ResetSamples();
-
-                ImGui::Separator();
-                ImGui::PopID();
-            }
-        }
-
-        if (ImGui::CollapsingHeader("Edit AABBs"))
-        {
-            // ---------------------------------------------------------------
-            //                            EDIT AABBs
-            // ---------------------------------------------------------------
-            const char* items[scene.aabbs.size()];
-            for (int i = 0; i < scene.aabbs.size(); i++)
-            {
-                // items[i] = scene.aabbs[i].label.c_str();
-                // std::string idx = std::to_string(i);
-                std::string aa = "AABB ";
-                items[i] = (aa + std::to_string(i)).c_str();
-            }
-
-            static const char* current_item = items[scene.AABBIdx];
             if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_LeftArrow))) 
-                scene.AABBIdx = scene.AABBIdx == 0 ? scene.aabbs.size() - 1 : scene.AABBIdx - 1;
+                scene.PrimitiveIdx = scene.PrimitiveIdx == 0 ? scene.primitives.size() - 1 : scene.PrimitiveIdx - 1;
             if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_RightArrow))) 
-                scene.AABBIdx = scene.AABBIdx == scene.aabbs.size() - 1 ? 0 : scene.AABBIdx + 1;
+                scene.PrimitiveIdx = scene.PrimitiveIdx == scene.primitives.size() - 1 ? 0 : scene.PrimitiveIdx + 1;
+            
+            Primitive& prim = scene.primitives[scene.PrimitiveIdx];
 
-            ImGui::Text("Selected AABB Idx: %i", scene.AABBIdx);
-            ImGui::Text("Select AABB");
-            if (ImGui::BeginCombo("##Object", current_item)) // The second parameter is the label previewed before opening the combo.
+            prim.type == 0 ? ImGui::Text("Type: Sphere") : ImGui::Text("Type: AABB");
+            ImGui::Text("Primitive Index: %i", scene.PrimitiveIdx);
+            ImGui::Text("Distance from camera: %.3f", glm::distance(prim.position, camera.GetPosition()));
+
+            ImGui::Text("Primitive Id: %i", prim.id);
+            ImGui::Text("Position");
+            if (ImGui::DragFloat3("##Position", glm::value_ptr(prim.position), 0.1f))
             {
-                for (int n = 0; n < IM_ARRAYSIZE(items); n++)
-                {
-                    bool is_selected = (current_item == items[n]); // You can store your selection however you want, outside or inside your objects
-                    if (ImGui::Selectable(items[n], is_selected))
-                    {
-                        current_item = items[n];
-                        scene.AABBIdx = n;
-                    }
-                    if (is_selected)
-                        ImGui::SetItemDefaultFocus();   // You may set the initial focus when opening the combo (scrolling + for keyboard navigation support)
-                }
-                ImGui::EndCombo();
+                renderer.ResetSamples();
+                renderer.m_BVH->RebuildBVH(scene.primitives);
             }
-            GPUAABB& obj = scene.aabbs[scene.AABBIdx];
-            EditObjectProperties(obj, renderer, scene, camera);
+
+            switch (prim.type)
+            {
+                case PRIM_SPHERE: // Sphere
+                    ImGui::Text("Radius");
+                    if (ImGui::DragFloat("##Radius", &prim.radius, 0.05f, 0.1f, 1000.0f)) 
+                        renderer.ResetSamples();
+                    break;
+                case PRIM_AABB: // AABB
+                    ImGui::Text("Dimensions");
+                    if (ImGui::DragFloat3("##Dimensions", glm::value_ptr(prim.dimensions), 0.1f, 0.1f, 1000.0f)) 
+                        renderer.ResetSamples();
+                    break;
+            }
+
+            ImGui::Text("Albedo");
+            if (ImGui::ColorEdit3("##Albedo", glm::value_ptr(prim.mat.albedo))) 
+                renderer.ResetSamples();
+
+            ImGui::Text("Absorption");
+            if (ImGui::DragFloat3("##Absorption", glm::value_ptr(prim.mat.absorption), 0.01f, 0.0f, 5.0f)) 
+                renderer.ResetSamples();
+
+            ImGui::Text("Roughness");
+            if (ImGui::SliderFloat("##roughness", &prim.mat.roughness, 0.0f, 1.0f)) 
+                renderer.ResetSamples();
+
+            ImGui::Text("Metallic");
+            if (ImGui::SliderFloat("##metallic", &prim.mat.metallic, 0.0f, 1.0f)) 
+                renderer.ResetSamples();
+
+            ImGui::Text("Specular Chance");
+            if (ImGui::SliderFloat("##SpecularChance", &prim.mat.specularChance, 0.0f, 1.0f)) 
+                renderer.ResetSamples();
+
+            ImGui::Text("IOR");
+            if (ImGui::SliderFloat("##IOR", &prim.mat.ior, 1.0f, 2.5f)) 
+                renderer.ResetSamples();
+
+            ImGui::Text("Refraction Chance");
+            if (ImGui::SliderFloat("##RefractionChance", &prim.mat.refractionChance, 0.0f, 1.0f)) 
+                renderer.ResetSamples();
+
+            ImGui::Text("Emissive");
+            if (ImGui::ColorEdit3("##Emissive", glm::value_ptr(prim.mat.emissive))) 
+                renderer.ResetSamples();
+
+            ImGui::Text("Emissive Strength");
+            if (ImGui::DragFloat("##EmissiveStrength", &prim.mat.emissiveStrength, 0.005f, 0.0f, 100.0f)) 
+                renderer.ResetSamples();
         }
 
         ImGui::PopItemWidth();
         ImGui::End();
     }
-}
-
-template <typename T> 
-void Gui::EditObjectProperties(T& obj, Renderer& renderer, Scene& scene, const Camera& camera)
-{
-    ImGui::Text("Distance from camera: %.3f", glm::distance(obj.position, camera.GetPosition()));
-
-    ImGui::Text("Position");
-    if (ImGui::DragFloat3("##Position", glm::value_ptr(obj.position), 0.1f))
-    {
-        renderer.m_BVH->RebuildBVH(scene.spheres);
-        renderer.ResetSamples();
-    }
-    
-    if constexpr (std::is_same_v<T, GPUAABB>)
-    {
-        ImGui::Text("Dimensions");
-        if (ImGui::DragFloat3("##Dimensions", glm::value_ptr(obj.dimensions), 0.1f)) 
-            renderer.ResetSamples();
-    }
-
-    if constexpr (std::is_same_v<T, GPUSphere>)
-    {
-        ImGui::Text("Radius");
-        if (ImGui::DragFloat("##Radius", &obj.radius, 0.1f, 0.1f, 100.0f, "%.3f", ImGuiSliderFlags_Logarithmic))
-        {
-            renderer.m_BVH->RebuildBVH(scene.spheres);
-            renderer.ResetSamples();
-        }
-    }
-
-    ImGui::Text("Albedo");
-    if (ImGui::ColorEdit3("##Albedo", glm::value_ptr(obj.mat.albedo))) 
-        renderer.ResetSamples();
-
-    ImGui::Text("Absorption");
-    if (ImGui::DragFloat3("##Absorption", glm::value_ptr(obj.mat.absorption), 0.1f, 0.0f, 10.0f)) 
-        renderer.ResetSamples();
-
-    ImGui::Text("Roughness");
-    if (ImGui::SliderFloat("##roughness", &obj.mat.roughness, 0.0f, 1.0f)) 
-        renderer.ResetSamples();
-
-    ImGui::Text("Metallic");
-    if (ImGui::SliderFloat("##metallic", &obj.mat.metallic, 0.0f, 1.0f)) 
-        renderer.ResetSamples();
-
-    ImGui::Text("Specular Chance");
-    if (ImGui::SliderFloat("##SpecularChance", &obj.mat.specularChance, 0.0f, 1.0f)) 
-        renderer.ResetSamples();
-
-    ImGui::Text("IOR");
-    if (ImGui::SliderFloat("##IOR", &obj.mat.ior, 1.0f, 2.5f)) 
-        renderer.ResetSamples();
-
-    ImGui::Text("Refraction Chance");
-    if (ImGui::SliderFloat("##RefractionChance", &obj.mat.refractionChance, 0.0f, 1.0f)) 
-        renderer.ResetSamples();
-
-    ImGui::Text("Emissive");
-    if (ImGui::ColorEdit3("##Emissive", glm::value_ptr(obj.mat.emissive))) 
-        renderer.ResetSamples();
-
-    ImGui::Text("Emissive Strength");
-    if (ImGui::DragFloat("##EmissiveStrength", &obj.mat.emissiveStrength, 0.005f, 0.0f, 100.0f)) 
-        renderer.ResetSamples();
 }
 
 void Gui::Init()
@@ -369,7 +278,7 @@ void Gui::Init()
     ImGui::StyleColorsDark();
     //SetupStyle();
     ImGui_ImplGlfw_InitForOpenGL(window, true);
-    ImGui_ImplOpenGL3_Init("#version 410");
+    ImGui_ImplOpenGL3_Init("#version 460");
 }
 
 void Gui::Shutdown()

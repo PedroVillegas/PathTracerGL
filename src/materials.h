@@ -14,6 +14,7 @@ struct alignas(16) Material
     float ior = 1.0f;
     float metallic = 0.0f;
     float roughness = 1.0f;
+    float pad;
 
     Material() = default;
 

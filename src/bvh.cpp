@@ -1,11 +1,12 @@
 #include <glm/glm.hpp>
 #include <vector>
+#include <algorithm>
 
 #include "primitives.h"
 #include "scene.h"
 #include "bvh.h"
 
-bool box_compare(GPUSphere a, GPUSphere b, int axis)
+bool box_compare(Primitive a, Primitive b, int axis)
 {
     AABB b0;
     AABB b1; 
@@ -16,24 +17,27 @@ bool box_compare(GPUSphere a, GPUSphere b, int axis)
     return b0.bMin[axis] < b1.bMin[axis];
 }
 
-bool box_x_compare(GPUSphere a, GPUSphere b)
+bool box_x_compare(Primitive a, Primitive b)
 {
     return box_compare(a, b, 0);
 }
 
-bool box_y_compare(GPUSphere a, GPUSphere b)
+bool box_y_compare(Primitive a, Primitive b)
 {
     return box_compare(a, b, 1);
 }
 
-bool box_z_compare(GPUSphere a, GPUSphere b)
+bool box_z_compare(Primitive a, Primitive b)
 {
     return box_compare(a, b, 2);
 }
 
-BVH::BVH(std::vector<GPUSphere> &spheres)
+BVH::BVH(std::vector<Primitive> primitives)
 {
-    bvh_root = RecursiveBuild(spheres, 0, spheres.size());
+    if (primitives.size() == 0)
+        return;
+        
+    bvh_root = RecursiveBuild(primitives, 0, primitives.size());
     int size = CountNodes(bvh_root);
     LinearBVH_Node* flatten = new LinearBVH_Node[size];
 
@@ -59,12 +63,13 @@ void BVH::DeleteBVHTree(BVH_Node* node)
     delete node;
 }
 
-void BVH::RebuildBVH(std::vector<GPUSphere> &spheres)
+void BVH::RebuildBVH(const std::vector<Primitive>& primitives)
 {
     DeleteBVHTree(bvh_root);
     delete flat_root;
 
-    bvh_root = RecursiveBuild(spheres, 0, spheres.size());
+    std::vector<Primitive> temp = primitives;
+    bvh_root = RecursiveBuild(temp, 0, temp.size());
     int size = CountNodes(bvh_root);
     LinearBVH_Node* flatten = new LinearBVH_Node[size];
 
@@ -74,7 +79,7 @@ void BVH::RebuildBVH(std::vector<GPUSphere> &spheres)
     b_Rebuilt = true;
 }
 
-BVH_Node* BVH::RecursiveBuild(std::vector<GPUSphere>& spheres, int start, int end)
+BVH_Node* BVH::RecursiveBuild(std::vector<Primitive>& primitives, int start, int end)
 {
     BVH_Node* node = new BVH_Node();
 
@@ -82,8 +87,10 @@ BVH_Node* BVH::RecursiveBuild(std::vector<GPUSphere>& spheres, int start, int en
     AABB bounds;
     AABB primitiveBounds;
     for (int i = start; i < end; ++i)
-        spheres[i].BoundingBox(&primitiveBounds);
+    {   
+        primitives[i].BoundingBox(&primitiveBounds);
         bounds = Union(bounds, primitiveBounds);
+    }
 
     int primitivesCount = end - start;
 
@@ -95,7 +102,7 @@ BVH_Node* BVH::RecursiveBuild(std::vector<GPUSphere>& spheres, int start, int en
         node->left = node->right = nullptr;
 
         AABB bbox;
-        spheres[start].BoundingBox(&bbox);
+        primitives[start].BoundingBox(&bbox);
         node->bbox = bbox;
     }
     else
@@ -108,15 +115,15 @@ BVH_Node* BVH::RecursiveBuild(std::vector<GPUSphere>& spheres, int start, int en
                             axis == 1 ? box_y_compare :
                             box_z_compare;
 
-        std::sort(spheres.begin() + start, spheres.begin() + end, comparator);
+        std::sort(primitives.begin() + start, primitives.begin() + end, comparator);
 
         node->type = node_t::PARENT;
         node->primitiveOffset = -1;
 
         int mid = start + primitivesCount / 2;
         
-        node->left = RecursiveBuild(spheres, start, mid);
-        node->right = RecursiveBuild(spheres, mid, end);
+        node->left = RecursiveBuild(primitives, start, mid);
+        node->right = RecursiveBuild(primitives, mid, end);
         node->bbox = Union(node->left->bbox, node->right->bbox);
     }
     return node;
@@ -149,7 +156,6 @@ int BVH::FlattenBVHTree(LinearBVH_Node* flatten, BVH_Node* node, int* offset, in
 	}
 	else
 	{  
-		
 		linear->primitiveCount = 0;
 		int ost = FlattenBVHTree(flatten,node->left, offset, depth + 1);
 		linear->bMin.w = ost;

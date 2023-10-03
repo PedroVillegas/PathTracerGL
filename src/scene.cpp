@@ -18,173 +18,196 @@ glm::vec3 RandVec3()
     return glm::vec3(Randf01(), Randf01(), Randf01());
 }
 
-void Scene::emptyScene()
+void Scene::EmptyScene()
 {
-    spheres.clear();
-    aabbs.clear();
+    primitives.clear();
     lights.clear();
+}
+
+void Scene::Init()
+{
+    int n_Primitives = primitives.size();
+    for (int n = 0; n < n_Primitives; n++)
+    {
+        primitives[n].id = n;
+        if (primitives[n].mat.emissive != glm::vec3(0.0f))
+        {
+            AddLight(primitives[n].id, primitives[n].mat.emissive);
+        }
+    }
+
+    // for (auto prim : primitives)
+    // {
+    //     std::cout << "id  : " << prim.id << std::endl;
+    //     std::cout << "type: " << prim.type << std::endl;
+    //     std::cout << "posx: " << prim.position.x << std::endl;
+    //     std::cout << "posy: " << prim.position.y << std::endl;
+    //     std::cout << "posz: " << prim.position.z << std::endl;
+    //     std::cout << std::endl;
+    // }
 }
 
 void Scene::AddDefaultSphere()
 {
-    GPUSphere s;
-    s.position = glm::vec3(0.0f);
-    s.radius = 1.0f;
-    s.mat.albedo = glm::vec3(1.0f);
-    spheres.push_back(s);
+    Primitive sphere;
+    sphere.id = primitives.size();
+    sphere.type = PRIM_SPHERE;
+    sphere.position = glm::vec3(0.0f, 0.0f, 0.0f);
+    sphere.radius = 1.0f;
+    sphere.mat.albedo = glm::vec3(1.0f);
+    primitives.push_back(sphere);
 }
 
 void Scene::AddDefaultCube()
 {
-    GPUAABB cube;
-    cube.position = glm::vec3(0.0f);
-    cube.dimensions = glm::vec3(1.0f);
-    aabbs.push_back(cube);
+    Primitive cube;
+    cube.id = primitives.size();
+    cube.type = PRIM_AABB;
+    cube.position = glm::vec3(0.0f, 0.0f, 0.0f);
+    cube.dimensions = glm::vec3(2.0f);
+    cube.mat.albedo = glm::vec3(1.0f);
+    primitives.push_back(cube);
+}
+
+void Scene::AddSphere(glm::vec3 position, float radius, Material mat)
+{
+    Primitive sphere;
+    sphere.type = PRIM_SPHERE;
+    sphere.position = position;
+    sphere.radius = radius;
+    sphere.mat = mat;
+    primitives.push_back(sphere);
+}
+
+void Scene::AddCube(glm::vec3 position, glm::vec3 dimensions, Material mat)
+{
+    Primitive cube;
+    cube.type = PRIM_AABB;
+    cube.position = position;
+    cube.dimensions = dimensions;
+    cube.mat = mat;
+    primitives.push_back(cube);
+}
+
+void Scene::AddLight(int id, glm::vec3 le)
+{
+    Light light;
+    light.id = id;
+    light.le = le;
+    lights.push_back(light);
+}
+
+Material Scene::CreateGlassMat(glm::vec3 absorption, float ior, float roughness)
+{
+    Material out = Material();
+    out.refractionChance = 1.0f;
+    out.specularChance = 0.02f;
+    out.absorption = absorption;
+    out.ior = ior;
+    out.roughness = roughness;
+    
+    return out;
+}
+
+Material Scene::CreateDiffuseMat(glm::vec3 albedo, float roughness)
+{
+    Material out = Material();
+    out.albedo = albedo;
+    out.roughness = roughness;
+    
+    return out;
+}
+
+Material Scene::CreateMirrorMat(glm::vec3 albedo, float roughness)
+{
+    Material out = Material();
+    out.specularChance = 1.0f;
+    out.albedo = albedo;
+    out.roughness = roughness;
+    
+    return out;
+}
+
+Material Scene::CreateDielectricMat(glm::vec3 albedo, float roughness, float specular)
+{
+    Material out = Material();
+    out.albedo = albedo;
+    out.roughness = roughness;
+    out.specularChance = specular;
+    
+    return out;
 }
 
 void Scene::RTIW()
 {
-    int OffsetAABB = 0;
-
-    float floorThickness = 0.5f;
-    Material floorMat = Material(glm::vec3(1.0f, 0.95f, 0.8f), 0.0f, glm::vec3(0.0f), 0.0f, glm::vec3(0.0f), 0.0f, 1.0f, 1.0f);
-    GPUAABB floor = GPUAABB(
-        glm::vec3(0.0f, -(1.0f + 0.5f * floorThickness), 0.0f),
-        glm::vec3(100'000.0f, floorThickness, 100'000.0f), floorMat);
-    aabbs.push_back(floor);
-    OffsetAABB++;
+    using namespace glm;
 
     float EPSILON = 1e-3f;
-    float lightHeight = 4.0f;
-    float lightWidth = 4.0f;
-    float lightDepth = 1.0f;
+    float lightHeight = 8.0f;
+    float lightWidth = 24.0f;
+    float lightDepth = 12.0f;
     float panelThickness = 0.1f;
 
-    Material panel = Material(glm::vec3(0.5f), 0.0f, glm::vec3(0.0f), 0.0f, glm::vec3(0.0f), 0.0f, 1.0f, 1.0f);
-    GPUAABB ceiling = GPUAABB(
-        glm::vec3(0.0f, lightHeight + 0.5f * panelThickness + EPSILON, 0.0f),
-        glm::vec3(1.25f * lightWidth, panelThickness, 2.0f * lightDepth), panel);
-    aabbs.push_back(ceiling);
-    OffsetAABB++;
+    Material panel = Material(vec3(0.5f), 0.0f, vec3(0.0f), 0.0f, vec3(0.0f), 0.0f, 1.0f, 1.0f);
+    // AddCube(vec3(0.0f, lightHeight + 0.5f * panelThickness + EPSILON, 0.0f), 
+    //         vec3(1.25f * lightWidth, panelThickness, 2.0f * lightDepth), panel);
+    
+    Material floorMat = Material(vec3(1.0f, 0.95f, 0.8f), 0.0f, vec3(0.0f), 0.0f, vec3(0.0f), 0.0f, 1.0f, 1.0f);
+    AddCube(vec3(0.0f), vec3(100'000.0f, 0.01f, 100'000.0f), floorMat);
 
+    Material GLASS = CreateGlassMat(vec3(0.3f, 0.5f, 0.4f), 1.55f, 0.15f);
+    AddSphere(vec3(-6.0f, 3.0f, 0.0f), 3.0f, GLASS);
 
-    Material lightMat = Material(glm::vec3(0.0f), 0.0f, glm::vec3(16.86, 10.76, 8.2), 1.0f, glm::vec3(0.0f), 0.0f, 0.0f, 0.0f);
-    GPUAABB light = GPUAABB(glm::vec3(0.0f, lightHeight, 0.0f), glm::vec3(lightWidth, EPSILON, lightDepth), lightMat);
-    // aabbs.push_back(light);
-    Light light_;
-    light_.type = 1;
-    light_.PrimitiveOffset = OffsetAABB;
-    // lights.push_back(light_);
-    OffsetAABB++;
+    Material BlueDiffuse = CreateDiffuseMat(vec3(0.1f, 0.2f, 0.5f), 1.0f);
+    AddSphere(vec3(0.0f, 3.0f, 0.0f), 3.0f, BlueDiffuse);
 
-    GPUSphere centre;
-    centre.mat.albedo = glm::vec3(0.1f, 0.2f, 0.5f);
-    spheres.push_back(centre);
+    // Gold vec3(0.8f, 0.6f, 0.2f)
+    Material MetalBall = CreateMirrorMat(vec3(0.5f), 0.15f);
+    AddSphere(vec3(6.0f, 3.0f, 0.0f), 3.0f, MetalBall);
 
-    GPUSphere left;
-    left.position = glm::vec3(-2.0f, 0.0f, 0.0f);
-    left.mat.refractionChance = 1.0f;
-    left.mat.roughness = 0.0f;
-    left.mat.ior = 1.55f;
-    left.mat.specularChance = 0.02f;
-    left.mat.absorption = glm::vec3(1.0f, 2.0f, 3.0f);
-    spheres.push_back(left);
-
-    GPUSphere right;
-    right.position = glm::vec3(2.0f, 0.0f, 0.0f);
-    right.mat.albedo = { 0.8f, 0.6f, 0.2f };
-    right.mat.specularChance = 1.0f;
-    right.mat.metallic = 1.0f;
-    right.mat.roughness = 0.1f;
-    spheres.push_back(right);
-
-    GPUSphere sun;
-    sun.radius = 250.0f;
-    sun.position = glm::vec3(10'000);
-    sun.mat.emissive = glm::vec3(1);
-    sun.mat.emissiveStrength = 0.5f;
-    spheres.push_back(sun);
-
-    Light sun_l;
-    sun_l.type = 0;
-    sun_l.PrimitiveOffset = spheres.size() - 1;
-    lights.push_back(sun_l);
+    Init();
 }
 
 void Scene::CornellBox()
 {
-    glm::vec3 WHITECOLOR = glm::vec3(.7295, .7355, .729)*0.7f;
-    glm::vec3 GREENCOLOR = glm::vec3(.117, .4125, .115)*0.7f;
-    glm::vec3 REDCOLOR   = glm::vec3(.611, .0555, .062)*0.7f;
+    using namespace glm;
 
-    Material whiteDiffuse = Material(WHITECOLOR, 0.01f, glm::vec3(0.0f), 0.0f, glm::vec3(0.0f), 0.0f, 1.0f, 1.0f);
-    Material greenDiffuse = Material(GREENCOLOR, 0.0f, glm::vec3(0.0f), 0.0f, glm::vec3(0.0f), 0.0f, 1.0f, 1.0f);
-    Material redDiffuse = Material(REDCOLOR, 0.0f, glm::vec3(0.0f), 0.0f, glm::vec3(0.0f), 0.0f, 1.0f, 1.0f);
+    lightDirection = vec3(-0.55f, 0.2f, 1.0f);
+    vec3 WHITE_COL = vec3(.7295, .7355, .729)*0.7f;
+    vec3 RED_COL   = vec3(.611, .0555, .062)*0.7f;
+    vec3 GREEN_COL = vec3(.117, .4125, .115)*0.7f;
+    vec3 BLUE_COL   = vec3(0.08f, 0.16f, 0.29f);
 
-    float epsilon = 0.01f;
-    float boxHeight = 30.0f;
-    float boxWidth = 30.0f;
-    float boxDepth = 30.0f;
+    Material redDiffuse   = CreateDiffuseMat(RED_COL, 1.0f);
+    Material greenDiffuse = CreateDiffuseMat(GREEN_COL, 1.0f);
+    Material blueDiffuse  = CreateDiffuseMat(BLUE_COL, 1.0f);
+    Material whiteDiffuse = CreateDiffuseMat(WHITE_COL, 1.0f);
 
-    GPUAABB floor = GPUAABB(glm::vec3(0.0f,-boxHeight/2.0f, 0.0f), glm::vec3(1'000'000, epsilon, 1'000'000), whiteDiffuse);
-    aabbs.push_back(floor);
-    GPUAABB ceiling = GPUAABB(glm::vec3(0.0f,boxHeight/2.0f, 0.0f), glm::vec3(boxWidth, epsilon, boxDepth), whiteDiffuse);
-    aabbs.push_back(ceiling);
     // Left Wall
-    GPUAABB red = GPUAABB(glm::vec3(-boxWidth / 2.0f, 0.0f, 0.0f), glm::vec3(epsilon, boxHeight, boxDepth), redDiffuse);
-    aabbs.push_back(red);
+    AddCube(vec3(-5.0f, 5.0f, 0.0f), vec3(0.01f, 10.0f, 10.0f), redDiffuse);
+
     // Right Wall
-    GPUAABB green = GPUAABB(glm::vec3(boxWidth / 2.0f, 0.0f, 0.0f), glm::vec3(epsilon, boxHeight, boxDepth), greenDiffuse);
-    aabbs.push_back(green);
+    AddCube(vec3( 5.0f, 5.0f, 0.0f), vec3(0.01f, 10.0f, 10.0f), blueDiffuse);
+
     // Back Wall
-    GPUAABB back = GPUAABB(glm::vec3(0.0f, 0.0f, -boxDepth / 2.0f), glm::vec3(boxWidth, boxHeight, epsilon), whiteDiffuse);
-    aabbs.push_back(back);
+    AddCube(vec3(0.0f, 5.0f, -5.0f), vec3(10.0f, 10.0f, 0.01f), whiteDiffuse);
 
-    GPUSphere sun;
-    sun.radius = 250.0f;
-    sun.position = glm::vec3(10'000);
-    sun.mat.emissive = glm::vec3(1);
-    sun.mat.emissiveStrength = 1.0f;
-    spheres.push_back(sun);
+    // Ceiling
+    AddCube(vec3(0.0f, 10.0f, 0.0f), vec3(10.0f, 0.01f, 10.0f), whiteDiffuse);
 
-    Light sun_l;
-    sun_l.type = 0;
-    sun_l.PrimitiveOffset = spheres.size() - 1;
-    lights.push_back(sun_l);
-}
+    // Ground
+    AddCube(vec3(0.0f), vec3(1e5f, 0.01f, 1e5f), whiteDiffuse);
 
-void Scene::TestPrims()
-{
-    glm::vec3 WHITECOLOR = glm::vec3(.7295, .7355, .729)*0.7f;
-    glm::vec3 GREENCOLOR = glm::vec3(.117, .4125, .115)*0.7f;
-    glm::vec3 REDCOLOR   = glm::vec3(.611, .0555, .062)*0.7f;
+    Material GLASS = CreateGlassMat(vec3(0.3f, 0.2f, 0.1f), 1.55f, 0.1f);
+    AddSphere(vec3(-2.0f, 2.5f, -2.0f), 2.0f, GLASS);
 
-    Primitive s;
-    s.id = 0;
-    s.type = PRIM_SPHERE;
-    s.position = glm::vec3(-2.0f, 2.0f, 0.0f);
-    s.radius = 2.0f;
-    Material redDiffuse = Material(REDCOLOR, 0.0f, glm::vec3(0.0f), 0.0f, glm::vec3(0.0f), 0.0f, 1.0f, 1.0f);
-    s.mat = redDiffuse;
-    primitives.push_back(s);
-    
-    Primitive g;
-    g.id = 2;
-    g.type = PRIM_SPHERE;
-    g.position = glm::vec3(2.0f, 2.0f, 0.0f);
-    g.radius = 2.0f;
-    Material greenDiff = Material(GREENCOLOR, 0.0f, glm::vec3(0.0f), 0.0f, glm::vec3(0.0f), 0.0f, 1.0f, 1.0f);
-    g.mat = greenDiff;
-    primitives.push_back(g);
+    Material MIRROR = CreateMirrorMat(vec3(0.7f), 0.1f);
+    // AddSphere(vec3(2.0f, 7.0f, 2.0f), 2.0f, MIRROR);
+    // AddCube(vec3(0.0f, 2.0f, 0.0f), vec3(4.0f), MIRROR);
 
-    Primitive ceil;
-    ceil.id = 1;
-    ceil.type = PRIM_AABB;
-    ceil.position = glm::vec3(0.0f);
-    ceil.dimensions = glm::vec3(10'000, 0.01, 10'000);
-    Material whiteDiffuse = Material(WHITECOLOR, 0.01f, glm::vec3(0.0f), 0.0f, glm::vec3(0.0f), 0.0f, 1.0f, 1.0f);
-    ceil.mat = whiteDiffuse;
-    primitives.push_back(ceil);
-    
-    AddDefaultSphere();
+    Material light = Material(vec3(1.0f), 0.0f, vec3(1.0f), 1.0f, vec3(0.0f), 0.0f, 0.0f, 0.0f);
+    // AddSphere(vec3(0.0f, 8.0f, 0.0f), 1.0f, light);
+    // AddCube(vec3(0.0f, 10.0f - 0.01f, 0.0f), vec3(2.5f, 0.01f, 2.5f), light);
+
+    Init();
 }

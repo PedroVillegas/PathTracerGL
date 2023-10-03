@@ -3,10 +3,34 @@ bool IntersectAABB(vec3 position, vec3 dimensions, Ray ray, inout float tNear, i
 bool Intersect(Ray ray, Primitive prim, inout Payload payload);
 vec3 GetAABBNormal(vec3 position, vec3 dimensions, vec3 surfacePosition);
 
-Payload TracePrims(Ray ray)
+bool TracePrimsHit(Ray ray, inout Payload tempHit, float dist)
+{
+    tempHit.t = dist;
+    for (int k = 0; k < Prims.n_Primitives; k++)
+    {
+        if (Intersect(ray, Prims.Primitives[k], tempHit))
+        {
+            tempHit.primID = Prims.Primitives[k].id;
+            return true;
+        }
+    }
+    return false;
+}
+
+// #define BVH_ENABLED
+
+Payload TracePrims(Ray ray, float dist)
 {
     Payload payload;
-    payload.t = FLT_MAX;
+    payload.t = dist;
+
+#ifdef BVH_ENABLED
+    if (TraverseBVH(ray, payload))
+    {
+        return payload;
+    }
+#endif
+#ifndef BVH_ENABLED
     for (int k = 0; k < Prims.n_Primitives; k++)
     {
         if (Intersect(ray, Prims.Primitives[k], payload))
@@ -14,13 +38,14 @@ Payload TracePrims(Ray ray)
             payload.primID = Prims.Primitives[k].id;
         }
     }
+#endif
     return payload;
 }
 
 bool Intersect(Ray ray, Primitive prim, inout Payload payload)
 {
     float tNear = FLT_MIN;
-    float tFar = FLT_MAX;
+    float tFar = INF;
     switch (prim.type)
     {
         case 0: // Sphere
@@ -41,8 +66,9 @@ bool Intersect(Ray ray, Primitive prim, inout Payload payload)
                 payload.t = tNear < 0 ? tFar : tNear;
                 payload.position = ray.origin + ray.direction * payload.t;
                 payload.mat = prim.mat;
-                payload.normal = GetAABBNormal(prim.position, prim.dimensions, payload.position);
+                vec3 outward_normal = GetAABBNormal(prim.position, prim.dimensions, payload.position);
                 payload.fromInside = payload.t == tFar;
+                payload.normal = payload.fromInside ? -outward_normal : outward_normal;
                 return true;
             }
             break;
@@ -85,7 +111,7 @@ vec3 GetAABBNormal(vec3 position, vec3 dimensions, vec3 surfacePosition)
 
 bool IntersectSphere(vec3 position, float radius, Ray ray, inout float tNear, inout float tFar) 
 {
-    tNear = tFar = FLT_MAX;
+    tNear = tFar = INF;
 
     float b = dot(ray.origin - position, ray.direction);
     float len = length(ray.origin - position);

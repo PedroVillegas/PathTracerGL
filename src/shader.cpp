@@ -7,7 +7,7 @@
 #include <string>
 #include <unordered_map>
 
-#include "consoleLogger.h"
+
 #include "shader.h"
 
 
@@ -23,7 +23,7 @@ Shader::Shader(const char* vs_path, const char* fs_path)
 
 Shader::~Shader()
 {
-    glDeleteProgram(m_ID); GLCall;
+    glDeleteProgram(m_ID); 
     m_ID = 0;
 }
 
@@ -32,7 +32,7 @@ void Shader::ReloadShader()
     std::string vs = ParseShader(m_VSPath);
     std::string fs = ParseShader(m_FSPath);
     uint32_t tempID = CreateShader(vs, fs);
-    glDeleteProgram(m_ID); GLCall;
+    glDeleteProgram(m_ID); 
     m_ID = tempID;
     b_Reloaded = true;
     std::cout << std::endl;
@@ -65,23 +65,23 @@ std::string Shader::ParseShader(const std::string& filepath)
 
 uint32_t Shader::CompileShader(uint32_t type, const std::string& source)
 {
-    uint32_t id = glCreateShader(type); GLCall;
+    uint32_t id = glCreateShader(type); 
     const char* src = source.c_str();
-    glShaderSource(id, 1, &src, NULL); GLCall;
-    glCompileShader(id); GLCall;
+    glShaderSource(id, 1, &src, NULL); 
+    glCompileShader(id); 
 
     int result;
-    glGetShaderiv(id, GL_COMPILE_STATUS, &result); GLCall;
+    glGetShaderiv(id, GL_COMPILE_STATUS, &result); 
     if (result == GL_FALSE)
     {
         int length;
-        glGetShaderiv(id, GL_INFO_LOG_LENGTH, &length); GLCall;
+        glGetShaderiv(id, GL_INFO_LOG_LENGTH, &length); 
         char* message = (char*)alloca(length * sizeof(char));
-        glGetShaderInfoLog(id, length, &length, message); GLCall;
+        glGetShaderInfoLog(id, length, &length, message); 
         std::cout << "\e[1;31m[ERROR]\e[0;37m " << (type == GL_VERTEX_SHADER ? "Vertex" : "Frag") << " Shader Did Not Compile - ";
         std::cout << (type == GL_VERTEX_SHADER ? m_VSPath : m_FSPath) << std::endl;
         std::cout << message << std::endl;
-        glDeleteShader(id); GLCall;
+        glDeleteShader(id); 
 
         return 0;
     }
@@ -95,7 +95,7 @@ uint32_t Shader::CompileShader(uint32_t type, const std::string& source)
 uint32_t Shader::CreateShader(const std::string& vertexShader, const std::string& fragmentShader)
 {
     // create program for shaders to link to
-    uint32_t programID = glCreateProgram(); GLCall;
+    uint32_t programID = glCreateProgram(); 
     uint32_t vs = CompileShader(GL_VERTEX_SHADER, vertexShader);
     uint32_t fs = CompileShader(GL_FRAGMENT_SHADER, fragmentShader);
 
@@ -103,29 +103,29 @@ uint32_t Shader::CreateShader(const std::string& vertexShader, const std::string
         return 0;
 
     // link shaders into one program
-    glAttachShader(programID, vs); GLCall;
-    glAttachShader(programID, fs); GLCall;
-    glLinkProgram(programID); GLCall;
-    glValidateProgram(programID); GLCall;
+    glAttachShader(programID, vs); 
+    glAttachShader(programID, fs); 
+    glLinkProgram(programID); 
+    glValidateProgram(programID); 
 
     int result;
-    glGetProgramiv(programID, GL_LINK_STATUS, &result); GLCall;
+    glGetProgramiv(programID, GL_LINK_STATUS, &result); 
     if (result == GL_FALSE)
     {
         int length;
-        glGetProgramiv(programID, GL_INFO_LOG_LENGTH, &length); GLCall;
+        glGetProgramiv(programID, GL_INFO_LOG_LENGTH, &length); 
         char* message = (char*)alloca(length * sizeof(char));
-        glGetProgramInfoLog(programID, length, &length, message); GLCall;
+        glGetProgramInfoLog(programID, length, &length, message); 
         std::cout << "Failed to link shaders :: " << message << std::endl;
-        glDeleteProgram(programID); GLCall;
+        glDeleteProgram(programID); 
 
         return 0;
     }
 
     // std::cout << "Successfully linked shaders" << std::endl; 
 
-    glDeleteShader(vs); GLCall;
-    glDeleteShader(fs); GLCall;
+    glDeleteShader(vs); 
+    glDeleteShader(fs); 
 
     return programID;
 }

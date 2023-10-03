@@ -5,10 +5,8 @@
 
 struct alignas(16) Light
 {
-    int type;
-    int PrimitiveOffset;
-    int pad0;
-    int pad1;
+    int id;
+    alignas(16) glm::vec3 le;
 };
 
 struct SceneBlock
@@ -20,8 +18,7 @@ struct SceneBlock
     int Day;
 };
 
-const uint32_t MAX_SPHERES = 100;
-const uint32_t MAX_AABBS = 100;
+const uint32_t MAX_PRIMITIVES = 100;
 const uint32_t MAX_LIGHTS = 100;
 
 struct Scene
@@ -29,21 +26,26 @@ struct Scene
     SceneBlock Data;
     int maxRayDepth = 16;
     int samplesPerPixel = 1;
-    char day = 0;
-    int SphereIdx = 0;
-    int AABBIdx = 0;
+    char day = 1;
+    int PrimitiveIdx = 0;
     int SceneIdx = 0;
-    glm::vec3 lightDirection { -1.0f, 1.0f, 1.0f };
-    std::vector<GPUSphere> spheres;
-    std::vector<GPUAABB> aabbs;
+    glm::vec3 lightDirection { 0.3f, 0.1f, 1.0f };
     std::vector<Light> lights;
     std::vector<Primitive> primitives;
 
     void AddDefaultSphere();
     void AddDefaultCube();
+    void AddSphere(glm::vec3 position, float radius, Material mat);
+    void AddCube(glm::vec3 position, glm::vec3 dimensions, Material mat);
+    void AddLight(int id, glm::vec3 le);
+
+    Material CreateGlassMat(glm::vec3 absorption, float ior, float roughness);
+    Material CreateDiffuseMat(glm::vec3 albedo, float roughness);
+    Material CreateMirrorMat(glm::vec3 albedo, float roughness);
+    Material CreateDielectricMat(glm::vec3 albedo, float roughness, float specular);
 
     void CornellBox();
     void RTIW();
-    void TestPrims();
-    void emptyScene();
+    void Init();
+    void EmptyScene();
 };

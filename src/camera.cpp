@@ -191,8 +191,8 @@ bool Camera::FPS(float dt, Window* window)
         delta = (cursor_pos - m_LastMousePosition);
         m_LastMousePosition = cursor_pos;
         
-        float dx = glm::radians(delta.x) * dt * sensitivity * 0.1f;
-        float dy = glm::radians(delta.y) * dt * sensitivity * 0.1f;
+        float dx = glm::radians(delta.x) * sensitivity * 0.01f;
+        float dy = glm::radians(delta.y) * sensitivity * 0.01f;
 
         if (dx != 0.0f || dy != 0.0f)
         {
@@ -240,7 +240,11 @@ bool Camera::FPS(float dt, Window* window)
         matOrient[1] = m_Up; //m_MatOrientation[1];
         matOrient[0] = m_Right; //m_MatOrientation[2];
 
-        m_MovementMomentum = m_MovementMomentum * damping + (1.0f - damping) * matOrient * M * Velocity / mlen;
+        glm::vec3 TargetMomentum = matOrient * M * Velocity / mlen;
+        // m_MovementMomentum = m_MovementMomentum * damping + (1.0f - damping) * TargetMomentum;
+        // damping = glm::sqrt(damping * 0.5f + 0.5f);
+        float t = (1.0f - glm::exp(-damping * dt));
+        m_MovementMomentum = glm::mix(TargetMomentum, m_MovementMomentum, t);
         m_Position += m_MovementMomentum * dt;
 
         // if (Sprinting)
@@ -254,7 +258,7 @@ bool Camera::FPS(float dt, Window* window)
 
         // FOV Zoom
         float zoom = (glfwGetKey(glfw_win, GLFW_KEY_E) == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_Q) == GLFW_PRESS);
-        horizontalFOV -= zoom;
+        horizontalFOV -= zoom * 100.0f * dt;
 
         if (horizontalFOV < 10.0f)
         {

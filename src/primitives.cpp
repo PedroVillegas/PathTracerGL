@@ -18,8 +18,18 @@ AABB Union(const AABB& b, const glm::vec3& p)
     return newBounds;
 }
 
-void GPUSphere::BoundingBox(AABB* out)
+void Primitive::BoundingBox(AABB* out)
 {
-    out->bMax = position + (radius + 0.05f);
-    out->bMin = position - (radius + 0.05f);
+    switch (type)
+    {
+        case 0: // sphere
+            out->bMax = position + (radius + 0.05f);
+            out->bMin = position - (radius + 0.05f);
+            break;
+        case 1:
+            out->bMax = position + (dimensions * 0.5f);
+            out->bMin = position - (dimensions * 0.5f);
+            break;
+    }
+    
 }

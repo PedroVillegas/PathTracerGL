@@ -44,7 +44,7 @@ public:
     const glm::mat4& GetInverseView() const { return m_InverseView; }
 
     const glm::vec3& GetPosition() const { return m_Position; }
-    const glm::vec3& GetMovementMomentum() const { return m_MovementMomentum; }
+    const glm::vec3& GetVelocity() const { return m_Velocity; }
     const glm::vec3& GetRotationMomentum() const { return m_RotationMomentum; }
     const glm::vec3& GetDirection() const { return m_Forward; }
     
@@ -80,6 +80,7 @@ private:
 
     glm::quat m_QuatOrientation = glm::quat();
 
+    glm::vec3 m_Velocity { 0.0f, 0.0f, 0.0f };
     glm::vec3 m_MovementMomentum { 0.0f, 0.0f, 0.0f };
     glm::vec3 m_RotationMomentum { 0.0f, 0.0f, 0.0f };
 

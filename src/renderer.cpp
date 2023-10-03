@@ -3,11 +3,10 @@
 #include <glm/glm.hpp>
 #include <stdio.h>
 
-#include "consoleLogger.h"
 #include "renderer.h"
 
 void DrawBbox(Shader& shader, BVH_Node node, uint32_t vao);
-void DrawTree(Shader& shader, BVH_Node* node, uint32_t vao);
+void DrawTree(Shader& shader, BVH_Node* node, uint32_t vao, int currentDepth, int terminationDepth);
 
 Renderer::Renderer(
     uint32_t ViewportWidth,
@@ -29,52 +28,50 @@ Renderer::Renderer(
     m_FinalOutputFBO = Framebuffer(m_ViewportSpec);
     m_FinalOutputFBO.Create();
 
-    m_PathTraceShader = new Shader("src/shaders/vert.glsl", "src/shaders/pathTracer.glsl");
+    m_PathTraceShader = new Shader("src/shaders/vert.glsl", "src/shaders/pt.glsl");
     m_AccumShader = new Shader("src/shaders/vert.glsl", "src/shaders/accumulation.glsl");
-    m_FinalOutputShader = new Shader("src/shaders/vert.glsl", "src/shaders/postProcessing.glsl");
+    m_FinalOutputShader = new Shader("src/shaders/vert.glsl", "src/shaders/post.glsl");
     m_BVHDebugShader = new Shader("src/shaders/debugVert.glsl", "src/shaders/debug.glsl");
 
-    m_Scene->TestPrims();
-    m_BVH = new BVH(m_Scene->spheres);
+    m_Scene->CornellBox();
+    m_BVH = new BVH(m_Scene->primitives);
 
     // Setup BVH UBO
     int treeSize = m_BVH->CountNodes(m_BVH->bvh_root);
-    glGenBuffers(1, &m_BVHBlockBuffer); GLCall;
-    glBindBuffer(GL_UNIFORM_BUFFER, m_BVHBlockBuffer); GLCall;
-    glBufferData(GL_UNIFORM_BUFFER, treeSize * sizeof(LinearBVH_Node), m_BVH->flat_root, GL_STATIC_DRAW); GLCall;
+    glGenBuffers(1, &m_BVHBlockBuffer); 
+    glBindBuffer(GL_UNIFORM_BUFFER, m_BVHBlockBuffer); 
+    glBufferData(GL_UNIFORM_BUFFER, treeSize * sizeof(LinearBVH_Node), m_BVH->flat_root, GL_STATIC_DRAW); 
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-    glBindBufferBase(GL_UNIFORM_BUFFER, 0, m_BVHBlockBuffer); GLCall;
+    glBindBufferBase(GL_UNIFORM_BUFFER, 0, m_BVHBlockBuffer); 
     m_PathTraceShader->SetUBO("BVH", 0);
 
     // Setup PrimsBlock UBO
-    glGenBuffers(1, &m_PrimsBlockBuffer); GLCall;
-    glBindBuffer(GL_UNIFORM_BUFFER, m_PrimsBlockBuffer); GLCall;
-    int mem = sizeof(glm::vec4) + MAX_SPHERES * sizeof(GPUSphere)
-            + MAX_AABBS * sizeof(GPUAABB) + MAX_LIGHTS * sizeof(Light)
-            + 100 * sizeof(Primitive);
-    glBufferData(GL_UNIFORM_BUFFER, mem, nullptr, GL_DYNAMIC_DRAW); GLCall;
+    glGenBuffers(1, &m_PrimsBlockBuffer); 
+    glBindBuffer(GL_UNIFORM_BUFFER, m_PrimsBlockBuffer); 
+    int mem = sizeof(glm::vec4) + MAX_LIGHTS * sizeof(Light) + MAX_PRIMITIVES * sizeof(Primitive);
+    glBufferData(GL_UNIFORM_BUFFER, mem, nullptr, GL_DYNAMIC_DRAW); 
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-    glBindBufferBase(GL_UNIFORM_BUFFER, 1, m_PrimsBlockBuffer); GLCall;
+    glBindBufferBase(GL_UNIFORM_BUFFER, 1, m_PrimsBlockBuffer); 
     m_PathTraceShader->SetUBO("PrimsBlock", 1);
 
     // Setup SceneBlock UBO
-    glGenBuffers(1, &m_SceneBlockBuffer); GLCall;
-    glBindBuffer(GL_UNIFORM_BUFFER, m_SceneBlockBuffer); GLCall;
+    glGenBuffers(1, &m_SceneBlockBuffer); 
+    glBindBuffer(GL_UNIFORM_BUFFER, m_SceneBlockBuffer); 
     glBufferData(GL_UNIFORM_BUFFER, sizeof(SceneBlock), nullptr, GL_DYNAMIC_DRAW);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-    glBindBufferBase(GL_UNIFORM_BUFFER, 2, m_SceneBlockBuffer); GLCall;
+    glBindBufferBase(GL_UNIFORM_BUFFER, 2, m_SceneBlockBuffer); 
     m_PathTraceShader->SetUBO("SceneBlock", 2);
 
     // Setup CameraBlock UBO
-    glGenBuffers(1, &m_CameraBlockBuffer); GLCall;
-    glBindBuffer(GL_UNIFORM_BUFFER, m_CameraBlockBuffer); GLCall;
+    glGenBuffers(1, &m_CameraBlockBuffer); 
+    glBindBuffer(GL_UNIFORM_BUFFER, m_CameraBlockBuffer); 
     glBufferData(GL_UNIFORM_BUFFER, sizeof(CameraBlock), nullptr, GL_DYNAMIC_DRAW);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-    glBindBufferBase(GL_UNIFORM_BUFFER, 3, m_CameraBlockBuffer); GLCall;
+    glBindBufferBase(GL_UNIFORM_BUFFER, 3, m_CameraBlockBuffer); 
     m_PathTraceShader->SetUBO("CameraBlock", 3);
 }
 
@@ -96,25 +93,33 @@ void Renderer::UpdateBuffers()
     if (m_PathTraceShader->b_Reloaded)
     {
         std::cout << "Rebuilding BVH..." << std::endl;
-        m_BVH->RebuildBVH(m_Scene->spheres);
+        m_BVH->RebuildBVH(m_Scene->primitives);
         std::cout << "BVH Successfully Rebuilt" << std::endl;
         m_BVH->b_Rebuilt = true;
-        int mem = sizeof(glm::vec4) + MAX_SPHERES * sizeof(GPUSphere) + MAX_AABBS * sizeof(GPUAABB) + MAX_LIGHTS * sizeof(Light);
+        
+        // Reallocate memory for PrimsBlock
+        int mem = sizeof(glm::vec4) + MAX_LIGHTS * sizeof(Light) + MAX_PRIMITIVES * sizeof(Primitive);
         glBindBuffer(GL_UNIFORM_BUFFER, m_PrimsBlockBuffer);
-        glBufferData(GL_UNIFORM_BUFFER, mem, nullptr, GL_DYNAMIC_DRAW); GLCall;
+        glBufferData(GL_UNIFORM_BUFFER, mem, nullptr, GL_DYNAMIC_DRAW); 
         glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+        glBindBufferBase(GL_UNIFORM_BUFFER, 1, m_PrimsBlockBuffer); 
+        m_PathTraceShader->SetUBO("PrimsBlock", 1);
         m_PathTraceShader->b_Reloaded = false;
     }
-
 
     // Update BVH Block only if rebuilt
     if (m_BVH->b_Rebuilt)
     {
         int treeSize = m_BVH->CountNodes(m_BVH->bvh_root);
-        // std::cout << treeSize << std::endl;
-        glBindBuffer(GL_UNIFORM_BUFFER, m_BVHBlockBuffer); GLCall;
-        glBufferData(GL_UNIFORM_BUFFER, treeSize * sizeof(LinearBVH_Node), m_BVH->flat_root, GL_STATIC_DRAW); GLCall;
-        glBindBuffer(GL_UNIFORM_BUFFER, 0); GLCall;
+
+        // Reallocate memory for BVH Block
+        glBindBuffer(GL_UNIFORM_BUFFER, m_BVHBlockBuffer); 
+        glBufferData(GL_UNIFORM_BUFFER, treeSize * sizeof(LinearBVH_Node), m_BVH->flat_root, GL_STATIC_DRAW); 
+        glBindBuffer(GL_UNIFORM_BUFFER, 0); 
+
+        glBindBufferBase(GL_UNIFORM_BUFFER, 0, m_BVHBlockBuffer); 
+        m_PathTraceShader->SetUBO("BVH", 0);
         m_BVH->b_Rebuilt = false;
     }
 
@@ -131,99 +136,89 @@ void Renderer::UpdateBuffers()
     // Update Prims Block
     glBindBuffer(GL_UNIFORM_BUFFER, m_PrimsBlockBuffer);
     int offset = 0;
-    int n_Spheres = m_Scene->spheres.size();
-    int n_AABBs = m_Scene->aabbs.size();
     int n_Lights = m_Scene->lights.size();
     int n_Primitives = m_Scene->primitives.size();
-    glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &n_Spheres); GLCall;
+    glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &n_Lights); 
     offset += sizeof(int);
-    glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &n_AABBs); GLCall;
-    offset += sizeof(int);
-    glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &n_Lights); GLCall;
-    offset += sizeof(int);
-    glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &n_Primitives); GLCall;
-    offset += sizeof(int);
-    glBufferSubData(GL_UNIFORM_BUFFER, offset, n_Spheres * sizeof(GPUSphere), m_Scene->spheres.data()); GLCall;
-    offset += (MAX_SPHERES) * sizeof(GPUSphere);
-    glBufferSubData(GL_UNIFORM_BUFFER, offset, n_AABBs * sizeof(GPUAABB), m_Scene->aabbs.data()); GLCall;
-    offset += (MAX_AABBS) * sizeof(GPUAABB);
-    glBufferSubData(GL_UNIFORM_BUFFER, offset, n_Lights * sizeof(Light), m_Scene->lights.data()); GLCall;
-    offset += (MAX_AABBS) * sizeof(Light);
-    glBufferSubData(GL_UNIFORM_BUFFER, offset, n_Primitives * sizeof(Primitive), m_Scene->primitives.data()); GLCall;
+    glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &n_Primitives); 
+    offset += 3 * sizeof(int);
+    glBufferSubData(GL_UNIFORM_BUFFER, offset, n_Lights * sizeof(Light), m_Scene->lights.data()); 
+    offset += (MAX_LIGHTS) * sizeof(Light);
+    glBufferSubData(GL_UNIFORM_BUFFER, offset, n_Primitives * sizeof(Primitive), m_Scene->primitives.data()); 
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
 void Renderer::Render(const Scene& scene, const Camera& camera, uint32_t VAO)
 {
-    SetClearColour(1.0f, 0.0f, 1.0f, 1.0f); GLCall;
+    SetClearColour(1.0f, 0.0f, 1.0f, 1.0f); 
     // m_Scene = &scene;
     // m_Camera = &camera;
 
     // First pass:
     // Render current frame to m_PathTraceFBO using m_AccumulationFBO's texture to continue accumulating samples
     // For first frame the texture will be empty and will not affect the output
-    glActiveTexture(GL_TEXTURE0); GLCall;
-    glBindTexture(GL_TEXTURE_2D, m_AccumulationFBO.GetTextureID()); GLCall;
+    glActiveTexture(GL_TEXTURE0); 
+    glBindTexture(GL_TEXTURE_2D, m_AccumulationFBO.GetTextureID()); 
 
-    m_PathTraceShader->Bind(); GLCall;
-    m_PathTraceShader->SetUniformInt("u_AccumulationTexture", 0); GLCall;
-    m_PathTraceShader->SetUniformInt("u_SampleIterations", m_SampleIterations); GLCall;
-    m_PathTraceShader->SetUniformInt("u_SamplesPerPixel", m_Scene->samplesPerPixel); GLCall;
-    m_PathTraceShader->SetUniformVec2("u_Resolution", float(m_ViewportWidth), float(m_ViewportHeight)); GLCall;
+    m_PathTraceShader->Bind(); 
+    m_PathTraceShader->SetUniformInt("u_AccumulationTexture", 0); 
+    m_PathTraceShader->SetUniformInt("u_SampleIterations", m_SampleIterations); 
+    m_PathTraceShader->SetUniformInt("u_SamplesPerPixel", m_Scene->samplesPerPixel); 
+    m_PathTraceShader->SetUniformVec2("u_Resolution", float(m_ViewportWidth), float(m_ViewportHeight)); 
 
     UpdateBuffers();
 
-    m_PathTraceFBO.Bind(); GLCall;
+    m_PathTraceFBO.Bind(); 
 
-    Clear(); GLCall;
-    glBindVertexArray(VAO); GLCall;
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); GLCall;
-    glBindVertexArray(0); GLCall;
+    Clear(); 
+    glBindVertexArray(VAO); 
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); 
+    glBindVertexArray(0); 
 
-    m_PathTraceFBO.Unbind(); GLCall;
+    m_PathTraceFBO.Unbind(); 
     m_PathTraceShader->Unbind();
 
     // Second Pass:
     // This pass is used to copy the previous pass' output (m_PathTraceFBO) onto m_AccumulationFBO which will hold the data 
     // until used again for the first pass of the next frame
-    m_AccumShader->Bind(); GLCall;
-    m_AccumulationFBO.Bind(); GLCall;
+    m_AccumShader->Bind(); 
+    m_AccumulationFBO.Bind(); 
 
-    glActiveTexture(GL_TEXTURE0); GLCall;
-    glBindTexture(GL_TEXTURE_2D, m_PathTraceFBO.GetTextureID()); GLCall;
+    glActiveTexture(GL_TEXTURE0); 
+    glBindTexture(GL_TEXTURE_2D, m_PathTraceFBO.GetTextureID()); 
 
-    m_AccumShader->SetUniformInt("u_PathTraceTexture", 0); GLCall;
-    m_AccumShader->SetUniformVec2("u_Resolution", float(m_ViewportWidth), float(m_ViewportHeight)); GLCall;
+    m_AccumShader->SetUniformInt("u_PathTraceTexture", 0); 
+    m_AccumShader->SetUniformVec2("u_Resolution", float(m_ViewportWidth), float(m_ViewportHeight)); 
 
-    Clear(); GLCall;
-    glBindVertexArray(VAO); GLCall;
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); GLCall;
-    glBindVertexArray(0); GLCall;
+    Clear(); 
+    glBindVertexArray(VAO); 
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); 
+    glBindVertexArray(0); 
 
-    glActiveTexture(GL_TEXTURE0); GLCall;
-    glBindTexture(GL_TEXTURE_2D, m_AccumulationFBO.GetTextureID()); GLCall;
+    glActiveTexture(GL_TEXTURE0); 
+    glBindTexture(GL_TEXTURE_2D, m_AccumulationFBO.GetTextureID()); 
 
-    m_AccumulationFBO.Unbind(); GLCall;
+    m_AccumulationFBO.Unbind(); 
     m_AccumShader->Unbind();
 
     // Final pass:
     // Now use the texture from either of the previously used FBO and divide by the frame count
-    m_FinalOutputShader->Bind(); GLCall;
-    m_FinalOutputFBO.Bind(); GLCall;
-    m_FinalOutputShader->SetUniformInt("u_PT_Texture", 0); GLCall;
-    m_FinalOutputShader->SetUniformVec2("u_Resolution", float(m_ViewportWidth), float(m_ViewportHeight)); GLCall;
+    m_FinalOutputShader->Bind(); 
+    m_FinalOutputFBO.Bind(); 
+    m_FinalOutputShader->SetUniformInt("u_PT_Texture", 0); 
+    m_FinalOutputShader->SetUniformVec2("u_Resolution", float(m_ViewportWidth), float(m_ViewportHeight)); 
 
-    Clear(); GLCall;
-    glBindVertexArray(VAO); GLCall;
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); GLCall;
-    glBindVertexArray(0); GLCall;
+    Clear(); 
+    glBindVertexArray(VAO); 
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); 
+    glBindVertexArray(0); 
 
-    m_FinalOutputFBO.Unbind(); GLCall;
+    m_FinalOutputFBO.Unbind(); 
     m_FinalOutputShader->Unbind();
     
     if (b_DrawBVH)
     {
-        m_FinalOutputFBO.Bind(); GLCall;
+        m_FinalOutputFBO.Bind(); 
         glViewport(0, 0, m_ViewportWidth, m_ViewportHeight);
         m_BVHDebugShader->Bind();
 
@@ -231,10 +226,9 @@ void Renderer::Render(const Scene& scene, const Camera& camera, uint32_t VAO)
         m_BVHDebugShader->SetUniformMat4("u_Projection", camera.GetProjection());
         // m_BVHDebugShader->SetUniformVec2("u_Resolution", (float)ViewportWidth, (float)ViewportHeight);
 
-        // std::cout << "\nRoot of Tree" << std::endl;
-        DrawTree(*m_BVHDebugShader, m_BVH->bvh_root, debugVAO);
+        DrawTree(*m_BVHDebugShader, m_BVH->bvh_root, debugVAO, 0, BVHDepth);
         m_BVHDebugShader->Unbind();
-        m_FinalOutputFBO.Unbind(); GLCall;
+        m_FinalOutputFBO.Unbind(); 
     }
 
     m_SampleIterations++;
@@ -274,33 +268,22 @@ void DrawBbox(Shader& shader, BVH_Node node, uint32_t vao)
         (node.bbox.bMin.z + node.bbox.bMax.z) / 2);
     glm::mat4 model = glm::translate(glm::mat4(1.0f), center) * glm::scale(glm::mat4(1.0f), scale);
 
-    // std::cout << "dim: vec3(" 
-    //     << scale.x << ", " 
-    //     << scale.y << ", " 
-    //     << scale.z << ")" << std::endl;
-    // std::cout << "pos: vec3("
-    //     << center.x << ", " 
-    //     << center.y << ", " 
-    //     << center.z << ")" << std::endl;
-    // std::cout << std::endl;
-
     shader.SetUniformMat4("u_Model", model);
 
-    glBindVertexArray(vao); GLCall;
-    glDrawElements(GL_LINE_LOOP, 4, GL_UNSIGNED_INT, 0); GLCall;
-    glDrawElements(GL_LINE_LOOP, 4, GL_UNSIGNED_INT, (GLvoid*)(4 * sizeof(uint32_t))); GLCall;
-    glDrawElements(GL_LINES, 8, GL_UNSIGNED_INT, (GLvoid*)(8 * sizeof(uint32_t))); GLCall;
-    glBindVertexArray(0); GLCall;
+    glBindVertexArray(vao); 
+    glDrawElements(GL_LINE_LOOP, 4, GL_UNSIGNED_INT, 0); 
+    glDrawElements(GL_LINE_LOOP, 4, GL_UNSIGNED_INT, (GLvoid*)(4 * sizeof(uint32_t))); 
+    glDrawElements(GL_LINES, 8, GL_UNSIGNED_INT, (GLvoid*)(8 * sizeof(uint32_t))); 
+    glBindVertexArray(0); 
 }
 
-void DrawTree(Shader& shader, BVH_Node* node, uint32_t vao)
+void DrawTree(Shader& shader, BVH_Node* node, uint32_t vao, int currentDepth, int terminationDepth)
 {
-    if (node == nullptr)
+    if (node == nullptr || currentDepth == terminationDepth + 1)
         return;
     
-    // std::cout << "Calling DrawBbox" << std::endl;
+    currentDepth++;
     DrawBbox(shader, *node, vao);
-
-    DrawTree(shader, node->left, vao);
-    DrawTree(shader, node->right, vao);
+    DrawTree(shader, node->left, vao, currentDepth, terminationDepth);
+    DrawTree(shader, node->right, vao, currentDepth, terminationDepth);
 }

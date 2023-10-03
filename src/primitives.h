@@ -20,34 +20,9 @@ struct alignas(16) Primitive
     alignas(16) glm::vec3 position;
     float radius;
     alignas(16) glm::vec3 dimensions;
-    Material mat;          
-};
-
-struct alignas(16) GPUSphere
-{
-    glm::vec3 position { 0.0f };
-    float radius = 1.0f;
-    glm::vec3 padding { 0.0f };
-
-    Material mat;
+    Material mat;    
 
     void BoundingBox(AABB* out);
-};
-
-struct alignas(16) GPUAABB
-{
-    glm::vec3 position = glm::vec3(0.0f);
-    float pad0 = 0.0f;
-    glm::vec3 dimensions = glm::vec3(1.0f);
-    float pad1 = 0.0f;
-
-    Material mat;
-
-    GPUAABB() = default;
-    GPUAABB(glm::vec3 position, glm::vec3 dimensions, Material mat)
-    : position(position)
-    , dimensions(dimensions)
-    , mat(mat) {}
 };
 
 struct AABB
