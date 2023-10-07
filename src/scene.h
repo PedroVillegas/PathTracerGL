@@ -27,9 +27,12 @@ struct Scene
     int maxRayDepth = 16;
     int samplesPerPixel = 1;
     char day = 1;
+    int LightIdx = 0;
     int PrimitiveIdx = 0;
     int SceneIdx = 0;
-    glm::vec3 lightDirection { 0.3f, 0.1f, 1.0f };
+
+    float sunElevation = 10.0f;
+    float sunAzimuth = 330.0f;
     std::vector<Light> lights;
     std::vector<Primitive> primitives;
 
@@ -43,7 +46,10 @@ struct Scene
     Material CreateDiffuseMat(glm::vec3 albedo, float roughness);
     Material CreateMirrorMat(glm::vec3 albedo, float roughness);
     Material CreateDielectricMat(glm::vec3 albedo, float roughness, float specular);
+    Material CreateLightMat(glm::vec3 le, float intensity);
 
+    void SelectScene();
+    void WhiteRoomColouredLights();
     void CornellBox();
     void RTIW();
     void Init();

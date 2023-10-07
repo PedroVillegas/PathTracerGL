@@ -14,10 +14,10 @@ Renderer::Renderer(
     Scene* scene,
     Camera* camera)
     :
-    m_Camera(camera),
-    m_Scene(scene),
     m_ViewportWidth(ViewportWidth),
-    m_ViewportHeight(ViewportHeight)
+    m_ViewportHeight(ViewportHeight),
+    m_Camera(camera),
+    m_Scene(scene)
 {
     m_ViewportSpec.width = m_ViewportWidth;
     m_ViewportSpec.height = m_ViewportHeight;
@@ -28,13 +28,13 @@ Renderer::Renderer(
     m_FinalOutputFBO = Framebuffer(m_ViewportSpec);
     m_FinalOutputFBO.Create();
 
-    m_PathTraceShader = new Shader("src/shaders/vert.glsl", "src/shaders/pt.glsl");
-    m_AccumShader = new Shader("src/shaders/vert.glsl", "src/shaders/accumulation.glsl");
-    m_FinalOutputShader = new Shader("src/shaders/vert.glsl", "src/shaders/post.glsl");
-    m_BVHDebugShader = new Shader("src/shaders/debugVert.glsl", "src/shaders/debug.glsl");
+    m_BVHDebugShader    = std::make_unique<Shader>("src/shaders/debugVert.glsl", "src/shaders/debug.glsl");
+    m_FinalOutputShader = std::make_unique<Shader>("src/shaders/vert.glsl", "src/shaders/post.glsl");
+    m_AccumShader       = std::make_unique<Shader>("src/shaders/vert.glsl", "src/shaders/accumulation.glsl");
+    m_PathTraceShader   = std::make_unique<Shader>("src/shaders/vert.glsl", "src/shaders/pt.glsl");
 
-    m_Scene->CornellBox();
-    m_BVH = new BVH(m_Scene->primitives);
+    m_Scene->SelectScene();
+    m_BVH = std::make_unique<BVH>(m_Scene->primitives);
 
     // Setup BVH UBO
     int treeSize = m_BVH->CountNodes(m_BVH->bvh_root);
@@ -80,12 +80,6 @@ Renderer::~Renderer()
     m_PathTraceFBO.Destroy();
     m_AccumulationFBO.Destroy();
     m_FinalOutputFBO.Destroy();
-
-    delete m_BVH;
-    delete m_BVHDebugShader;
-    delete m_PathTraceShader;
-    delete m_AccumShader;
-    delete m_FinalOutputShader;
 }
 
 void Renderer::UpdateBuffers()
@@ -150,9 +144,7 @@ void Renderer::UpdateBuffers()
 
 void Renderer::Render(const Scene& scene, const Camera& camera, uint32_t VAO)
 {
-    SetClearColour(1.0f, 0.0f, 1.0f, 1.0f); 
-    // m_Scene = &scene;
-    // m_Camera = &camera;
+    glClearColor(1.0f, 0.0f, 1.0f, 1.0f); 
 
     // First pass:
     // Render current frame to m_PathTraceFBO using m_AccumulationFBO's texture to continue accumulating samples
@@ -170,7 +162,7 @@ void Renderer::Render(const Scene& scene, const Camera& camera, uint32_t VAO)
 
     m_PathTraceFBO.Bind(); 
 
-    Clear(); 
+    glClear(GL_COLOR_BUFFER_BIT); 
     glBindVertexArray(VAO); 
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); 
     glBindVertexArray(0); 
@@ -190,7 +182,7 @@ void Renderer::Render(const Scene& scene, const Camera& camera, uint32_t VAO)
     m_AccumShader->SetUniformInt("u_PathTraceTexture", 0); 
     m_AccumShader->SetUniformVec2("u_Resolution", float(m_ViewportWidth), float(m_ViewportHeight)); 
 
-    Clear(); 
+    glClear(GL_COLOR_BUFFER_BIT); 
     glBindVertexArray(VAO); 
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); 
     glBindVertexArray(0); 
@@ -208,7 +200,7 @@ void Renderer::Render(const Scene& scene, const Camera& camera, uint32_t VAO)
     m_FinalOutputShader->SetUniformInt("u_PT_Texture", 0); 
     m_FinalOutputShader->SetUniformVec2("u_Resolution", float(m_ViewportWidth), float(m_ViewportHeight)); 
 
-    Clear(); 
+    glClear(GL_COLOR_BUFFER_BIT); 
     glBindVertexArray(VAO); 
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); 
     glBindVertexArray(0); 

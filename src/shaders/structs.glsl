@@ -3,7 +3,7 @@ struct Material
     vec3 albedo;                    // Base Colour
     float specularChance;           // How reflective it is
     vec3 emissive;                  // How emissive it is
-    float emissiveStrength;         // How strong it emits
+    float intensity;                // How strong it emits
     vec3 absorption;                // Absorption for beer's law
     float refractionChance;         // How transparent it is
     float ior;                      // Index of Refraction - how refractive it is

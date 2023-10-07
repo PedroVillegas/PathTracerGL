@@ -11,15 +11,16 @@
 #define LIGHT_SPHERE 0
 #define LIGHT_AREA 1
 #define SUN_ENABLED
-#define SUN_COLOUR vec3(16.86, 10.76, 8.2)*200.
+#define SUN_COLOUR vec3(.992156862745098, .8862745098039216, .6862745098039216)
 #define RUSSIAN_ROULETTE_MIN_BOUNCES 3
 
 out vec4 FragColour;
 
 vec3 EstimateDirect(Light light, Payload payload, Ray ray)
 {
-    vec3 DL = vec3(0.0);
+    vec3 directIlluminance = vec3(0.0);
     Primitive primitive = Prims.Primitives[light.id];
+    if (!all(greaterThan(primitive.mat.emissive, vec3(0.0)))) return directIlluminance;
 
     // Sample a point on the primitive
     float pdf;
@@ -27,44 +28,30 @@ vec3 EstimateDirect(Light light, Payload payload, Ray ray)
 
     // Test visibility
     vec3 wi = normalize(sampledPos - payload.position);
-    float cosine_t = dot(wi, payload.normal);
-    if (cosine_t <= 0) return DL;
+    float cos_term = dot(wi, payload.normal);
+    if (cos_term <= 0) return directIlluminance;
 
+    // Cast shadow ray from surface to light
     Ray SR = Ray(payload.position + payload.normal * 0.001, wi);
     Payload shadowInfo;
-    // if (TracePrimsHit(SR, shadowInfo, INF) && shadowInfo.primID == light.id && distance(shadowInfo.position, sampledPos) < 0.1)
-    if (!TracePrimsHit(SR, shadowInfo, distance(SR.origin, sampledPos)))
+    if (TracePrimsHit(SR, shadowInfo, distance(SR.origin, sampledPos)) 
+        && shadowInfo.primID == light.id && distance(shadowInfo.position, sampledPos) < 0.1)
     {
-        DL += EvalBSDF(payload, ray, wi) * cosine_t * light.le * primitive.mat.emissiveStrength / pdf;
+        // Convert area pdf to solid angle pdf
+        float r = shadowInfo.t;
+        float cos_term = abs(cos_term);
+        pdf = r*r / cos_term * pdf;
+        if (pdf < 0.01) return directIlluminance;
+        directIlluminance += EvalBSDF(payload, ray, wi) * cos_term * primitive.mat.emissive * primitive.mat.intensity / pdf;
     }
 
-    return DL;
+    return directIlluminance;
 }
 
 // https://computergraphics.stackexchange.com/questions/5152/progressive-path-tracing-with-explicit-light-sampling
 vec3 SampleLights(Payload hitrec, Ray ray, bool lastBounceSpecular)
 {
-    vec3 DL = vec3(0.0);
-
-#ifdef SUN_ENABLED
-    vec3 dir = normalize(Scene.SunDirection);
-    // Omega_i is the incoming light
-    vec3 wi = GetConeSample(dir, 1e-5);
-
-    // Test visibility
-    float cos_term = dot(wi, hitrec.normal);
-    if (cos_term <= 0.0) return DL;
-
-    // Generate shadow ray surface to light
-    Ray SR = Ray(hitrec.position + hitrec.normal * 0.001, wi);
-    Payload shadowInfo;
-    if (!TracePrimsHit(SR, shadowInfo, INF) || shadowInfo.mat.refractionChance == 1.0)
-    {
-        // Only sample if bsdf is non-specular
-        DL += EvalBSDF(hitrec, ray, wi) * vec3(1.0);// * cos_term;
-    }
-    return DL;
-#endif
+    vec3 directIlluminance = vec3(0.0);
 
     for (int i = 0; i < Prims.n_Lights; i++)
     {
@@ -75,9 +62,37 @@ vec3 SampleLights(Payload hitrec, Ray ray, bool lastBounceSpecular)
         if (light.id == hitrec.primID) continue;
 
         // Accumulate direct lighting
-        DL += EstimateDirect(light, hitrec, ray);
+        directIlluminance += EstimateDirect(light, hitrec, ray);
     }
-    return DL;
+    return directIlluminance;
+}
+
+vec3 SampleSun(Payload shadingPoint, Ray ray, bool lastBounceSpecular)
+{
+    vec3 directIlluminance = vec3(0.0);
+
+#ifdef SUN_ENABLED
+    if (Scene.Day == 1)
+    {
+        vec3 dir = normalize(Scene.SunDirection);
+        // Omega_i is the incoming light
+        vec3 wi = normalize(GetConeSample(dir, 1e-5));
+
+        // Test visibility
+        float cos_term = dot(wi, shadingPoint.normal);
+        if (cos_term <= 0.0) return directIlluminance;
+
+        // Cast shadow ray from surface to light
+        Ray SR = Ray(shadingPoint.position + shadingPoint.normal * 0.001, wi);
+        Payload shadowInfo;
+        if (!lastBounceSpecular && !TracePrimsHit(SR, shadowInfo, INF))
+        {
+            // Only sample if bsdf is non-specular (refl or refr)
+            directIlluminance += EvalBSDF(shadingPoint, ray, wi) * SUN_COLOUR * abs(cos_term);
+        }
+    }
+#endif
+    return directIlluminance;
 }
 
 vec3 PathTrace(Ray ray)
@@ -110,9 +125,10 @@ vec3 PathTrace(Ray ray)
         }
         
         // Consider emissive materials
-        if (bounce == 0 && any(greaterThan(HitRec.mat.emissive, vec3(0.0))))
+        // if (any(greaterThan(HitRec.mat.emissive, vec3(0.0))))
+        if ((bounce == 0 || lastBounceSpecular == true) && any(greaterThan(HitRec.mat.emissive, vec3(0.0))))
         {
-            radiance += HitRec.mat.emissive * HitRec.mat.emissiveStrength * throughput;
+            radiance += HitRec.mat.emissive * HitRec.mat.intensity * throughput;
             break;
         }
 
@@ -127,7 +143,7 @@ vec3 PathTrace(Ray ray)
         }
 
         // Calculate direct lighting
-        vec3 direct = SampleLights(HitRec, ray, lastBounceSpecular);
+        vec3 direct = SampleLights(HitRec, ray, lastBounceSpecular) + SampleSun(HitRec, ray, lastBounceSpecular);
         radiance += throughput * direct;
 
         // Calculate indirect lighting

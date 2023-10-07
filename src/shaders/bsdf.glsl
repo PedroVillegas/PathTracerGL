@@ -36,14 +36,13 @@ vec3 EvalBSDF(Payload hitrec, Ray ray, vec3 L)
     float refractiveFactor = 0.0;
     float rayProbability = 1.0;
     float raySelectRoll = Randf01();
-    vec3 diffuseDir = SampleCosineHemisphere(Randf01(), Randf01(), N);
+    vec3 diffuseDir = SampleCosineHemisphere(raySelectRoll, Randf01(), N);
 
     if (specularChance > 0.0 && raySelectRoll < specularChance)
     {   
         // Reflection ray
         specularFactor = 1.0;
         rayProbability = specularChance;
-        return vec3(0.0);
 
         // Rough Specular (Glossy) lerps from smooth specular to rough diffuse by the roughness squared
         // Squaring the roughness is done to make the roughness feel more linear perceptually
@@ -56,7 +55,6 @@ vec3 EvalBSDF(Payload hitrec, Ray ray, vec3 L)
         // Refraction ray
         refractiveFactor = 1.0;
         rayProbability = 1.0;
-        return vec3(0.0);
 
         float eta = hitrec.fromInside ? ior : (1.0 / ior);
         vec3 refractionDir = refract(V, N, eta);
@@ -68,7 +66,6 @@ vec3 EvalBSDF(Payload hitrec, Ray ray, vec3 L)
         // Diffuse ray
         scattered = diffuseDir;
         rayProbability = 1.0 - (specularChance + refractionChance);
-        return albedo;
     }
 
     ray.origin = bool(refractiveFactor) ? hitrec.position - N * 0.001 : hitrec.position + N * 0.001;
@@ -112,7 +109,7 @@ vec3 EvalIndirect(Payload hitrec, inout Ray ray, out bool lastBounceSpecular)
     float refractiveFactor = 0.0;
     float rayProbability = 1.0;
     float raySelectRoll = Randf01();
-    vec3 diffuseDir = SampleCosineHemisphere(Randf01(), Randf01(), N);
+    vec3 diffuseDir = SampleCosineHemisphere(raySelectRoll, Randf01(), N);
 
     if (specularChance > 0.0 && raySelectRoll < specularChance)
     {   
@@ -146,7 +143,7 @@ vec3 EvalIndirect(Payload hitrec, inout Ray ray, out bool lastBounceSpecular)
 
     ray.origin = bool(refractiveFactor) ? hitrec.position - N * 0.001 : hitrec.position + N * 0.001;
     ray.direction = scattered;
-    lastBounceSpecular = bool(specularFactor);
+    lastBounceSpecular = bool(specularFactor) || bool(refractiveFactor);
 
     return mix(albedo, vec3(1.0), refractiveFactor);
     // return mix(mix(albedo, vec3(1.0), specularFactor), vec3(1.0), refractiveFactor);

@@ -11,6 +11,7 @@
 
 Camera::Camera(float verticalFOV, float nearClip, float farClip)
     :
+    horizontalFOV(verticalFOV),
     m_VerticalFOV(verticalFOV), 
     m_NearClip(nearClip), 
     m_FarClip(farClip)
@@ -22,6 +23,7 @@ Camera::Camera(float verticalFOV, float nearClip, float farClip)
 
 Camera::Camera(glm::vec3 position, float verticalFOV, float nearClip, float farClip)
     :
+    horizontalFOV(verticalFOV),
     m_VerticalFOV(verticalFOV), 
     m_NearClip(nearClip), 
     m_FarClip(farClip),
@@ -33,6 +35,7 @@ Camera::Camera(glm::vec3 position, float verticalFOV, float nearClip, float farC
 
 Camera::Camera(glm::vec3 position, glm::vec3 forwardDirection, float verticalFOV, float nearClip, float farClip)
     :
+    horizontalFOV(verticalFOV),
     m_VerticalFOV(verticalFOV), 
     m_NearClip(nearClip), 
     m_FarClip(farClip),
@@ -69,6 +72,7 @@ bool Camera::OnUpdate(float dt, Window* window)
             break;
         case CAM_TYPE_CINEMATIC:
             IsCamMoving = Cinematic(dt, window);
+            UpdateParams();
             break;
         case CAM_TYPE_ORBITAL:
             IsCamMoving = Orbital(dt, window);
@@ -100,9 +104,9 @@ bool Camera::Cinematic(float dt, Window* window)
     float rlen = glm::length(m_RotationMomentum);
     if (rlen > 1e-3f) // still rotating?
     {
-        float yaw = -glm::radians(m_RotationMomentum.x) * dt * sensitivity;
-        float pitch = glm::radians(m_RotationMomentum.y) * dt * sensitivity;
-        float roll = glm::radians(m_RotationMomentum.z) * dt * sensitivity;
+        float yaw   = -glm::radians(m_RotationMomentum.x) * dt * sensitivity * 5.f;
+        float pitch =  glm::radians(m_RotationMomentum.y) * dt * sensitivity * 5.f;
+        float roll  =  glm::radians(m_RotationMomentum.z) * dt * sensitivity * 5.f;
 
         // Construct rotation delta quaternion (q) relative to the current camera orientation
         // by multiplying the rotation momentum vector (m_RotationMomentum) with the current orientation matrix

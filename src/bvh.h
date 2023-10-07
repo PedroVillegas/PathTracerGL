@@ -14,10 +14,10 @@ struct BVH_Node
     AABB bbox; 
 };
 
-struct LinearBVH_Node
+struct alignas(16) LinearBVH_Node
 {
-    glm::vec4 bMin = glm::vec4();
-    glm::vec4 bMax = glm::vec4();
+    alignas(16) glm::vec4 bMin = glm::vec4();
+    alignas(16) glm::vec4 bMax = glm::vec4();
     int primitiveOffset = 0;
     int secondChildOffset = 0;
     int primitiveCount = 0;
@@ -32,6 +32,7 @@ bool box_z_compare(Primitive a, Primitive b);
 class BVH
 {
 public:
+    BVH() {};
     BVH(std::vector<Primitive> primitives);
     ~BVH();
     int CountNodes(BVH_Node* root);

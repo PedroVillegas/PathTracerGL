@@ -24,12 +24,6 @@ Payload TracePrims(Ray ray, float dist)
     Payload payload;
     payload.t = dist;
 
-#ifdef BVH_ENABLED
-    if (TraverseBVH(ray, payload))
-    {
-        return payload;
-    }
-#endif
 #ifndef BVH_ENABLED
     for (int k = 0; k < Prims.n_Primitives; k++)
     {

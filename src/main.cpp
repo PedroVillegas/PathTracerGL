@@ -22,8 +22,8 @@ int main(void)
     Window window = Window(Title, ViewportWidth, ViewportHeight);
     Gui gui = Gui(window);
     Scene scene = Scene();
-    Camera camera = Camera({0.0f, 2.0f, 6.0f}, 90.0f, 0.01f, 100.0f);
-    Renderer renderer = Renderer(ViewportWidth, ViewportHeight, &scene, &camera);
+    Camera camera = Camera({0.0f, 2.0f, 6.0f}, 60.0f, 0.01f, 100.0f);
+    std::unique_ptr<Renderer> renderer = std::make_unique<Renderer>(ViewportWidth, ViewportHeight, &scene, &camera);
 
     uint32_t VAO, VBO, IBO, BVH_UBO;
 
@@ -63,7 +63,7 @@ int main(void)
     glEnableVertexAttribArray(0); 
     glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, (void*)0); 
 
-    renderer.debugVAO = debug_vao;
+    renderer->debugVAO = debug_vao;
 
     SetupQuad(VAO, VBO, IBO);
 
@@ -78,20 +78,26 @@ int main(void)
 
         gui.NewFrame();
 
-        renderer.OnResize(ViewportWidth, ViewportHeight);
-        camera.OnResize(renderer.GetViewportWidth(), renderer.GetViewportHeight());
+        renderer->OnResize(ViewportWidth, ViewportHeight);
+        camera.OnResize(renderer->GetViewportWidth(), renderer->GetViewportHeight());
 
         if (camera.OnUpdate(dt, &window)) 
-            renderer.ResetSamples();
+            renderer->ResetSamples();
         
-        if (!renderer.b_Pause)
+        if (!renderer->b_Pause)
         {
-            scene.Data.SunDirection = scene.lightDirection;
+            using namespace glm;
+            float phi = radians(scene.sunElevation);
+            float theta = radians(scene.sunAzimuth);
+            float x = sin(theta) * cos(phi);
+            float y = sin(phi);
+            float z = cos(theta) * cos(phi);
+            scene.Data.SunDirection = glm::vec3(x,y,z);
             scene.Data.Depth = scene.maxRayDepth;
             scene.Data.SelectedPrimIdx = scene.PrimitiveIdx;
             scene.Data.Day = scene.day;
 
-            renderer.Render(scene, camera, VAO);
+            renderer->Render(scene, camera, VAO);
         }
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0.0f, 0.0f});
@@ -100,13 +106,13 @@ int main(void)
         ViewportWidth = ImGui::GetContentRegionAvail().x;
         ViewportHeight = ImGui::GetContentRegionAvail().y;
 
-        uint32_t image = renderer.GetViewportFramebuffer().GetTextureID();
+        uint32_t image = renderer->GetViewportFramebuffer().GetTextureID();
         ImGui::Image((void*)(intptr_t)image, {(float)ViewportWidth, (float)ViewportHeight}, {0, 1}, {1, 0});
 
         ImGui::End();
         ImGui::PopStyleVar();
 
-        gui.Render(renderer, camera, scene, vsync);
+        gui.Render(*renderer, camera, scene, vsync);
 
 
         window.Update();

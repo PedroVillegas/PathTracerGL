@@ -18,6 +18,61 @@ bool Slabs(in vec3 bMin, in vec3 bMax, in Ray r, in float tNear, in float tFar)
     return tNear <= tFar;
 }
 
+bool TraverseBVH0(Ray r, inout Payload payload)
+{
+    bool hit = false;
+
+    // Stack traversal
+    int stack[64];
+    int ptr = 0;
+    stack[ptr] = 0;
+
+    float tNear = 0.001;
+    float tFar = INF;
+    float closestSoFar = tFar;
+
+	while (ptr >= 0 && ptr < 64) 
+	{
+        // Fetch bvh node
+		LinearBVHNode node = bvh.bvh[stack[ptr]];
+		ptr -= 1;
+
+        // Test intersection between the ray and the nodes bbox
+		if (Slabs(node.bMin.xyz, node.bMax.xyz, r, tNear, closestSoFar))
+		{
+			if (node.bMin.w == -1.0 || node.bMax.w == -1.0)
+			{
+                // Node is a leaf (No Children), Check its contents for primitives
+                if (node.n_Primitives > 0)
+                {
+                    int i = node.primitiveOffset;
+                    Payload tempHit;
+                    // Test for intersections with primitives
+                    if (Intersect(r, Prims.Primitives[i], tempHit))
+                    {
+                        hit = true;
+                        closestSoFar = tempHit.t;
+                        payload = tempHit;
+                    }
+                }
+			}
+
+			if (node.bMin.w != -1.0)
+			{
+				ptr += 1;
+				stack[ptr] = int(node.bMin.w);
+			}
+			if (node.bMax.w != -1.0)
+			{
+				ptr += 1;
+				stack[ptr] = int(node.bMax.w);
+			}
+		}
+	}
+    
+    return hit;
+}
+
 bool TraverseBVH(in Ray r, inout Payload payload)
 {
     bool hit = false;

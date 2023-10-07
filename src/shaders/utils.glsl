@@ -1,26 +1,26 @@
-#define INF     3.402823466e+38
+#define INF         3.402823466e+38
 #define FLT_MIN    -3.402823466e+38
 #define PI          3.14159265358979323
 #define EPSILON     1e-3
 
-uint g_Seed = 0;
+vec2 g_Seed;
 
-uint GenerateSeed()
+vec2 GenerateSeed()
 {
-    return uint(gl_FragCoord.x * 1973 + gl_FragCoord.y * 9277 + u_SampleIterations * 2699) | uint(1);
+    return vec2(float(u_SampleIterations+1) * gl_FragCoord);
 }
 
-uint PCGHash()
+uint PCGHash(uint v)
 {
-    uint state = g_Seed;
-    g_Seed *= 747796405 + 2891336453;
-    uint word = ((state >> ((state >> 28) + 4)) ^ state) * 277803737;
-    return (word >> 22) ^ word;
+    uint state = v * uint(747796405) + uint(2891336453);
+    uint word = ((state >> ((state >> uint(28)) + uint(4))) ^ state) * uint(277803737);
+    return (word >> uint(22)) ^ word;
 }
 
 float Randf01()
 {
-    return float(PCGHash()) / 4294967295.0;
+    g_Seed += 1.;
+    return float(PCGHash(PCGHash(uint(g_Seed.x)) + uint(g_Seed.y))) / float(uint(0xffffffff));
 }
 
 vec2 SampleUniformUnitCirle(float r_1, float r_2)
@@ -78,42 +78,47 @@ vec3 GetConeSample(vec3 dir, float extent)
 
 vec3 SampleSphere(vec3 position, float radius, inout float pdf, vec3 hitpos)
 {
-    vec3 orientedNormal = normalize(hitpos - position) * radius;
-    vec3 point = SampleHemisphereUniform(orientedNormal);
-    pdf = 1.0 / (2.0 * PI);
+    vec3 sampledPoint = position + SampleHemisphereUniform(normalize(hitpos - position)) * radius;
+    pdf = 1.0 / (2.0 * PI * radius * radius); // 1.0 / Area
 
-    return point;
-}
-vec3 sampleSphere(vec3 position, float radius, out float pdf) {
-    float u = Randf01();
-    float v = Randf01();
-
-    pdf = 1.0 / (4.0 * PI * radius * radius);
-    float theta = acos(1.0 - 2.0 * u);
-    float phi = 2.0 * PI * v;
-    float sinPhi = sin(phi);
-    float cosPhi = cos(phi);
-    float sinTheta = sin(theta);
-    vec3 r = radius * vec3(cosPhi*sinTheta, cos(theta), sinPhi*sinTheta);
-    // normal = normalize(r);
-    return position + r;
+    return sampledPoint;
 }
 
 vec3 SamplePlane(vec3 position, vec3 dimensions, out float pdf)
 {
-    vec3 bmin = position - dimensions * 0.5;
-    vec3 bmax = position + dimensions * 0.5;
+    vec3 bmin = position - (dimensions * 0.5);
+    float width = dimensions.x;
+    float depth = dimensions.z;
 
-    vec3 up = vec3(0.0, 0.0, 1.0);
-    vec3 right = vec3(1.0, 0.0, 0.0); 
-    // vec3 up = bmax.x - bmin.x;
-    // vec3 right = bmax.z - bmin.z;
-    //vec3 normal = normalize(cross(right, up));
+    vec3 u = vec3(width, 0.0, 0.0);
+    vec3 v = vec3(0.0, 0.0, depth);
 
-    pdf = 1.0 / (length(right) * length(up));
+    pdf = 1.0 / (width * depth);
 
     // Use bmin as lower left corner
-    return bmin + Randf01() * right + Randf01() * up;
+    return bmin + Randf01() * u + Randf01() * v;
+}
+
+vec3 SampleCube(vec3 position, vec3 dimensions, out float pdf)
+{
+    float width  = dimensions.x;
+    float height = dimensions.y;
+    float depth  = dimensions.z;
+
+    float area = 2.0 * (height * depth + height * width + width * depth);
+
+    pdf = 1.0 / (area);
+
+    // https://stackoverflow.com/questions/11815792/generation-of-3d-random-points-on-the-surface-of-a-cube
+    float sampledPoint[3];
+    int s = int(floor(Randf01() * 6.0)); // Returns 0 to 5, uniformly distributed
+    int c = s % 3; // Get the axis perpendicular to the side you just picked
+
+    sampledPoint[c]           = s > 2 ? 1. : 0.;
+    sampledPoint[(c + 1) % 3] = Randf01();
+    sampledPoint[(c + 2) % 3] = Randf01();
+
+    return position + vec3(sampledPoint[0] * width, sampledPoint[1] * height, sampledPoint[2] * depth);
 }
 
 vec3 SamplePointOnPrimitive(Primitive primitive, inout float pdf, vec3 hitpos)
@@ -121,9 +126,10 @@ vec3 SamplePointOnPrimitive(Primitive primitive, inout float pdf, vec3 hitpos)
     switch (primitive.type)
     {
         case 0: // Sphere
-            return sampleSphere(primitive.position, primitive.radius, pdf);
+            return SampleSphere(primitive.position, primitive.radius, pdf, hitpos);
         case 1: // AABB
-            return SamplePlane(primitive.position, primitive.dimensions, pdf);
+            return SampleCube(primitive.position, primitive.dimensions, pdf);
+            // return SamplePlane(primitive.position, primitive.dimensions, pdf);
     }
 }
 

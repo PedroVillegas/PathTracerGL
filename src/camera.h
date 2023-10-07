@@ -54,7 +54,7 @@ public:
     CameraBlock params;
 
     int type = 0;
-    float horizontalFOV = 90.0f;
+    float horizontalFOV = 60.0f;
     float damping = 0.9f;
     float focal_length = 4.0f;
     float aperture = 0.0f;
