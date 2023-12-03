@@ -52,7 +52,7 @@ std::string Shader::ParseShader(const std::string& filepath)
             uint32_t start = line.find_first_of("<") + 1;
             uint32_t end = line.find_first_of(">");
             std::string includeFile = line.substr(start, end - start);
-            ss << ParseShader("src/shaders/" + includeFile);
+            ss << ParseShader("../src/shaders/" + includeFile);
         }
         else
         {

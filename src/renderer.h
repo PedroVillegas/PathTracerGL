@@ -14,8 +14,7 @@ public:
     Renderer(
         uint32_t ViewportWidth,
         uint32_t ViewportHeight,
-        Scene* scene,
-        Camera* camera);
+        Scene* scene);
     ~Renderer();
 
     void OnResize(uint32_t width, uint32_t height);
@@ -23,14 +22,14 @@ public:
     void SetViewportWidth(uint32_t width);
     void SetViewportHeight(uint32_t height);
 
+    Framebuffer GetViewportFramebuffer() const { return m_FinalOutputFBO; }
     uint32_t GetViewportWidth() const { return m_ViewportWidth; }
     uint32_t GetViewportHeight() const { return m_ViewportHeight; }
-    Shader& GetShader() const { return *m_PathTraceShader; }
-    Framebuffer GetViewportFramebuffer() const { return m_FinalOutputFBO; }
     uint32_t GetIterations() const { return m_SampleIterations; }
+    Shader& GetShader() const { return *m_PathTraceShader; }
 
     void UpdateBuffers();
-    void Render(const Scene& scene, const Camera& camera, uint32_t VAO);
+    void Render(uint32_t VAO);
     void ResetSamples() { m_SampleIterations = 0; }
 public:
     std::unique_ptr<BVH> m_BVH;
@@ -42,7 +41,6 @@ private:
     uint32_t m_ViewportWidth;
     uint32_t m_ViewportHeight;
     uint32_t m_SampleIterations = 0;
-    std::unique_ptr<Camera> m_Camera;
     std::unique_ptr<Scene> m_Scene;
     uint32_t m_CameraBlockBuffer;
     uint32_t m_SceneBlockBuffer;

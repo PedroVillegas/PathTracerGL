@@ -108,11 +108,12 @@ vec3 PathTrace(Ray ray)
         // Keep track of ray intersection point, direction etc
     #ifdef BVH_ENABLED
         Payload payload;
+        payload.position = vec3(1.0);
         if (TraverseBVH(ray, payload))
         {
             return payload.position;
-            return vec3(1.0, 0.0, 1.0);
         }
+        return vec3(1.0, 0.0, 1.0);
     #endif
         Payload HitRec = TracePrims(ray, INF);
         // return vec3(HitRec.t);
@@ -144,6 +145,7 @@ vec3 PathTrace(Ray ray)
 
         // Calculate direct lighting
         vec3 direct = SampleLights(HitRec, ray, lastBounceSpecular) + SampleSun(HitRec, ray, lastBounceSpecular);
+        // throughput *= direct;
         radiance += throughput * direct;
 
         // Calculate indirect lighting

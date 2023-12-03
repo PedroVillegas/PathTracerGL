@@ -11,12 +11,10 @@ void DrawTree(Shader& shader, BVH_Node* node, uint32_t vao, int currentDepth, in
 Renderer::Renderer(
     uint32_t ViewportWidth,
     uint32_t ViewportHeight,
-    Scene* scene,
-    Camera* camera)
+    Scene* scene)
     :
     m_ViewportWidth(ViewportWidth),
     m_ViewportHeight(ViewportHeight),
-    m_Camera(camera),
     m_Scene(scene)
 {
     m_ViewportSpec.width = m_ViewportWidth;
@@ -28,10 +26,10 @@ Renderer::Renderer(
     m_FinalOutputFBO = Framebuffer(m_ViewportSpec);
     m_FinalOutputFBO.Create();
 
-    m_BVHDebugShader    = std::make_unique<Shader>("src/shaders/debugVert.glsl", "src/shaders/debug.glsl");
-    m_FinalOutputShader = std::make_unique<Shader>("src/shaders/vert.glsl", "src/shaders/post.glsl");
-    m_AccumShader       = std::make_unique<Shader>("src/shaders/vert.glsl", "src/shaders/accumulation.glsl");
-    m_PathTraceShader   = std::make_unique<Shader>("src/shaders/vert.glsl", "src/shaders/pt.glsl");
+    m_BVHDebugShader    = std::make_unique<Shader>("../src/shaders/debugVert.glsl", "../src/shaders/debug.glsl");
+    m_FinalOutputShader = std::make_unique<Shader>("../src/shaders/vert.glsl", "../src/shaders/post.glsl");
+    m_AccumShader       = std::make_unique<Shader>("../src/shaders/vert.glsl", "../src/shaders/accumulation.glsl");
+    m_PathTraceShader   = std::make_unique<Shader>("../src/shaders/vert.glsl", "../src/shaders/pt.glsl");
 
     m_Scene->SelectScene();
     m_BVH = std::make_unique<BVH>(m_Scene->primitives);
@@ -124,7 +122,7 @@ void Renderer::UpdateBuffers()
 
     // Update Camera Block
     glBindBuffer(GL_UNIFORM_BUFFER, m_CameraBlockBuffer);
-    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(CameraBlock), &m_Camera->params);
+    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(CameraBlock), &m_Scene->Eye->params);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
     // Update Prims Block
@@ -142,7 +140,7 @@ void Renderer::UpdateBuffers()
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
-void Renderer::Render(const Scene& scene, const Camera& camera, uint32_t VAO)
+void Renderer::Render(uint32_t VAO)
 {
     glClearColor(1.0f, 0.0f, 1.0f, 1.0f); 
 
@@ -214,8 +212,8 @@ void Renderer::Render(const Scene& scene, const Camera& camera, uint32_t VAO)
         glViewport(0, 0, m_ViewportWidth, m_ViewportHeight);
         m_BVHDebugShader->Bind();
 
-        m_BVHDebugShader->SetUniformMat4("u_View", camera.GetView());
-        m_BVHDebugShader->SetUniformMat4("u_Projection", camera.GetProjection());
+        m_BVHDebugShader->SetUniformMat4("u_View", m_Scene->Eye->GetView());
+        m_BVHDebugShader->SetUniformMat4("u_Projection", m_Scene->Eye->GetProjection());
         // m_BVHDebugShader->SetUniformVec2("u_Resolution", (float)ViewportWidth, (float)ViewportHeight);
 
         DrawTree(*m_BVHDebugShader, m_BVH->bvh_root, debugVAO, 0, BVHDepth);
@@ -267,6 +265,10 @@ void DrawBbox(Shader& shader, BVH_Node node, uint32_t vao)
     glDrawElements(GL_LINE_LOOP, 4, GL_UNSIGNED_INT, (GLvoid*)(4 * sizeof(uint32_t))); 
     glDrawElements(GL_LINES, 8, GL_UNSIGNED_INT, (GLvoid*)(8 * sizeof(uint32_t))); 
     glBindVertexArray(0); 
+
+    // glBindVertexArray(vao);
+    // glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
+    // glBindVertexArray(0); 
 }
 
 void DrawTree(Shader& shader, BVH_Node* node, uint32_t vao, int currentDepth, int terminationDepth)

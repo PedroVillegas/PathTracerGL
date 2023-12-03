@@ -18,9 +18,18 @@ glm::vec3 RandVec3()
     return glm::vec3(Randf01(), Randf01(), Randf01());
 }
 
+Scene::Scene()
+{
+    Eye = std::make_unique<Camera>();
+    Eye->Reset();
+}
+
+Scene::~Scene() {}
+
 void Scene::SelectScene()
 {
     EmptyScene();
+    Eye->Reset();
     switch (SceneIdx)
     {
         case 0: RTIW(); break;
@@ -46,16 +55,6 @@ void Scene::Init()
             AddLight(primitives[n].id, primitives[n].mat.emissive);
         }
     }
-
-    // for (auto prim : primitives)
-    // {
-    //     std::cout << "id  : " << prim.id << std::endl;
-    //     std::cout << "type: " << prim.type << std::endl;
-    //     std::cout << "posx: " << prim.position.x << std::endl;
-    //     std::cout << "posy: " << prim.position.y << std::endl;
-    //     std::cout << "posz: " << prim.position.z << std::endl;
-    //     std::cout << std::endl;
-    // }
 }
 
 void Scene::AddDefaultSphere()
@@ -162,6 +161,12 @@ void Scene::WhiteRoomColouredLights()
 {
     using namespace glm;
 
+    Eye->position   = vec3(-7.f, 25.22f, -22.54f);
+    Eye->forward    = vec3(0.28f, 0.22f, 0.94f);
+    Eye->RecalculateView();
+
+    day = 0;
+
     float roomWidth  = 50.f;
     float roomHeight = 60.f;
     float roomDepth  = 100.0f;
@@ -211,21 +216,25 @@ void Scene::RTIW()
 {
     using namespace glm;
 
-    sunElevation = 14.0f;
-    sunAzimuth = -200.0f;
+    Eye->position   = vec3(17.64f, 7.61f, 16.31f);
+    Eye->forward    = vec3(-0.92f, -0.11f, -0.36f);
+    Eye->RecalculateView();
 
-    float roomWidth = 50.0f;
-    float roomHeight = roomWidth/2.0f;
-    float roomDepth = 50.0f;
-    float windowWidth = roomWidth/3.0f;
-    float windowHeightDim = roomHeight/2.0f; // How tall the window is
-    float windowHeightPos = 0.5f * roomHeight;
+    sunElevation    = 14.0f;
+    sunAzimuth      = -200.0f;
+
+    float roomWidth         = 50.0f;
+    float roomHeight        = roomWidth/2.0f;
+    float roomDepth         = 50.0f;
+    float windowWidth       = roomWidth/3.0f;
+    float windowHeightDim   = roomHeight/2.0f; // How tall the window is
+    float windowHeightPos   = 0.5f * roomHeight;
 
     float thickness = 1.0f;
-    Material White = CreateDiffuseMat(vec3(.7295, .7355, .729)*1.1f, 1.0f);
-    Material Red = CreateDiffuseMat(vec3(.886, .102, .102)*1.0f, 1.0f);
-    Material Green = CreateDiffuseMat(vec3(.102, .886, .102)*1.0f, 1.0f);
-    Material Blue = CreateDiffuseMat(vec3(.102, .5, .886)*1.0f, 1.0f);  
+    Material White  = CreateDiffuseMat(vec3(.7295, .7355, .729)*1.1f, 1.0f);
+    Material Red    = CreateDiffuseMat(vec3(.886, .102, .102)*1.0f, 1.0f);
+    Material Green  = CreateDiffuseMat(vec3(.102, .886, .102)*1.0f, 1.0f);
+    Material Blue   = CreateDiffuseMat(vec3(.102, .5, .886)*1.0f, 1.0f);  
     
     float floorStripW = roomWidth/6.0f;
     // Floor
@@ -277,6 +286,10 @@ void Scene::RTIW()
 void Scene::CornellBox()
 {
     using namespace glm;
+
+    Eye->position   = vec3(0.f, 5.f, 10.f);
+    Eye->forward    = vec3(0.f, 0.f, -1.f);
+    Eye->RecalculateView();
 
     vec3 WHITE_COL = vec3(.7295, .7355, .729)*1.0f;
     vec3 RED_COL   = vec3(.611, .0555, .062)*0.7f;

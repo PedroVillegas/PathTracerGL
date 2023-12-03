@@ -3,24 +3,24 @@
 #define PI          3.14159265358979323
 #define EPSILON     1e-3
 
-vec2 g_Seed;
+uint g_Seed;
 
-vec2 GenerateSeed()
+uint GenerateSeed()
 {
-    return vec2(float(u_SampleIterations+1) * gl_FragCoord);
+    return uint(uint(gl_FragCoord.x) * uint(1973) + uint(gl_FragCoord.y) * uint(9277) + uint(u_SampleIterations+1) * uint(26699)) | uint(1);
 }
 
-uint PCGHash(uint v)
+uint PCGHash()
 {
-    uint state = v * uint(747796405) + uint(2891336453);
+    g_Seed = g_Seed * uint(747796405) + uint(2891336453);
+    uint state = g_Seed;
     uint word = ((state >> ((state >> uint(28)) + uint(4))) ^ state) * uint(277803737);
     return (word >> uint(22)) ^ word;
 }
 
 float Randf01()
 {
-    g_Seed += 1.;
-    return float(PCGHash(PCGHash(uint(g_Seed.x)) + uint(g_Seed.y))) / float(uint(0xffffffff));
+    return float(PCGHash()) / float(uint(0xffffffff));
 }
 
 vec2 SampleUniformUnitCirle(float r_1, float r_2)

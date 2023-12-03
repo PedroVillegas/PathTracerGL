@@ -1,7 +1,9 @@
 #pragma once
 
 #include <vector>
+#include <memory>
 #include "primitives.h"
+#include "camera.h"
 
 struct alignas(16) Light
 {
@@ -21,8 +23,12 @@ struct SceneBlock
 const uint32_t MAX_PRIMITIVES = 100;
 const uint32_t MAX_LIGHTS = 100;
 
-struct Scene
+class Scene
 {
+public:
+    Scene();
+    ~Scene();
+
     SceneBlock Data;
     int maxRayDepth = 16;
     int samplesPerPixel = 1;
@@ -35,6 +41,8 @@ struct Scene
     float sunAzimuth = 330.0f;
     std::vector<Light> lights;
     std::vector<Primitive> primitives;
+
+    std::unique_ptr<Camera> Eye;
 
     void AddDefaultSphere();
     void AddDefaultCube();

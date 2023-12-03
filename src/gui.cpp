@@ -31,7 +31,7 @@ void Gui::NewFrame()
 
 }
 
-void Gui::Render(Renderer& renderer, Camera& camera, Scene& scene, bool& vsync)
+void Gui::Render(Renderer& renderer, Scene& scene, bool& vsync)
 {
     if (ImGui::Begin("Overview"))
     {
@@ -47,8 +47,8 @@ void Gui::Render(Renderer& renderer, Camera& camera, Scene& scene, bool& vsync)
         ImGui::End();
     }
 
-    Gui::CreateCameraWindow(renderer, camera);
-    Gui::CreateSceneWindow(renderer, camera, scene);
+    Gui::CreateCameraWindow(renderer, scene);
+    Gui::CreateSceneWindow(renderer, scene);
 
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -62,46 +62,46 @@ void Gui::Render(Renderer& renderer, Camera& camera, Scene& scene, bool& vsync)
     }
 }
 
-void Gui::CreateCameraWindow(Renderer& renderer, Camera& camera)
+void Gui::CreateCameraWindow(Renderer& renderer, Scene& scene)
 {
     if (ImGui::Begin("Camera"))
     {
         ImGui::PushItemWidth(ImGui::GetWindowContentRegionWidth());
         ImGui::Text("Camera Type");
-        if (ImGui::Combo("##CameraType", &camera.type, "FREE\0CINEMATIC\0")) 
+        if (ImGui::Combo("##CameraType", &scene.Eye->type, "FREE\0CINEMATIC\0")) 
         {
-            camera.Reset();
+            scene.Eye->Reset();
             renderer.ResetSamples();
         }
 
-        ImGui::Text("Velocity : %.2f", glm::length(camera.GetVelocity()));
-        ImGui::Text("Position : %.2f %.2f %.2f", camera.GetPosition().x, camera.GetPosition().y , camera.GetPosition().z);
-        ImGui::Text("Direction: %.2f %.2f %.2f", camera.GetDirection().x, camera.GetDirection().y , camera.GetDirection().z);
-        // ImGui::Text("Momentum : %.2f %.2f %.2f", camera.GetMovementMomentum().x, camera.GetMovementMomentum().y, camera.GetMovementMomentum().z);
-        // ImGui::Text("Rotation : %.2f %.2f %.2f", camera.GetRotationMomentum().x, camera.GetRotationMomentum().y, camera.GetRotationMomentum().z);
+        ImGui::Text("Velocity : %.2f", glm::length(scene.Eye->GetVelocity()));
+        ImGui::Text("Position : %.2f %.2f %.2f", scene.Eye->position.x, scene.Eye->position.y , scene.Eye->position.z);
+        ImGui::Text("Direction: %.2f %.2f %.2f", scene.Eye->forward.x, scene.Eye->forward.y , scene.Eye->forward.z);
+        // ImGui::Text("Momentum : %.2f %.2f %.2f", scene.Eye->GetMovementMomentum().x, scene.Eye->GetMovementMomentum().y, scene.Eye->GetMovementMomentum().z);
+        // ImGui::Text("Rotation : %.2f %.2f %.2f", scene.Eye->GetRotationMomentum().x, scene.Eye->GetRotationMomentum().y, scene.Eye->GetRotationMomentum().z);
        
         ImGui::Text("Sensitivity");
-        ImGui::SliderFloat("##Sensitivity", &camera.sensitivity, 1.0f, 100.0f);
+        ImGui::SliderFloat("##Sensitivity", &scene.Eye->sensitivity, 1.0f, 100.0f);
         ImGui::Text("Max Velocity");
-        ImGui::SliderFloat("##Max Velocity", &camera.MaxVelocity, 1.0f, 50.0f);
+        ImGui::SliderFloat("##Max Velocity", &scene.Eye->MaxVelocity, 1.0f, 50.0f);
         ImGui::Text("Damping Factor");
-        ImGui::SliderFloat("##DampingFactor", &camera.damping, 0.0f, 0.95f);
+        ImGui::SliderFloat("##DampingFactor", &scene.Eye->damping, 0.0f, 0.95f);
 
         ImGui::Text("Focal Length");
-        if (ImGui::InputFloat("##FocalLength", &camera.focal_length, 0.05f, 1.0f)) 
+        if (ImGui::InputFloat("##FocalLength", &scene.Eye->focal_length, 0.05f, 1.0f)) 
             renderer.ResetSamples();
 
         ImGui::Text("Aperture Diameter");
-        if (ImGui::SliderFloat("##Aperture", &camera.aperture, 0.0f, 2.0f)) 
+        if (ImGui::SliderFloat("##Aperture", &scene.Eye->aperture, 0.0f, 2.0f)) 
             renderer.ResetSamples();
 
-        ImGui::Text("f-stop: f/%0.3f", camera.focal_length / camera.aperture);
+        ImGui::Text("f-stop: f/%0.3f", scene.Eye->focal_length / scene.Eye->aperture);
 
         ImGui::Text("FOV");
-        if (ImGui::SliderFloat("##FOV", &camera.horizontalFOV, 10.0f, 120.0f))
+        if (ImGui::SliderFloat("##FOV", &scene.Eye->FOV, 10.0f, 120.0f))
         {
-            camera.SetFov(camera.horizontalFOV);
-            camera.RecalculateProjection();
+            scene.Eye->SetFov(scene.Eye->FOV);
+            scene.Eye->RecalculateProjection();
             renderer.ResetSamples();
         }
         ImGui::PopItemWidth();
@@ -109,7 +109,7 @@ void Gui::CreateCameraWindow(Renderer& renderer, Camera& camera)
     }
 }
 
-void Gui::CreateSceneWindow(Renderer& renderer, const Camera& camera, Scene& scene)
+void Gui::CreateSceneWindow(Renderer& renderer, Scene& scene)
 {
     if (ImGui::Begin("Scene"))
     {
@@ -191,7 +191,7 @@ void Gui::CreateSceneWindow(Renderer& renderer, const Camera& camera, Scene& sce
 
                 prim.type == 0 ? ImGui::Text("Type: Sphere") : ImGui::Text("Type: AABB");
                 ImGui::Text("Primitive Index: %i", scene.lights[scene.LightIdx].id);
-                ImGui::Text("Distance from camera: %.3f", glm::distance(prim.position, camera.GetPosition()));
+                ImGui::Text("Distance from camera: %.3f", glm::distance(prim.position, scene.Eye->position));
 
                 ImGui::Text("Position");
                 if (ImGui::DragFloat3("##LightPos", glm::value_ptr(prim.position), 0.1f))
@@ -241,7 +241,7 @@ void Gui::CreateSceneWindow(Renderer& renderer, const Camera& camera, Scene& sce
 
                 prim.type == 0 ? ImGui::Text("Type: Sphere") : ImGui::Text("Type: AABB");
                 ImGui::Text("Primitive Index: %i", scene.PrimitiveIdx);
-                ImGui::Text("Distance from camera: %.3f", glm::distance(prim.position, camera.GetPosition()));
+                ImGui::Text("Distance from camera: %.3f", glm::distance(prim.position, scene.Eye->position));
 
                 ImGui::Text("Primitive Id: %i", prim.id);
                 ImGui::Text("Position");
