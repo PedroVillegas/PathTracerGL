@@ -29,7 +29,7 @@ void Application::Run()
     while (!m_Window->Closed())
     {
         // Input
-        m_Window->ProcessInput();
+        //m_Window->ProcessInput();
         m_Settings.vsync == true ? glfwSwapInterval(1) : glfwSwapInterval(0);
 
         m_Gui->NewFrame();
@@ -60,15 +60,16 @@ void Application::Render()
         m_Scene->Data.Depth = m_Scene->maxRayDepth;
         m_Scene->Data.SelectedPrimIdx = m_Scene->PrimitiveIdx;
         m_Scene->Data.Day = m_Scene->day;
+        m_Scene->Data.SunColour = m_Scene->sunColour;
 
-        m_Renderer->Render(m_QuadVAO);
+        m_Renderer->Render(m_QuadVAO, m_Settings);
     }
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0.0f, 0.0f});
     ImGui::Begin("Viewport", 0, ImGuiWindowFlags_NoTitleBar);
 
-    m_ViewportWidth = ImGui::GetContentRegionAvail().x;
-    m_ViewportHeight = ImGui::GetContentRegionAvail().y;
+    m_ViewportWidth = (uint32_t) ImGui::GetContentRegionAvail().x;
+    m_ViewportHeight = (uint32_t) ImGui::GetContentRegionAvail().y;
 
     uint32_t image = m_Renderer->GetViewportFramebuffer().GetTextureID();
     ImGui::Image((void*)(intptr_t)image, {(float)m_ViewportWidth, (float)m_ViewportHeight}, {0, 1}, {1, 0});
@@ -76,7 +77,7 @@ void Application::Render()
     ImGui::End();
     ImGui::PopStyleVar();
 
-    m_Gui->Render(*m_Renderer, *m_Scene, m_Settings.vsync);
+    m_Gui->Render(*m_Renderer, *m_Scene, m_Settings);
 }
 
 void Application::Setup()

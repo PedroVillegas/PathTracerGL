@@ -14,7 +14,9 @@ struct alignas(16) Light
 struct SceneBlock
 {
     glm::vec3 SunDirection;
-    int pad;
+    float pad;
+    glm::vec3 SunColour;
+    float pad1;
     int Depth;
     int SelectedPrimIdx;
     int Day;
@@ -37,6 +39,7 @@ public:
     int PrimitiveIdx = 0;
     int SceneIdx = 0;
 
+    glm::vec3 sunColour = glm::vec3(.992156862745098, .8862745098039216, .6862745098039216);
     float sunElevation = 10.0f;
     float sunAzimuth = 330.0f;
     std::vector<Light> lights;
@@ -48,7 +51,7 @@ public:
     void AddDefaultCube();
     void AddSphere(glm::vec3 position, float radius, Material mat);
     void AddCube(glm::vec3 position, glm::vec3 dimensions, Material mat);
-    void AddLight(int id, glm::vec3 le);
+    void AddLight(size_t id, glm::vec3 le);
 
     Material CreateGlassMat(glm::vec3 absorption, float ior, float roughness);
     Material CreateDiffuseMat(glm::vec3 albedo, float roughness);

@@ -6,7 +6,7 @@ public:
     Gui() {}
     Gui(Window& window);
     ~Gui();
-    void Render(Renderer& renderer, Scene& scene, bool& vsync);
+    void Render(Renderer& renderer, Scene& scene, ApplicationSettings& settings);
     void NewFrame();
 private:
     void Init();

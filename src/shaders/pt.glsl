@@ -1,18 +1,19 @@
 #version 460 core
 
-#include <structs.glsl>
-#include <data.glsl>
-#include <utils.glsl>
-#include <bvh.glsl>
-#include <miss.glsl>
-#include <tracePrims.glsl>
-#include <bsdf.glsl>
+#include <common/structs.glsl>
+#include <common/data.glsl>
+#include <common/utils.glsl>
+#include <common/ray_gen.glsl>
+#include <common/miss.glsl>
+#include <common/closest_hit.glsl>
+#include <common/any_hit.glsl>
+#include <common/bsdf.glsl>
 
 #define LIGHT_SPHERE 0
 #define LIGHT_AREA 1
 #define SUN_ENABLED
 #define SUN_COLOUR vec3(.992156862745098, .8862745098039216, .6862745098039216)
-#define RUSSIAN_ROULETTE_MIN_BOUNCES 3
+#define RUSSIAN_ROULETTE_MIN_BOUNCES 5
 
 out vec4 FragColour;
 
@@ -34,15 +35,15 @@ vec3 EstimateDirect(Light light, Payload payload, Ray ray)
     // Cast shadow ray from surface to light
     Ray SR = Ray(payload.position + payload.normal * 0.001, wi);
     Payload shadowInfo;
-    if (TracePrimsHit(SR, shadowInfo, distance(SR.origin, sampledPos)) 
+    if (AnyHit(SR, shadowInfo, distance(SR.origin, sampledPos)) 
         && shadowInfo.primID == light.id && distance(shadowInfo.position, sampledPos) < 0.1)
     {
         // Convert area pdf to solid angle pdf
         float r = shadowInfo.t;
         float cos_term = abs(cos_term);
-        pdf = r*r / cos_term * pdf;
+        pdf = (r*r) / cos_term * pdf;
         if (pdf < 0.01) return directIlluminance;
-        directIlluminance += EvalBSDF(payload, ray, wi) * cos_term * primitive.mat.emissive * primitive.mat.intensity / pdf;
+        directIlluminance += (EvalBSDF(payload, ray, wi) * cos_term * primitive.mat.emissive * primitive.mat.intensity) / pdf;
     }
 
     return directIlluminance;
@@ -85,45 +86,47 @@ vec3 SampleSun(Payload shadingPoint, Ray ray, bool lastBounceSpecular)
         // Cast shadow ray from surface to light
         Ray SR = Ray(shadingPoint.position + shadingPoint.normal * 0.001, wi);
         Payload shadowInfo;
-        if (!lastBounceSpecular && !TracePrimsHit(SR, shadowInfo, INF))
+        if (!lastBounceSpecular && !AnyHit(SR, shadowInfo, INF))
         {
             // Only sample if bsdf is non-specular (refl or refr)
-            directIlluminance += EvalBSDF(shadingPoint, ray, wi) * SUN_COLOUR * abs(cos_term);
+            directIlluminance += EvalBSDF(shadingPoint, ray, wi) * Scene.SunColour * abs(cos_term);
         }
     }
 #endif
     return directIlluminance;
 }
 
-vec3 PathTrace(Ray ray)
+vec4 PathTrace(Ray ray)
 {
     // Radiance: the radiant flux emitted, reflected, transmitted or received by a given surface
     // Throughput: the amount of radiance passing through the ray
     vec3 radiance = vec3(0.0);
     vec3 throughput = vec3(1.0); 
     bool lastBounceSpecular = false;
+    float nodeVisits = 0.0;
+    // float bvhDepthReached = 0.0;
     
     for (int bounce = 0; bounce < Scene.Depth; bounce++)
     {
         // Keep track of ray intersection point, direction etc
-    #ifdef BVH_ENABLED
-        Payload payload;
-        payload.position = vec3(1.0);
-        if (TraverseBVH(ray, payload))
-        {
-            return payload.position;
-        }
-        return vec3(1.0, 0.0, 1.0);
-    #endif
-        Payload HitRec = TracePrims(ray, INF);
-        // return vec3(HitRec.t);
+        Payload HitRec = ClosestHit(ray, INF, nodeVisits);
 
         // If ray misses, object takes on radiance of the sky
         if (HitRec.t == INF)
         {
-            radiance += Miss(normalize(ray.direction)) * throughput;
+            radiance += Miss(ray.direction) * throughput;
             break;
         }
+
+        if (u_DebugBVHVisualisation == 1)
+        {
+            radiance = vec3(0.0);
+            // radiance = HitRec.mat.albedo;
+            break;
+        }
+
+        // return vec4(1.0, 0.0, 1.0, 1.0);
+        // return vec4(vec3(HitRec.t/100.0), 1.0);
         
         // Consider emissive materials
         // if (any(greaterThan(HitRec.mat.emissive, vec3(0.0))))
@@ -145,7 +148,6 @@ vec3 PathTrace(Ray ray)
 
         // Calculate direct lighting
         vec3 direct = SampleLights(HitRec, ray, lastBounceSpecular) + SampleSun(HitRec, ray, lastBounceSpecular);
-        // throughput *= direct;
         radiance += throughput * direct;
 
         // Calculate indirect lighting
@@ -158,13 +160,17 @@ vec3 PathTrace(Ray ray)
         float rrp = min(0.95, max(throughput.x, max(throughput.y, throughput.z)));
         if (bounce > RUSSIAN_ROULETTE_MIN_BOUNCES)
         {
-            if (Randf01() > rrp) 
+            if (Randf01() > rrp)
                 break;
             else 
                 throughput *= 1.0 / rrp; // add energy 'lost' from random path terminations
         }
     }
-    return radiance; 
+    // Debug: Visualize BVH Bounding Boxes
+    if (u_DebugBVHVisualisation == 1)
+        radiance.rgb += (nodeVisits / 255.) * 8.;
+
+    return vec4(radiance, 1.0); 
 }
 
 void main()
@@ -176,7 +182,7 @@ void main()
     g_Seed = GenerateSeed();
     
     // Irradiance: the radiant flux received by some surface per unit area
-    vec3 irradiance = vec3(0.0);
+    vec4 irradiance = vec4(0.0);
 
     int spp = u_SamplesPerPixel;
     for (int s = 0; s < spp; s++)
@@ -187,7 +193,7 @@ void main()
         vec2 subPixelOffset = vec2(r_1, r_2);
         vec2 ndc = (gl_FragCoord.xy + subPixelOffset) / u_Resolution * 2.0 - 1.0;
 
-        Ray r = TransformToWorldSpace(ndc);
+        Ray r = RayGen(ndc);
     
         // Compute Bokeh Blur (Depth of Field)
         // First find where the ray hits the focal plane (focal point)
@@ -209,7 +215,7 @@ void main()
     // Now we scale up the data by the number of samples to this pixel.
     vec4 accumulatedScaledUp = texture(u_AccumulationTexture, (uv + 1.0) / 2.0) * u_SampleIterations;
     // Then we can add the new sample, calculated from the current frame, to the previous samples.
-    vec4 newAccumulationContribution = accumulatedScaledUp + vec4(irradiance, 1.0);
+    vec4 newAccumulationContribution = accumulatedScaledUp + irradiance;
     // Once we have the new total sum of all samples we can divide (average) by the new number of samples, resulting in 
     // the new average.
     vec4 accumulatedScaledDown = newAccumulationContribution / (u_SampleIterations + 1);

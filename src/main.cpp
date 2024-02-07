@@ -8,7 +8,7 @@ int main(void)
     Application app = Application("Path Tracing", 1280, 720);
     app.Run();
 
-    return 0;
+    return 1;
 }
 
 void SetupQuad(uint32_t& VAO, uint32_t& VBO, uint32_t& IBO)

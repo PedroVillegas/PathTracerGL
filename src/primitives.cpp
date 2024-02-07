@@ -27,8 +27,8 @@ void Primitive::BoundingBox(AABB* out)
             out->bMin = position - (radius + 0.05f);
             break;
         case 1:
-            out->bMax = position + (dimensions * 0.5f);
-            out->bMin = position - (dimensions * 0.5f);
+            out->bMax = position + (dimensions * 0.5f) + 0.05f;
+            out->bMin = position - (dimensions * 0.5f) - 0.05f;
             break;
     }
     

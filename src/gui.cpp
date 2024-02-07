@@ -9,6 +9,7 @@
 #include "camera.h"
 #include "scene.h"
 #include "gui.h"
+#include "utils.h"
 
 Gui::Gui(Window& window)
     : m_Window(window)
@@ -31,7 +32,7 @@ void Gui::NewFrame()
 
 }
 
-void Gui::Render(Renderer& renderer, Scene& scene, bool& vsync)
+void Gui::Render(Renderer& renderer, Scene& scene, ApplicationSettings& settings)
 {
     if (ImGui::Begin("Overview"))
     {
@@ -39,13 +40,33 @@ void Gui::Render(Renderer& renderer, Scene& scene, bool& vsync)
         ImGui::Text("Render time: %.3f ms/frame", 1000.0f / ImGui::GetIO().Framerate);
         ImGui::Text("Framerate: %.1f FPS", ImGui::GetIO().Framerate);
         ImGui::Text("Iterations: %i", renderer.GetIterations());
-        ImGui::Checkbox("V-Sync", &vsync);
         ImGui::Checkbox("Pause", &renderer.b_Pause);
-        ImGui::Checkbox("Draw BVH", &renderer.b_DrawBVH);
-        ImGui::Text("BVH Depth");
-        ImGui::SliderInt("##BVH-Depth", &renderer.BVHDepth, 0, 10);
-        ImGui::End();
+
+        if (ImGui::CollapsingHeader("Application Settings"))
+        {
+            ImGui::Checkbox("V-Sync", &settings.vsync);
+            ImGui::Text("Tonemap");
+            if (ImGui::Combo("##Tonemap", &settings.tonemap, "Jodie-Reinhard\0ACES film\0ACES fitted\0AgX\0AgX Punchy\0")) 
+                renderer.ResetSamples();
+
+            if (ImGui::Checkbox("Enable BVH", &settings.BVHEnabled))
+                renderer.ResetSamples();
+            if (settings.BVHEnabled == true)
+            {
+                if (ImGui::Checkbox("Visualise BVH", &settings.debugBVHVisualisation))
+                    renderer.ResetSamples();
+                ImGui::Checkbox("Draw BVH", &renderer.b_DrawBVH);
+                ImGui::Text("BVH Depth");
+                ImGui::SliderInt("##BVH-Depth", &renderer.BVHDepth, 0, 10);
+            }
+            else
+            {
+                renderer.b_DrawBVH = false;
+                renderer.BVHDepth = 0;
+            }
+        }
     }
+    ImGui::End();
 
     Gui::CreateCameraWindow(renderer, scene);
     Gui::CreateSceneWindow(renderer, scene);
@@ -105,8 +126,8 @@ void Gui::CreateCameraWindow(Renderer& renderer, Scene& scene)
             renderer.ResetSamples();
         }
         ImGui::PopItemWidth();
-        ImGui::End();
     }
+    ImGui::End();
 }
 
 void Gui::CreateSceneWindow(Renderer& renderer, Scene& scene)
@@ -120,20 +141,6 @@ void Gui::CreateSceneWindow(Renderer& renderer, Scene& scene)
         if (ImGui::Combo("##SceneSelection", &scene.SceneIdx, "Room with window\0Cornell Box\0White room with coloured lights\0")) 
         {
             scene.SelectScene();
-            renderer.m_BVH->RebuildBVH(scene.primitives);
-            renderer.ResetSamples();
-        }
-
-        if (ImGui::Button("Add Sphere"))
-        {
-            scene.AddDefaultSphere();
-            renderer.m_BVH->RebuildBVH(scene.primitives);
-            renderer.ResetSamples();
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Add Cube"))
-        {
-            scene.AddDefaultCube();
             renderer.m_BVH->RebuildBVH(scene.primitives);
             renderer.ResetSamples();
         }
@@ -170,20 +177,43 @@ void Gui::CreateSceneWindow(Renderer& renderer, Scene& scene)
         if (ImGui::SliderInt("##MaxRayDepth", &scene.maxRayDepth, 1, 50)) 
             renderer.ResetSamples();
 
-        ImGui::Text("Sun Elevation");
-        if (ImGui::SliderFloat("##Elevation", &scene.sunElevation, -90.0f, 90.0f))
-            renderer.ResetSamples();
-
-        ImGui::Text("Sun Azimuth");
-        if (ImGui::SliderFloat("##Azimuth", &scene.sunAzimuth, -360.0f, 360.0f))
-            renderer.ResetSamples();
-
         if (ImGui::CollapsingHeader("Edit Lights"))
         {
+            if (ImGui::Button("Add Sphere Light"))
+            {
+                scene.AddDefaultSphere();
+                scene.AddLight(scene.primitives.size() - 1, glm::vec3(1.0f));
+                renderer.m_BVH->RebuildBVH(scene.primitives);
+                renderer.ResetSamples();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Add Cube"))
+            {
+                scene.AddDefaultCube();
+                scene.AddLight(scene.primitives.size() - 1, glm::vec3(1.0f));
+                renderer.m_BVH->RebuildBVH(scene.primitives);
+                renderer.ResetSamples();
+        }
+
+            if (scene.day == 1)
+            {
+                ImGui::Text("Sun Colour");
+                if (ImGui::ColorEdit3("##SunColour", glm::value_ptr(scene.sunColour)))
+                    renderer.ResetSamples();
+
+                ImGui::Text("Sun Elevation");
+                if (ImGui::SliderFloat("##Elevation", &scene.sunElevation, -90.0f, 90.0f))
+                    renderer.ResetSamples();
+
+                ImGui::Text("Sun Azimuth");
+                if (ImGui::SliderFloat("##Azimuth", &scene.sunAzimuth, -360.0f, 360.0f))
+                    renderer.ResetSamples();
+            }
+
             if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_LeftArrow))) 
-                scene.LightIdx = scene.LightIdx == 0 ? scene.lights.size() - 1 : scene.LightIdx - 1;
+                scene.LightIdx = int(scene.LightIdx == 0 ? scene.lights.size() - 1 : scene.LightIdx - 1);
             if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_RightArrow))) 
-                scene.LightIdx = scene.LightIdx == scene.lights.size() - 1 ? 0 : scene.LightIdx + 1;
+                scene.LightIdx = int(scene.LightIdx == scene.lights.size() - 1 ? 0 : scene.LightIdx + 1);
             
             if (scene.lights.size() > 0)
             {
@@ -230,10 +260,24 @@ void Gui::CreateSceneWindow(Renderer& renderer, Scene& scene)
 
         if (ImGui::CollapsingHeader("Edit Object Properties"))
         {
+            if (ImGui::Button("Add Sphere"))
+            {
+                scene.AddDefaultSphere();
+                renderer.m_BVH->RebuildBVH(scene.primitives);
+                renderer.ResetSamples();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Add Cube"))
+            {
+                scene.AddDefaultCube();
+                renderer.m_BVH->RebuildBVH(scene.primitives);
+                renderer.ResetSamples();
+            }
+
             if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_LeftArrow))) 
-                scene.PrimitiveIdx = scene.PrimitiveIdx == 0 ? scene.primitives.size() - 1 : scene.PrimitiveIdx - 1;
+                scene.PrimitiveIdx = int(scene.PrimitiveIdx == 0 ? scene.primitives.size() - 1 : scene.PrimitiveIdx - 1);
             if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_RightArrow))) 
-                scene.PrimitiveIdx = scene.PrimitiveIdx == scene.primitives.size() - 1 ? 0 : scene.PrimitiveIdx + 1;
+                scene.PrimitiveIdx = int(scene.PrimitiveIdx == scene.primitives.size() - 1 ? 0 : scene.PrimitiveIdx + 1);
             
             if (scene.primitives.size() > 0)
             {
@@ -300,8 +344,8 @@ void Gui::CreateSceneWindow(Renderer& renderer, Scene& scene)
         }
 
         ImGui::PopItemWidth();
-        ImGui::End();
     }
+    ImGui::End();
 }
 
 void Gui::Init()

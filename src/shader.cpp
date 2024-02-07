@@ -49,10 +49,10 @@ std::string Shader::ParseShader(const std::string& filepath)
     {
         if (line.find("#include") != std::string::npos && line.rfind("//", 0) == std::string::npos)
         {
-            uint32_t start = line.find_first_of("<") + 1;
-            uint32_t end = line.find_first_of(">");
+            uint32_t start = (uint32_t) line.find_first_of("<") + 1;
+            uint32_t end = (uint32_t) line.find_first_of(">");
             std::string includeFile = line.substr(start, end - start);
-            ss << ParseShader("../src/shaders/" + includeFile);
+            ss << ParseShader("shaders/" + includeFile);
         }
         else
         {
@@ -78,7 +78,7 @@ uint32_t Shader::CompileShader(uint32_t type, const std::string& source)
         glGetShaderiv(id, GL_INFO_LOG_LENGTH, &length); 
         char* message = (char*)alloca(length * sizeof(char));
         glGetShaderInfoLog(id, length, &length, message); 
-        std::cout << "\e[1;31m[ERROR]\e[0;37m " << (type == GL_VERTEX_SHADER ? "Vertex" : "Frag") << " Shader Did Not Compile - ";
+        std::cout << "\033[1;31m[ERROR]\033[0;37m " << (type == GL_VERTEX_SHADER ? "Vertex" : "Frag") << " Shader Did Not Compile - ";
         std::cout << (type == GL_VERTEX_SHADER ? m_VSPath : m_FSPath) << std::endl;
         std::cout << message << std::endl;
         glDeleteShader(id); 
@@ -86,7 +86,7 @@ uint32_t Shader::CompileShader(uint32_t type, const std::string& source)
         return 0;
     }
 
-    std::cout << "\e[1;32m[SUCCESS]\e[0;37m " << (type == GL_VERTEX_SHADER ? "Vertex" : "Frag") << " Shader Compiled - ";
+    std::cout << "\033[1;32m[SUCCESS]\033[0;37m " << (type == GL_VERTEX_SHADER ? "Vertex" : "Frag") << " Shader Compiled - ";
     std::cout << (type == GL_VERTEX_SHADER ? m_VSPath : m_FSPath) << std::endl;
 
     return id;

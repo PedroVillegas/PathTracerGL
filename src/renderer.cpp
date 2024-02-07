@@ -26,16 +26,17 @@ Renderer::Renderer(
     m_FinalOutputFBO = Framebuffer(m_ViewportSpec);
     m_FinalOutputFBO.Create();
 
-    m_BVHDebugShader    = std::make_unique<Shader>("../src/shaders/debugVert.glsl", "../src/shaders/debug.glsl");
-    m_FinalOutputShader = std::make_unique<Shader>("../src/shaders/vert.glsl", "../src/shaders/post.glsl");
-    m_AccumShader       = std::make_unique<Shader>("../src/shaders/vert.glsl", "../src/shaders/accumulation.glsl");
-    m_PathTraceShader   = std::make_unique<Shader>("../src/shaders/vert.glsl", "../src/shaders/pt.glsl");
+    m_BVHDebugShader    = std::make_unique<Shader>("shaders/debugVert.glsl", "shaders/debug.glsl");
+    m_FinalOutputShader = std::make_unique<Shader>("shaders/vert.glsl", "shaders/post.glsl");
+    m_AccumShader       = std::make_unique<Shader>("shaders/vert.glsl", "shaders/accumulation.glsl");
+    m_PathTraceShader   = std::make_unique<Shader>("shaders/vert.glsl", "shaders/pt.glsl");
 
     m_Scene->SelectScene();
     m_BVH = std::make_unique<BVH>(m_Scene->primitives);
 
-    // Setup BVH UBO
     int treeSize = m_BVH->CountNodes(m_BVH->bvh_root);
+
+    // Setup BVH UBO
     glGenBuffers(1, &m_BVHBlockBuffer); 
     glBindBuffer(GL_UNIFORM_BUFFER, m_BVHBlockBuffer); 
     glBufferData(GL_UNIFORM_BUFFER, treeSize * sizeof(LinearBVH_Node), m_BVH->flat_root, GL_STATIC_DRAW); 
@@ -128,8 +129,8 @@ void Renderer::UpdateBuffers()
     // Update Prims Block
     glBindBuffer(GL_UNIFORM_BUFFER, m_PrimsBlockBuffer);
     int offset = 0;
-    int n_Lights = m_Scene->lights.size();
-    int n_Primitives = m_Scene->primitives.size();
+    int n_Lights = (int) m_Scene->lights.size();
+    int n_Primitives = (int) m_Scene->primitives.size();
     glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &n_Lights); 
     offset += sizeof(int);
     glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &n_Primitives); 
@@ -140,7 +141,7 @@ void Renderer::UpdateBuffers()
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
-void Renderer::Render(uint32_t VAO)
+void Renderer::Render(uint32_t VAO, const ApplicationSettings& settings)
 {
     glClearColor(1.0f, 0.0f, 1.0f, 1.0f); 
 
@@ -155,6 +156,8 @@ void Renderer::Render(uint32_t VAO)
     m_PathTraceShader->SetUniformInt("u_SampleIterations", m_SampleIterations); 
     m_PathTraceShader->SetUniformInt("u_SamplesPerPixel", m_Scene->samplesPerPixel); 
     m_PathTraceShader->SetUniformVec2("u_Resolution", float(m_ViewportWidth), float(m_ViewportHeight)); 
+    m_PathTraceShader->SetUniformInt("u_BVHEnabled", int(settings.BVHEnabled));
+    m_PathTraceShader->SetUniformInt("u_DebugBVHVisualisation", int(settings.debugBVHVisualisation));
 
     UpdateBuffers();
 
@@ -197,8 +200,9 @@ void Renderer::Render(uint32_t VAO)
     m_FinalOutputFBO.Bind(); 
     m_FinalOutputShader->SetUniformInt("u_PT_Texture", 0); 
     m_FinalOutputShader->SetUniformVec2("u_Resolution", float(m_ViewportWidth), float(m_ViewportHeight)); 
+    m_FinalOutputShader->SetUniformInt("u_Tonemap", settings.tonemap);
 
-    glClear(GL_COLOR_BUFFER_BIT); 
+    glClear(GL_COLOR_BUFFER_BIT);
     glBindVertexArray(VAO); 
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); 
     glBindVertexArray(0); 

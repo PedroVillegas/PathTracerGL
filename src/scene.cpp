@@ -46,10 +46,10 @@ void Scene::EmptyScene()
 
 void Scene::Init()
 {
-    int n_Primitives = primitives.size();
-    for (int n = 0; n < n_Primitives; n++)
+    size_t n_Primitives = primitives.size();
+    for (size_t n = 0; n < n_Primitives; n++)
     {
-        primitives[n].id = n;
+        primitives[n].id = (int) n;
         if (primitives[n].mat.emissive != glm::vec3(0.0f))
         {
             AddLight(primitives[n].id, primitives[n].mat.emissive);
@@ -60,7 +60,7 @@ void Scene::Init()
 void Scene::AddDefaultSphere()
 {
     Primitive sphere;
-    sphere.id = primitives.size();
+    sphere.id = (int) primitives.size();
     sphere.type = PRIM_SPHERE;
     sphere.position = glm::vec3(0.0f, 0.0f, 0.0f);
     sphere.radius = 1.0f;
@@ -71,7 +71,7 @@ void Scene::AddDefaultSphere()
 void Scene::AddDefaultCube()
 {
     Primitive cube;
-    cube.id = primitives.size();
+    cube.id = (int) primitives.size();
     cube.type = PRIM_AABB;
     cube.position = glm::vec3(0.0f, 0.0f, 0.0f);
     cube.dimensions = glm::vec3(2.0f);
@@ -99,10 +99,10 @@ void Scene::AddCube(glm::vec3 position, glm::vec3 dimensions, Material mat)
     primitives.push_back(cube);
 }
 
-void Scene::AddLight(int id, glm::vec3 le)
+void Scene::AddLight(size_t id, glm::vec3 le)
 {
     Light light;
-    light.id = id;
+    light.id = (int) id;
     light.le = le;
     lights.push_back(light);
 }

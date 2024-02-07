@@ -6,6 +6,7 @@
 #include "scene.h"
 #include "camera.h"
 #include "bvh.h"
+#include "utils.h"
 
 class Renderer
 {
@@ -29,7 +30,7 @@ public:
     Shader& GetShader() const { return *m_PathTraceShader; }
 
     void UpdateBuffers();
-    void Render(uint32_t VAO);
+    void Render(uint32_t VAO, const ApplicationSettings& settings);
     void ResetSamples() { m_SampleIterations = 0; }
 public:
     std::unique_ptr<BVH> m_BVH;

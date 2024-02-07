@@ -59,14 +59,14 @@ public:
     float damping = 0.9f;
     float focal_length = 4.0f;
     float aperture = 0.0f;
-    float sensitivity = 20.0f;
-    float MaxVelocity = 5.0f;
+    float sensitivity = 40.0f;
+    float MaxVelocity = 40.0f;
     
 private:
     void Init();
 
     float m_NearClip = 0.1f;
-    float m_FarClip = 100.0f;
+    float m_FarClip = 1000.0f;
     float m_AspectRatio;
 
     glm::vec3 m_Up;

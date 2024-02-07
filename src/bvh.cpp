@@ -32,7 +32,7 @@ bool box_z_compare(Primitive a, Primitive b)
     return box_compare(a, b, 2);
 }
 
-BVH::BVH(std::vector<Primitive> primitives)
+BVH::BVH(std::vector<Primitive>& primitives)
 {
     if (primitives.size() == 0)
         return;
@@ -42,14 +42,14 @@ BVH::BVH(std::vector<Primitive> primitives)
     LinearBVH_Node* flatten = new LinearBVH_Node[size];
 
     int offset = 0;
-    FlattenBVHTree(flatten, bvh_root, &offset, 0);
+    FlattenBVHTree(flatten, bvh_root, &offset);
     flat_root = flatten;
 }
 
 BVH::~BVH()
 {
     DeleteBVHTree(bvh_root);
-    delete flat_root;
+    delete[] flat_root;
 }
 
 void BVH::DeleteBVHTree(BVH_Node* node)
@@ -63,42 +63,41 @@ void BVH::DeleteBVHTree(BVH_Node* node)
     delete node;
 }
 
-void BVH::RebuildBVH(const std::vector<Primitive>& primitives)
+void BVH::RebuildBVH(std::vector<Primitive>& primitives)
 {
     DeleteBVHTree(bvh_root);
-    delete flat_root;
+    delete[] flat_root;
 
-    std::vector<Primitive> temp = primitives;
-    bvh_root = RecursiveBuild(temp, 0, temp.size());
+    bvh_root = RecursiveBuild(primitives, 0, primitives.size());
     int size = CountNodes(bvh_root);
     LinearBVH_Node* flatten = new LinearBVH_Node[size];
 
     int offset = 0;
-    FlattenBVHTree(flatten, bvh_root, &offset, 0);
+    FlattenBVHTree(flatten, bvh_root, &offset);
     flat_root = flatten;
     b_Rebuilt = true;
 }
 
-BVH_Node* BVH::RecursiveBuild(std::vector<Primitive>& primitives, int start, int end)
+BVH_Node* BVH::RecursiveBuild(std::vector<Primitive>& primitives, size_t start, size_t end)
 {
     BVH_Node* node = new BVH_Node();
 
     // Determine the tightest bounding box to encapsulate all remaining primitives
     AABB bounds;
     AABB primitiveBounds;
-    for (int i = start; i < end; ++i)
+    for (size_t i = start; i < end; ++i)
     {   
         primitives[i].BoundingBox(&primitiveBounds);
         bounds = Union(bounds, primitiveBounds);
     }
 
-    int primitivesCount = end - start;
+    size_t primitivesCount = end - start;
 
     if (primitivesCount == 1)
     {
         // Node is a leaf
         node->type = node_t::LEAF;
-        node->primitiveOffset = start;
+        node->primitiveOffset = (int) start;
         node->left = node->right = nullptr;
 
         AABB bbox;
@@ -110,6 +109,8 @@ BVH_Node* BVH::RecursiveBuild(std::vector<Primitive>& primitives, int start, int
         // Node is not a leaf so we must decide on an axis to split along
         // In this case, we want to split along the longest axis
         int axis = bounds.LongestAxis();
+        //std::cout << "Split along axis " << axis << std::endl;
+        node->axis = axis;
 
         auto comparator =   axis == 0 ? box_x_compare :
                             axis == 1 ? box_y_compare :
@@ -120,7 +121,7 @@ BVH_Node* BVH::RecursiveBuild(std::vector<Primitive>& primitives, int start, int
         node->type = node_t::PARENT;
         node->primitiveOffset = -1;
 
-        int mid = start + primitivesCount / 2;
+        size_t mid = start + primitivesCount / 2;
         
         node->left = RecursiveBuild(primitives, start, mid);
         node->right = RecursiveBuild(primitives, mid, end);
@@ -142,25 +143,25 @@ int BVH::CountNodes(BVH_Node* node)
     return c;
 }
 
-int BVH::FlattenBVHTree(LinearBVH_Node* flatten, BVH_Node* node, int* offset, int depth)
+int BVH::FlattenBVHTree(LinearBVH_Node* flatten, BVH_Node* node, int* offset)
 {
-    LinearBVH_Node* linear = &flatten[*offset];
-    linear->bMin = glm::vec4(node->bbox.bMin, -1);
-    linear->bMax = glm::vec4(node->bbox.bMax, -1);
-    linear->axis = depth;
+    LinearBVH_Node* linearNode = &flatten[*offset];
+    linearNode->bMin = glm::vec4(node->bbox.bMin, -1);
+    linearNode->bMax = glm::vec4(node->bbox.bMax, -1);
     int myOffset = (*offset)++;
-    if (node->type != node_t::PARENT)
+    if (node->type == node_t::LEAF)
     {
-        linear->primitiveOffset = node->primitiveOffset; 
-		linear->primitiveCount = 1;
+        linearNode->primitiveOffset = node->primitiveOffset; 
+		linearNode->primitiveCount = 1;
 	}
 	else
 	{  
-		linear->primitiveCount = 0;
-		int ost = FlattenBVHTree(flatten,node->left, offset, depth + 1);
-		linear->bMin.w = ost;
-		linear->secondChildOffset = FlattenBVHTree(flatten,node->right, offset, depth + 1);
-		linear->bMax.w = linear->secondChildOffset;
+        linearNode->axis = node->axis;
+		linearNode->primitiveCount = 0;
+		int firstChildOffset = FlattenBVHTree(flatten, node->left, offset);
+		linearNode->bMin.w = float(firstChildOffset);
+		linearNode->secondChildOffset = FlattenBVHTree(flatten, node->right, offset);
+		linearNode->bMax.w = float(linearNode->secondChildOffset);
 
 	}
 	return myOffset;

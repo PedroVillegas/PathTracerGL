@@ -8,12 +8,8 @@
 #include "gui.h"
 #include "scene.h"
 #include "camera.h"
+#include "utils.h"
 
-
-struct ApplicationSettings
-{
-    bool vsync = true;
-};
 
 class Application
 {
