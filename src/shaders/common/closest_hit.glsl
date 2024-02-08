@@ -1,5 +1,3 @@
-#include <common/intersect.glsl>
-
 void ClosestHitBVHTraversal(in Ray r, float tNear, float tFar, inout Payload payload, inout float nodeVisits)
 {
     bool hit = false;
@@ -76,7 +74,7 @@ Payload ClosestHit(Ray ray, float dist, inout float nodeVisits)
                 payload.primID = Prims.Primitives[k].id;
             }
         }
-    }         
+    }      
 
     return payload;
 }

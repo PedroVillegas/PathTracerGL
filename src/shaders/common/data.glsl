@@ -6,6 +6,7 @@ uniform sampler2D u_AccumulationTexture;
 uniform vec2 u_Resolution;
 uniform int u_BVHEnabled;
 uniform int u_DebugBVHVisualisation;
+uniform int u_TotalNodes;
 
 layout (std140) uniform PrimsBlock
 {

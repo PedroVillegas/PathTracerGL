@@ -26,15 +26,15 @@ Renderer::Renderer(
     m_FinalOutputFBO = Framebuffer(m_ViewportSpec);
     m_FinalOutputFBO.Create();
 
-    m_BVHDebugShader    = std::make_unique<Shader>("shaders/debugVert.glsl", "shaders/debug.glsl");
-    m_FinalOutputShader = std::make_unique<Shader>("shaders/vert.glsl", "shaders/post.glsl");
-    m_AccumShader       = std::make_unique<Shader>("shaders/vert.glsl", "shaders/accumulation.glsl");
-    m_PathTraceShader   = std::make_unique<Shader>("shaders/vert.glsl", "shaders/pt.glsl");
+    m_BVHDebugShader    = std::make_unique<Shader>(PATH_TO_SHADERS + "debugVert.glsl", PATH_TO_SHADERS + "debug.glsl");
+    m_FinalOutputShader = std::make_unique<Shader>(PATH_TO_SHADERS + "vert.glsl", PATH_TO_SHADERS + "post.glsl");
+    m_AccumShader       = std::make_unique<Shader>(PATH_TO_SHADERS + "vert.glsl", PATH_TO_SHADERS + "accumulation.glsl");
+    m_PathTraceShader   = std::make_unique<Shader>(PATH_TO_SHADERS + "vert.glsl", PATH_TO_SHADERS + "pt.glsl");
 
     m_Scene->SelectScene();
     m_BVH = std::make_unique<BVH>(m_Scene->primitives);
 
-    int treeSize = m_BVH->CountNodes(m_BVH->bvh_root);
+    int treeSize = m_BVH->totalNodes;
 
     // Setup BVH UBO
     glGenBuffers(1, &m_BVHBlockBuffer); 
@@ -158,6 +158,7 @@ void Renderer::Render(uint32_t VAO, const ApplicationSettings& settings)
     m_PathTraceShader->SetUniformVec2("u_Resolution", float(m_ViewportWidth), float(m_ViewportHeight)); 
     m_PathTraceShader->SetUniformInt("u_BVHEnabled", int(settings.BVHEnabled));
     m_PathTraceShader->SetUniformInt("u_DebugBVHVisualisation", int(settings.debugBVHVisualisation));
+    m_PathTraceShader->SetUniformInt("u_TotalNodes", m_BVH->totalNodes);
 
     UpdateBuffers();
 

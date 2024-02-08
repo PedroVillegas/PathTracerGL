@@ -37,9 +37,10 @@ BVH::BVH(std::vector<Primitive>& primitives)
     if (primitives.size() == 0)
         return;
         
-    bvh_root = RecursiveBuild(primitives, 0, primitives.size());
-    int size = CountNodes(bvh_root);
-    LinearBVH_Node* flatten = new LinearBVH_Node[size];
+    int nodeCount = 0;
+    bvh_root = RecursiveBuild(primitives, 0, primitives.size(), &nodeCount);
+    totalNodes = nodeCount;
+    LinearBVH_Node* flatten = new LinearBVH_Node[totalNodes];
 
     int offset = 0;
     FlattenBVHTree(flatten, bvh_root, &offset);
@@ -68,9 +69,10 @@ void BVH::RebuildBVH(std::vector<Primitive>& primitives)
     DeleteBVHTree(bvh_root);
     delete[] flat_root;
 
-    bvh_root = RecursiveBuild(primitives, 0, primitives.size());
-    int size = CountNodes(bvh_root);
-    LinearBVH_Node* flatten = new LinearBVH_Node[size];
+    int nodeCount = 0;
+    bvh_root = RecursiveBuild(primitives, 0, primitives.size(), &nodeCount);
+    totalNodes = nodeCount;
+    LinearBVH_Node* flatten = new LinearBVH_Node[totalNodes];
 
     int offset = 0;
     FlattenBVHTree(flatten, bvh_root, &offset);
@@ -78,9 +80,10 @@ void BVH::RebuildBVH(std::vector<Primitive>& primitives)
     b_Rebuilt = true;
 }
 
-BVH_Node* BVH::RecursiveBuild(std::vector<Primitive>& primitives, size_t start, size_t end)
+BVH_Node* BVH::RecursiveBuild(std::vector<Primitive>& primitives, size_t start, size_t end, int* nodeCount)
 {
     BVH_Node* node = new BVH_Node();
+    (*nodeCount)++;
 
     // Determine the tightest bounding box to encapsulate all remaining primitives
     AABB bounds;
@@ -123,8 +126,8 @@ BVH_Node* BVH::RecursiveBuild(std::vector<Primitive>& primitives, size_t start, 
 
         size_t mid = start + primitivesCount / 2;
         
-        node->left = RecursiveBuild(primitives, start, mid);
-        node->right = RecursiveBuild(primitives, mid, end);
+        node->left = RecursiveBuild(primitives, start, mid, nodeCount);
+        node->right = RecursiveBuild(primitives, mid, end, nodeCount);
         node->bbox = Union(node->left->bbox, node->right->bbox);
     }
     return node;

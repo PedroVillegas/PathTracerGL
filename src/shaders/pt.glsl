@@ -5,6 +5,7 @@
 #include <common/utils.glsl>
 #include <common/ray_gen.glsl>
 #include <common/miss.glsl>
+#include <common/intersect.glsl>
 #include <common/closest_hit.glsl>
 #include <common/any_hit.glsl>
 #include <common/bsdf.glsl>
@@ -16,6 +17,19 @@
 #define RUSSIAN_ROULETTE_MIN_BOUNCES 5
 
 out vec4 FragColour;
+
+float saturate( float x ) { return clamp( x, 0.0, 1.0 ); }
+
+vec3 InfernoQuintic(float x)
+{
+	x = saturate( x );
+	vec4 x1 = vec4( 1.0, x, x * x, x * x * x ); // 1 x x2 x3
+	vec4 x2 = x1 * x1.w * x; // x4 x5 x6 x7
+	return vec3(
+		dot( x1.xyzw, vec4( -0.027780558, +1.228188385, +0.278906882, +3.892783760 ) ) + dot( x2.xy, vec2( -8.490712758, +4.069046086 ) ),
+		dot( x1.xyzw, vec4( +0.014065206, +0.015360518, +1.605395918, -4.821108251 ) ) + dot( x2.xy, vec2( +8.389314011, -4.193858954 ) ),
+		dot( x1.xyzw, vec4( -0.019628385, +3.122510347, -5.893222355, +2.798380308 ) ) + dot( x2.xy, vec2( -3.608884658, +4.324996022 ) ) );
+}
 
 vec3 EstimateDirect(Light light, Payload payload, Ray ray)
 {
@@ -111,17 +125,17 @@ vec4 PathTrace(Ray ray)
         // Keep track of ray intersection point, direction etc
         Payload HitRec = ClosestHit(ray, INF, nodeVisits);
 
+        if (u_DebugBVHVisualisation == 1)
+        {
+            radiance = radiance.rgb = InfernoQuintic(nodeVisits / u_TotalNodes);
+            // radiance = HitRec.mat.albedo;
+            break;
+        }
+
         // If ray misses, object takes on radiance of the sky
         if (HitRec.t == INF)
         {
             radiance += Miss(ray.direction) * throughput;
-            break;
-        }
-
-        if (u_DebugBVHVisualisation == 1)
-        {
-            radiance = vec3(0.0);
-            // radiance = HitRec.mat.albedo;
             break;
         }
 
@@ -167,8 +181,9 @@ vec4 PathTrace(Ray ray)
         }
     }
     // Debug: Visualize BVH Bounding Boxes
-    if (u_DebugBVHVisualisation == 1)
-        radiance.rgb += (nodeVisits / 255.) * 8.;
+//    float normalizationFactor = u_TotalNodes;
+//    if (u_DebugBVHVisualisation == 1)
+//        radiance.rgb = InfernoQuintic(nodeVisits / normalizationFactor);
 
     return vec4(radiance, 1.0); 
 }

@@ -1,39 +1,3 @@
-bool Intersect(Ray ray, Primitive prim, inout Payload payload)
-{
-    float tNear, tFar;
-    switch (prim.type)
-    {
-        case 0: // Sphere
-            // IntersectSphere tNear and tFar to be the intersection points of the ray and object
-            // These intersections are only valid if the far one is in front of the camera and
-            // the near one is in front of the closest object so far
-            if (IntersectSphere(prim.position, prim.radius, ray, tNear, tFar) && tFar > 0.001 && tNear < payload.t)
-            {
-                payload.t = tNear < 0 ? tFar : tNear;
-                payload.position = ray.origin + ray.direction * payload.t;
-                payload.mat = prim.mat; 
-                payload.fromInside = payload.t == tFar;
-                vec3 outward_normal = (payload.position - prim.position) / prim.radius;
-                payload.normal = payload.fromInside ? -outward_normal : outward_normal;
-                return true;
-            }
-            break;
-        case 1: // AABB
-            if (IntersectAABB(prim.position, prim.dimensions, ray, tNear, tFar) && tFar > 0.001 && tNear < payload.t)
-            {
-                payload.t = tNear < 0 ? tFar : tNear;
-                payload.position = ray.origin + ray.direction * payload.t;
-                payload.mat = prim.mat;
-                vec3 outward_normal = GetAABBNormal(prim.position, prim.dimensions, payload.position);
-                payload.fromInside = payload.t == tFar;
-                payload.normal = payload.fromInside ? -outward_normal : outward_normal;
-                return true;
-            }
-            break;
-    }
-    return false;
-}
-
 bool IntersectAABB(vec3 position, vec3 dimensions, Ray ray, inout float tNear, inout float tFar)
 {
     tNear = FLT_MIN;
@@ -101,4 +65,40 @@ bool Slabs(in vec3 bMin, in vec3 bMax, in Ray ray, in float tNear, in float tFar
     tFar = min(t2.x, min(t2.y, t2.z));
 
     return tNear <= tFar;
+}
+
+bool Intersect(Ray ray, Primitive prim, inout Payload payload)
+{
+    float tNear, tFar;
+    switch (prim.type)
+    {
+        case 0: // Sphere
+            // IntersectSphere tNear and tFar to be the intersection points of the ray and object
+            // These intersections are only valid if the far one is in front of the camera and
+            // the near one is in front of the closest object so far
+            if (IntersectSphere(prim.position, prim.radius, ray, tNear, tFar) && tFar > 0.001 && tNear < payload.t)
+            {
+                payload.t = tNear < 0 ? tFar : tNear;
+                payload.position = ray.origin + ray.direction * payload.t;
+                payload.mat = prim.mat; 
+                payload.fromInside = payload.t == tFar;
+                vec3 outward_normal = (payload.position - prim.position) / prim.radius;
+                payload.normal = payload.fromInside ? -outward_normal : outward_normal;
+                return true;
+            }
+            break;
+        case 1: // AABB
+            if (IntersectAABB(prim.position, prim.dimensions, ray, tNear, tFar) && tFar > 0.001 && tNear < payload.t)
+            {
+                payload.t = tNear < 0 ? tFar : tNear;
+                payload.position = ray.origin + ray.direction * payload.t;
+                payload.mat = prim.mat;
+                vec3 outward_normal = GetAABBNormal(prim.position, prim.dimensions, payload.position);
+                payload.fromInside = payload.t == tFar;
+                payload.normal = payload.fromInside ? -outward_normal : outward_normal;
+                return true;
+            }
+            break;
+    }
+    return false;
 }

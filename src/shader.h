@@ -14,6 +14,7 @@ private:
 public:
     // Constructor reads and builds shader
     Shader(const char* vs_path, const char* fs_path);
+    Shader(std::string vs_path, std::string fs_path);
     ~Shader();
 
     void Bind() const;

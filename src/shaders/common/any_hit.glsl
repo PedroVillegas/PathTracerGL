@@ -1,5 +1,3 @@
-#include <common/intersect.glsl>
-
 bool AnyHitBVHTraversal(in Ray r, float tNear, float tFar, inout Payload payload)
 {
     bool hit = false;
@@ -71,7 +69,7 @@ bool AnyHit(Ray ray, inout Payload payload, float dist)
         {
             if (Intersect(ray, Prims.Primitives[k], payload))
             {
-                tempHit.primID = Prims.Primitives[k].id;
+                payload.primID = Prims.Primitives[k].id;
                 return true;
             }
         }

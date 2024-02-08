@@ -7,7 +7,7 @@
 #include <string>
 #include <unordered_map>
 
-
+#include "utils.h"
 #include "shader.h"
 
 
@@ -15,6 +15,16 @@ Shader::Shader(const char* vs_path, const char* fs_path)
 {
     m_VSPath = vs_path;
     m_FSPath = fs_path;
+    std::string vs = ParseShader(vs_path);
+    std::string fs = ParseShader(fs_path);
+    m_ID = CreateShader(vs, fs);
+    std::cout << std::endl;
+}
+
+Shader::Shader(std::string vs_path, std::string fs_path)
+{
+    m_VSPath = vs_path.c_str();
+    m_FSPath = fs_path.c_str();
     std::string vs = ParseShader(vs_path);
     std::string fs = ParseShader(fs_path);
     m_ID = CreateShader(vs, fs);
@@ -52,7 +62,7 @@ std::string Shader::ParseShader(const std::string& filepath)
             uint32_t start = (uint32_t) line.find_first_of("<") + 1;
             uint32_t end = (uint32_t) line.find_first_of(">");
             std::string includeFile = line.substr(start, end - start);
-            ss << ParseShader("shaders/" + includeFile);
+            ss << ParseShader(PATH_TO_SHADERS + includeFile);
         }
         else
         {

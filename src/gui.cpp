@@ -119,7 +119,7 @@ void Gui::CreateCameraWindow(Renderer& renderer, Scene& scene)
         ImGui::Text("f-stop: f/%0.3f", scene.Eye->focal_length / scene.Eye->aperture);
 
         ImGui::Text("FOV");
-        if (ImGui::SliderFloat("##FOV", &scene.Eye->FOV, 10.0f, 120.0f))
+        if (ImGui::SliderFloat("##FOV", &scene.Eye->FOV, 1.0f, 120.0f))
         {
             scene.Eye->SetFov(scene.Eye->FOV);
             scene.Eye->RecalculateProjection();

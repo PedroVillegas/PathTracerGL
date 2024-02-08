@@ -3,6 +3,9 @@
 #include <cstdint>
 #include <vector>
 #include <glad/glad.h>
+#include <string>
+
+#define PATH_TO_SHADERS std::string("../../src/shaders/")
 
 struct ApplicationSettings
 {

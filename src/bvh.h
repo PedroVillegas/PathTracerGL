@@ -43,8 +43,9 @@ public:
     BVH_Node* bvh_root = nullptr;
     LinearBVH_Node* flat_root = nullptr;
     bool b_Rebuilt = false;
+    int totalNodes = 0;
 private:
-    BVH_Node* RecursiveBuild(std::vector<Primitive>& primitives, size_t start, size_t end);
+    BVH_Node* RecursiveBuild(std::vector<Primitive>& primitives, size_t start, size_t end, int* nodeCount);
     void DeleteBVHTree(BVH_Node* node);
     int FlattenBVHTree(LinearBVH_Node* flatten, BVH_Node* root, int* offset);
 };
