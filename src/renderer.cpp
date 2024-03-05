@@ -38,8 +38,17 @@ Renderer::Renderer(
 
     // Setup BVH UBO
     glGenBuffers(1, &m_BVHBlockBuffer); 
-    glBindBuffer(GL_UNIFORM_BUFFER, m_BVHBlockBuffer); 
-    glBufferData(GL_UNIFORM_BUFFER, treeSize * sizeof(LinearBVH_Node), m_BVH->flat_root, GL_STATIC_DRAW); 
+    glBindBuffer(GL_UNIFORM_BUFFER, m_BVHBlockBuffer);
+    int bvhBlockMem = 1000 * sizeof(LinearBVH_Node) + MAX_PRIMITIVES * sizeof(int);
+    glBufferData(GL_UNIFORM_BUFFER, bvhBlockMem, nullptr, GL_STATIC_DRAW);
+    int bvhBlockOffset = 0;
+    glBufferSubData(GL_UNIFORM_BUFFER, bvhBlockOffset, treeSize * sizeof(LinearBVH_Node), m_BVH->flat_root);
+    bvhBlockOffset += 1000 * sizeof(LinearBVH_Node);
+    glBufferSubData(
+        GL_UNIFORM_BUFFER, bvhBlockOffset, 
+        m_BVH->primitivesIndexBuffer.size() * sizeof(int),
+        m_BVH->primitivesIndexBuffer.data()
+    );
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
     glBindBufferBase(GL_UNIFORM_BUFFER, 0, m_BVHBlockBuffer); 
@@ -72,6 +81,57 @@ Renderer::Renderer(
 
     glBindBufferBase(GL_UNIFORM_BUFFER, 3, m_CameraBlockBuffer); 
     m_PathTraceShader->SetUBO("CameraBlock", 3);
+
+    // Send Blue Noise 2d texture to PathTraceShader
+    std::vector<uint8_t> blueNoiseData;
+    uint32_t blueNoiseW, blueNoiseH;
+    auto error = lodepng::decode(blueNoiseData, blueNoiseW, blueNoiseH, PROJECT_PATH + "assets/blueNoise.png");
+    
+    if (error) std::cout << "decoder error " << error << ": " << lodepng_error_text(error) << std::endl;
+
+    uint32_t BlueNoise;
+    glGenTextures(1, &BlueNoise);
+    glBindTexture(GL_TEXTURE_2D, BlueNoise);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, 256, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, blueNoiseData.data());
+
+    m_PathTraceShader->Bind();
+    m_PathTraceShader->SetUniformInt("u_BlueNoise", 1);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, BlueNoise);
+    m_PathTraceShader->Unbind();
+
+    // Send Tony McMapface 3d texture to shader (post.glsl)
+    std::vector<uint8_t> imageData;
+    uint32_t TonyMcMapfaceW, TonyMcMapfaceH;
+    error = lodepng::decode(imageData, TonyMcMapfaceW, TonyMcMapfaceH, PROJECT_PATH + "assets/TonyMcMapfaceLUT.png");
+
+    //std::cout << "Width: " << TonyMcMapfaceW << ", Height: " << TonyMcMapfaceH << std::endl;
+    if (error) std::cout << "decoder error " << error << ": " << lodepng_error_text(error) << std::endl;
+
+    uint32_t TonyMcMapfaceLUT;
+    glGenTextures(1, &TonyMcMapfaceLUT);
+    glBindTexture(GL_TEXTURE_3D, TonyMcMapfaceLUT);
+
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    // The png LUT is 2304x48 with 48 layers --> 48x48x48
+    glTexImage3D(GL_TEXTURE_3D, 0, GL_RGB8, 48, 48, 48, 0, GL_RGBA, GL_UNSIGNED_BYTE, imageData.data());
+
+    m_FinalOutputShader->Bind();
+    m_FinalOutputShader->SetUniformInt("u_TonyMcMapfaceLUT", 1);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_3D, TonyMcMapfaceLUT);
+    m_FinalOutputShader->Unbind();
 }
 
 Renderer::~Renderer()
@@ -104,11 +164,21 @@ void Renderer::UpdateBuffers()
     // Update BVH Block only if rebuilt
     if (m_BVH->b_Rebuilt)
     {
-        int treeSize = m_BVH->CountNodes(m_BVH->bvh_root);
+        int treeSize = m_BVH->totalNodes;
+
+        int bvhBlockMem = 1000 * sizeof(LinearBVH_Node) + MAX_PRIMITIVES * sizeof(int);
 
         // Reallocate memory for BVH Block
-        glBindBuffer(GL_UNIFORM_BUFFER, m_BVHBlockBuffer); 
-        glBufferData(GL_UNIFORM_BUFFER, treeSize * sizeof(LinearBVH_Node), m_BVH->flat_root, GL_STATIC_DRAW); 
+        glBindBuffer(GL_UNIFORM_BUFFER, m_BVHBlockBuffer);
+        glBufferData(GL_UNIFORM_BUFFER, bvhBlockMem, nullptr, GL_STATIC_DRAW);
+        int bvhBlockOffset = 0;
+        glBufferSubData(GL_UNIFORM_BUFFER, bvhBlockOffset, treeSize * sizeof(LinearBVH_Node), m_BVH->flat_root);
+        bvhBlockOffset += 1000 * sizeof(LinearBVH_Node);
+        glBufferSubData(
+            GL_UNIFORM_BUFFER, bvhBlockOffset,
+            m_BVH->primitivesIndexBuffer.size() * sizeof(int),
+            m_BVH->primitivesIndexBuffer.data()
+        );
         glBindBuffer(GL_UNIFORM_BUFFER, 0); 
 
         glBindBufferBase(GL_UNIFORM_BUFFER, 0, m_BVHBlockBuffer); 
@@ -156,9 +226,10 @@ void Renderer::Render(uint32_t VAO, const ApplicationSettings& settings)
     m_PathTraceShader->SetUniformInt("u_SampleIterations", m_SampleIterations); 
     m_PathTraceShader->SetUniformInt("u_SamplesPerPixel", m_Scene->samplesPerPixel); 
     m_PathTraceShader->SetUniformVec2("u_Resolution", float(m_ViewportWidth), float(m_ViewportHeight)); 
-    m_PathTraceShader->SetUniformInt("u_BVHEnabled", int(settings.BVHEnabled));
-    m_PathTraceShader->SetUniformInt("u_DebugBVHVisualisation", int(settings.debugBVHVisualisation));
+    m_PathTraceShader->SetUniformInt("u_BVHEnabled", int(settings.enableBVH));
+    m_PathTraceShader->SetUniformInt("u_DebugBVHVisualisation", int(settings.enableDebugBVHVisualisation));
     m_PathTraceShader->SetUniformInt("u_TotalNodes", m_BVH->totalNodes);
+    m_PathTraceShader->SetUniformInt("u_UseBlueNoise", int(settings.enableBlueNoise));
 
     UpdateBuffers();
 
@@ -202,6 +273,7 @@ void Renderer::Render(uint32_t VAO, const ApplicationSettings& settings)
     m_FinalOutputShader->SetUniformInt("u_PT_Texture", 0); 
     m_FinalOutputShader->SetUniformVec2("u_Resolution", float(m_ViewportWidth), float(m_ViewportHeight)); 
     m_FinalOutputShader->SetUniformInt("u_Tonemap", settings.tonemap);
+    m_FinalOutputShader->SetUniformInt("u_EnableCrosshair", int(settings.enableCrosshair));
 
     glClear(GL_COLOR_BUFFER_BIT);
     glBindVertexArray(VAO); 

@@ -1,15 +1,4 @@
-#include "imgui/imgui.h"
-#include "imgui/imgui_impl_glfw.h"
-#include "imgui/imgui_impl_opengl3.h"
-
-#include <glm/gtc/type_ptr.hpp>
-
-#include "window.h"
-#include "renderer.h"
-#include "camera.h"
-#include "scene.h"
 #include "gui.h"
-#include "utils.h"
 
 Gui::Gui(Window& window)
     : m_Window(window)
@@ -34,43 +23,57 @@ void Gui::NewFrame()
 
 void Gui::Render(Renderer& renderer, Scene& scene, ApplicationSettings& settings)
 {
-    if (ImGui::Begin("Overview"))
+    if (settings.enableGui)
     {
-        ImGui::Text("Viewport: %i x %i", renderer.GetViewportWidth(), renderer.GetViewportHeight());
-        ImGui::Text("Render time: %.3f ms/frame", 1000.0f / ImGui::GetIO().Framerate);
-        ImGui::Text("Framerate: %.1f FPS", ImGui::GetIO().Framerate);
-        ImGui::Text("Iterations: %i", renderer.GetIterations());
-        ImGui::Checkbox("Pause", &renderer.b_Pause);
-
-        if (ImGui::CollapsingHeader("Application Settings"))
+        if (ImGui::Begin("Overview"))
         {
-            ImGui::Checkbox("V-Sync", &settings.vsync);
-            ImGui::Text("Tonemap");
-            if (ImGui::Combo("##Tonemap", &settings.tonemap, "Jodie-Reinhard\0ACES film\0ACES fitted\0AgX\0AgX Punchy\0")) 
-                renderer.ResetSamples();
+            ImGui::Text("Viewport: %i x %i", renderer.GetViewportWidth(), renderer.GetViewportHeight());
+            ImGui::Text("Render time: %.3f ms/frame", 1000.0f / ImGui::GetIO().Framerate);
+            ImGui::Text("Framerate: %.1f FPS", ImGui::GetIO().Framerate);
+            ImGui::Text("Iterations: %i", renderer.GetIterations());
+            ImGui::Checkbox("Pause", &renderer.b_Pause);
 
-            if (ImGui::Checkbox("Enable BVH", &settings.BVHEnabled))
-                renderer.ResetSamples();
-            if (settings.BVHEnabled == true)
+            if (ImGui::CollapsingHeader("Application Settings"))
             {
-                if (ImGui::Checkbox("Visualise BVH", &settings.debugBVHVisualisation))
+                ImGui::Text("Tonemap");
+                if (ImGui::Combo(
+                    "##Tonemap", &settings.tonemap, 
+                    "Jodie-Reinhard\0ACES film\0ACES fitted\0Tony McMapface\0AgX Punchy\0"
+                ))
                     renderer.ResetSamples();
-                ImGui::Checkbox("Draw BVH", &renderer.b_DrawBVH);
-                ImGui::Text("BVH Depth");
-                ImGui::SliderInt("##BVH-Depth", &renderer.BVHDepth, 0, 10);
-            }
-            else
-            {
-                renderer.b_DrawBVH = false;
-                renderer.BVHDepth = 0;
+
+                ImGui::Checkbox("Enable V-Sync", &settings.enableVsync);
+
+                if (ImGui::Checkbox("Enable Blue Noise", &settings.enableBlueNoise))
+                    renderer.ResetSamples();
+                
+                if (ImGui::Checkbox("Enable Crosshair", &settings.enableCrosshair))
+                    renderer.ResetSamples();
+
+                if (ImGui::Checkbox("Enable BVH", &settings.enableBVH))
+                    renderer.ResetSamples();
+
+                if (settings.enableBVH == true)
+                {
+                    if (ImGui::Checkbox("Visualise BVH", &settings.enableDebugBVHVisualisation))
+                        renderer.ResetSamples();
+                    ImGui::Checkbox("Draw BVH", &renderer.b_DrawBVH);
+                    ImGui::Text("BVH Depth");
+                    ImGui::SliderInt("##BVH-Depth", &renderer.BVHDepth, 0, 10);
+                }
+                else
+                {
+                    settings.enableDebugBVHVisualisation = false;
+                    renderer.b_DrawBVH = false;
+                    renderer.BVHDepth = 0;
+                }
             }
         }
+        ImGui::End();
+
+        Gui::CreateCameraWindow(renderer, scene);
+        Gui::CreateSceneWindow(renderer, scene);
     }
-    ImGui::End();
-
-    Gui::CreateCameraWindow(renderer, scene);
-    Gui::CreateSceneWindow(renderer, scene);
-
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
@@ -97,16 +100,18 @@ void Gui::CreateCameraWindow(Renderer& renderer, Scene& scene)
 
         ImGui::Text("Velocity : %.2f", glm::length(scene.Eye->GetVelocity()));
         ImGui::Text("Position : %.2f %.2f %.2f", scene.Eye->position.x, scene.Eye->position.y , scene.Eye->position.z);
-        ImGui::Text("Direction: %.2f %.2f %.2f", scene.Eye->forward.x, scene.Eye->forward.y , scene.Eye->forward.z);
-        // ImGui::Text("Momentum : %.2f %.2f %.2f", scene.Eye->GetMovementMomentum().x, scene.Eye->GetMovementMomentum().y, scene.Eye->GetMovementMomentum().z);
-        // ImGui::Text("Rotation : %.2f %.2f %.2f", scene.Eye->GetRotationMomentum().x, scene.Eye->GetRotationMomentum().y, scene.Eye->GetRotationMomentum().z);
-       
+        ImGui::Text("Direction: %.2f %.2f %.2f", scene.Eye->GetDirection().x, scene.Eye->GetDirection().y , scene.Eye->GetDirection().z);
+        
         ImGui::Text("Sensitivity");
         ImGui::SliderFloat("##Sensitivity", &scene.Eye->sensitivity, 1.0f, 100.0f);
-        ImGui::Text("Max Velocity");
-        ImGui::SliderFloat("##Max Velocity", &scene.Eye->MaxVelocity, 1.0f, 50.0f);
-        ImGui::Text("Damping Factor");
-        ImGui::SliderFloat("##DampingFactor", &scene.Eye->damping, 0.0f, 0.95f);
+        ImGui::Text("Slow Walk Speed");
+        ImGui::SliderFloat("##SlowWalkingSpeed", &scene.Eye->slowSpeed, 1.0f, 10.0f);
+        ImGui::Text("Walking Speed");
+        ImGui::SliderFloat("##WalkingSpeed", &scene.Eye->walkingSpeed, 10.0f, 50.0f);
+        ImGui::Text("Sprinting Speed");
+        ImGui::SliderFloat("##SprintingSpeed", &scene.Eye->sprintingSpeed, 50.0f, 150.0f);
+        ImGui::Text("Damping Coefficient");
+        ImGui::SliderFloat("##DampingCoeff", &scene.Eye->damping, 1.0f, 5.0f);
 
         ImGui::Text("Focal Length");
         if (ImGui::InputFloat("##FocalLength", &scene.Eye->focal_length, 0.05f, 1.0f)) 
@@ -137,6 +142,12 @@ void Gui::CreateSceneWindow(Renderer& renderer, Scene& scene)
         ImGui::PushItemWidth(ImGui::GetWindowContentRegionWidth());
         ImGui::Text("Objects in scene: %llu", scene.primitives.size());
 
+        if (ImGui::Button("Clear Scene"))
+        {
+            scene.EmptyScene();
+            renderer.ResetSamples();
+        }
+
         ImGui::Text("Scene: ");
         if (ImGui::Combo("##SceneSelection", &scene.SceneIdx, "Room with window\0Cornell Box\0White room with coloured lights\0")) 
         {
@@ -162,7 +173,6 @@ void Gui::CreateSceneWindow(Renderer& renderer, Scene& scene)
         
         if (ImGui::Button("Reload Shader"))
         {
-
             std::cout << "Reloading Shader..." << std::endl;
             renderer.GetShader().ReloadShader();
             std::cout << "Shader Successfully Reloaded" << std::endl;
@@ -187,7 +197,7 @@ void Gui::CreateSceneWindow(Renderer& renderer, Scene& scene)
                 renderer.ResetSamples();
             }
             ImGui::SameLine();
-            if (ImGui::Button("Add Cube"))
+            if (ImGui::Button("Add Cube Light"))
             {
                 scene.AddDefaultCube();
                 scene.AddLight(scene.primitives.size() - 1, glm::vec3(1.0f));
@@ -201,12 +211,14 @@ void Gui::CreateSceneWindow(Renderer& renderer, Scene& scene)
                 if (ImGui::ColorEdit3("##SunColour", glm::value_ptr(scene.sunColour)))
                     renderer.ResetSamples();
 
-                ImGui::Text("Sun Elevation");
-                if (ImGui::SliderFloat("##Elevation", &scene.sunElevation, -90.0f, 90.0f))
+                ImGui::Text("Sun Elevation (deg)");
+                //if (ImGui::SliderFloat("##Elevation", &scene.sunElevation, -90.0f, 90.0f))
+                if (ImGui::DragFloat("##Elevation", &scene.sunElevation, 0.1f, -90.f, 90.f))
                     renderer.ResetSamples();
 
-                ImGui::Text("Sun Azimuth");
-                if (ImGui::SliderFloat("##Azimuth", &scene.sunAzimuth, -360.0f, 360.0f))
+                ImGui::Text("Sun Azimuth (deg)");
+                //if (ImGui::SliderFloat("##Azimuth", &scene.sunAzimuth, -360.0f, 360.0f))
+                if (ImGui::DragFloat("##Azimuth", &scene.sunAzimuth, 0.1f, -360.f, 360.f))
                     renderer.ResetSamples();
             }
 
@@ -265,6 +277,7 @@ void Gui::CreateSceneWindow(Renderer& renderer, Scene& scene)
                 scene.AddDefaultSphere();
                 renderer.m_BVH->RebuildBVH(scene.primitives);
                 renderer.ResetSamples();
+                scene.PrimitiveIdx = scene.primitives.size() - 1;
             }
             ImGui::SameLine();
             if (ImGui::Button("Add Cube"))
@@ -272,6 +285,7 @@ void Gui::CreateSceneWindow(Renderer& renderer, Scene& scene)
                 scene.AddDefaultCube();
                 renderer.m_BVH->RebuildBVH(scene.primitives);
                 renderer.ResetSamples();
+                scene.PrimitiveIdx = scene.primitives.size() - 1;
             }
 
             if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_LeftArrow))) 

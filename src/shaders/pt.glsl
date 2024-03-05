@@ -1,4 +1,15 @@
 #version 460 core
+#extension GL_EXT_scalar_block_layout: require
+
+float Saturate( float x ) { return clamp( x, 0.0, 1.0 ); }
+
+#define LIGHT_SPHERE 0
+#define LIGHT_AREA 1
+#define SUN_ENABLED
+#define SUN_COLOUR vec3(.992156862745098, .8862745098039216, .6862745098039216)
+#define SUN_SUNSET vec3(182, 126, 91) / 255.0
+#define SUN_INTENSITY 25.0
+#define RUSSIAN_ROULETTE_MIN_BOUNCES 5
 
 #include <common/structs.glsl>
 #include <common/data.glsl>
@@ -9,20 +20,13 @@
 #include <common/closest_hit.glsl>
 #include <common/any_hit.glsl>
 #include <common/bsdf.glsl>
-
-#define LIGHT_SPHERE 0
-#define LIGHT_AREA 1
-#define SUN_ENABLED
-#define SUN_COLOUR vec3(.992156862745098, .8862745098039216, .6862745098039216)
-#define RUSSIAN_ROULETTE_MIN_BOUNCES 5
+#include <common/pbr.glsl>
 
 out vec4 FragColour;
 
-float saturate( float x ) { return clamp( x, 0.0, 1.0 ); }
-
 vec3 InfernoQuintic(float x)
 {
-	x = saturate( x );
+	x = Saturate( x );
 	vec4 x1 = vec4( 1.0, x, x * x, x * x * x ); // 1 x x2 x3
 	vec4 x2 = x1 * x1.w * x; // x4 x5 x6 x7
 	return vec3(
@@ -44,7 +48,7 @@ vec3 EstimateDirect(Light light, Payload payload, Ray ray)
     // Test visibility
     vec3 wi = normalize(sampledPos - payload.position);
     float cos_term = dot(wi, payload.normal);
-    if (cos_term <= 0) return directIlluminance;
+    if (cos_term == 0) return directIlluminance;
 
     // Cast shadow ray from surface to light
     Ray SR = Ray(payload.position + payload.normal * 0.001, wi);
@@ -57,7 +61,8 @@ vec3 EstimateDirect(Light light, Payload payload, Ray ray)
         float cos_term = abs(cos_term);
         pdf = (r*r) / cos_term * pdf;
         if (pdf < 0.01) return directIlluminance;
-        directIlluminance += (EvalBSDF(payload, ray, wi) * cos_term * primitive.mat.emissive * primitive.mat.intensity) / pdf;
+        float brdf_pdf;
+        directIlluminance += (EvalBRDF(ray, payload, wi, brdf_pdf) * cos_term * primitive.mat.emissive * primitive.mat.intensity) / pdf;
     }
 
     return directIlluminance;
@@ -90,20 +95,21 @@ vec3 SampleSun(Payload shadingPoint, Ray ray, bool lastBounceSpecular)
     if (Scene.Day == 1)
     {
         vec3 dir = normalize(Scene.SunDirection);
-        // Omega_i is the incoming light
         vec3 wi = normalize(GetConeSample(dir, 1e-5));
 
         // Test visibility
         float cos_term = dot(wi, shadingPoint.normal);
-        if (cos_term <= 0.0) return directIlluminance;
+        if (cos_term == 0.0) return directIlluminance;
 
         // Cast shadow ray from surface to light
         Ray SR = Ray(shadingPoint.position + shadingPoint.normal * 0.001, wi);
         Payload shadowInfo;
-        if (!lastBounceSpecular && !AnyHit(SR, shadowInfo, INF))
+        if (!AnyHit(SR, shadowInfo, INF))
         {
             // Only sample if bsdf is non-specular (refl or refr)
-            directIlluminance += EvalBSDF(shadingPoint, ray, wi) * Scene.SunColour * abs(cos_term);
+            float pdf = 1.0;
+            //directIlluminance += EvalBSDF(shadingPoint, ray, wi) * Scene.SunColour * abs(cos_term) * SUN_INTENSITY;
+            directIlluminance += EvalBRDF(ray, shadingPoint, wi, pdf) * Scene.SunColour * abs(cos_term) * SUN_INTENSITY / pdf;
         }
     }
 #endif
@@ -122,12 +128,21 @@ vec4 PathTrace(Ray ray)
     
     for (int bounce = 0; bounce < Scene.Depth; bounce++)
     {
+        /* Russian Roulette */
+//        if (bounce >= RUSSIAN_ROULETTE_MIN_BOUNCES)
+//        {
+//            //float rrp = min(0.95, max(throughput.x, max(throughput.y, throughput.z)));
+//            float rrp = min(0.95, Luma(throughput));
+//            if (Randf01() > rrp) break;
+//            else throughput /= rrp;
+//        }
+
         // Keep track of ray intersection point, direction etc
         Payload HitRec = ClosestHit(ray, INF, nodeVisits);
 
         if (u_DebugBVHVisualisation == 1)
         {
-            radiance = radiance.rgb = InfernoQuintic(nodeVisits / u_TotalNodes);
+            radiance = nodeVisits > 0 ? InfernoQuintic(nodeVisits / u_TotalNodes) : vec3(0.0);
             // radiance = HitRec.mat.albedo;
             break;
         }
@@ -143,8 +158,8 @@ vec4 PathTrace(Ray ray)
         // return vec4(vec3(HitRec.t/100.0), 1.0);
         
         // Consider emissive materials
-        // if (any(greaterThan(HitRec.mat.emissive, vec3(0.0))))
-        if ((bounce == 0 || lastBounceSpecular == true) && any(greaterThan(HitRec.mat.emissive, vec3(0.0))))
+        //if (any(greaterThan(HitRec.mat.emissive, vec3(0.0))))
+        if ((bounce == 0 || lastBounceSpecular) && any(greaterThan(HitRec.mat.emissive, vec3(0.0))))
         {
             radiance += HitRec.mat.emissive * HitRec.mat.intensity * throughput;
             break;
@@ -165,20 +180,17 @@ vec4 PathTrace(Ray ray)
         radiance += throughput * direct;
 
         // Calculate indirect lighting
-        vec3 indirect = EvalIndirect(HitRec, ray, lastBounceSpecular);
-        throughput *= indirect;
-
-        /* Russian Roulette */
-        // As throughput gets smaller, the probability (rrp) of terminating the path early increases
-        // Surviving paths have their value boosted to compensate for terminated paths
-        float rrp = min(0.95, max(throughput.x, max(throughput.y, throughput.z)));
-        if (bounce > RUSSIAN_ROULETTE_MIN_BOUNCES)
+        vec3 indirect;
+        float BRDF_pdf = 1.0;
+        if (u_UseBlueNoise == 0)
         {
-            if (Randf01() > rrp)
-                break;
-            else 
-                throughput *= 1.0 / rrp; // add energy 'lost' from random path terminations
+            indirect = EvalIndirect(HitRec, ray, lastBounceSpecular);
         }
+        else
+        {
+            indirect = EvalIndirectBRDF(ray, HitRec, BRDF_pdf);
+        }
+        throughput *= indirect / BRDF_pdf;
     }
     // Debug: Visualize BVH Bounding Boxes
 //    float normalizationFactor = u_TotalNodes;
@@ -191,7 +203,7 @@ vec4 PathTrace(Ray ray)
 void main()
 {
     // Pixel coord in NDC [-1, 1]
-    vec2 uv = gl_FragCoord.xy / u_Resolution.xy;
+    uv = gl_FragCoord.xy / u_Resolution.xy;
     uv = (uv * 2.0) - 1.0;
 
     g_Seed = GenerateSeed();
@@ -236,5 +248,5 @@ void main()
     vec4 accumulatedScaledDown = newAccumulationContribution / (u_SampleIterations + 1);
 
     FragColour = accumulatedScaledDown;
-    // FragColour = vec4(Randf01(), Randf01(), Randf01(), 1.0);
+//    FragColour = vec4(Randf01(), Randf01(), Randf01(), 1.0);
 }

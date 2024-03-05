@@ -27,6 +27,12 @@ struct alignas(16) Primitive
 
 struct AABB
 {
+    AABB()
+    {  
+        bMin = glm::vec3(FLT_MAX, FLT_MAX, FLT_MAX);
+        bMax = glm::vec3(FLT_MIN, FLT_MIN, FLT_MIN);
+    }
+
     glm::vec3 bMin;
     glm::vec3 bMax;
 

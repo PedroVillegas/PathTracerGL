@@ -20,15 +20,16 @@ AABB Union(const AABB& b, const glm::vec3& p)
 
 void Primitive::BoundingBox(AABB* out)
 {
+    float pad = 0.01f;
     switch (type)
     {
         case 0: // sphere
-            out->bMax = position + (radius + 0.05f);
-            out->bMin = position - (radius + 0.05f);
+            out->bMax = position + (radius + pad);
+            out->bMin = position - (radius + pad);
             break;
         case 1:
-            out->bMax = position + (dimensions * 0.5f) + 0.05f;
-            out->bMin = position - (dimensions * 0.5f) - 0.05f;
+            out->bMax = position + (dimensions * 0.5f) + pad;
+            out->bMin = position - (dimensions * 0.5f) - pad;
             break;
     }
     

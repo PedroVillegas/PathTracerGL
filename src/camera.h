@@ -14,6 +14,7 @@ struct alignas(16) CameraBlock
     float aperture;
     float focalLength;
 };
+
 class Camera
 {
     enum
@@ -27,7 +28,6 @@ public:
     Camera() {}
     Camera(float FOV, float nearClip, float farClip);
     Camera(glm::vec3 position, float FOV, float nearClip, float farClip);
-    Camera(glm::vec3 position, glm::vec3 forwardDirection, float FOV, float nearClip, float farClip);
 
     bool Orbital(float dt, Window* window);
     bool Cinematic(float dt, Window* window);
@@ -38,13 +38,16 @@ public:
 
     void UpdateParams();
     void SetFov(float HorizontalFOV);
+    void SetupCamera(glm::vec3 position, glm::vec3 forward, float fov);
     const glm::mat4& GetProjection() const { return m_Projection; }
     const glm::mat4& GetInverseProjection() const { return m_InverseProjection; }
     const glm::mat4& GetView() const { return m_View; }
     const glm::mat4& GetInverseView() const { return m_InverseView; }
 
     const glm::vec3& GetRotationMomentum() const { return m_RotationMomentum; }
-    const glm::vec3& GetVelocity() const { return m_MovementMomentum; }
+    const glm::vec3& GetVelocity() const { return m_Velocity; }
+    //const glm::vec3& GetDirection() { return m_QuatOrientation * glm::vec3(0, 0, -1); };
+    const glm::vec3& GetDirection() { return m_Forward; };
     
     void RecalculateProjection();
     void RecalculateView();
@@ -52,15 +55,16 @@ public:
     CameraBlock params;
 
     glm::vec3 position;
-    glm::vec3 forward;
 
     int type = 0;
     float FOV = 60.0f;
-    float damping = 0.9f;
+    float damping = 4.0f;
     float focal_length = 4.0f;
     float aperture = 0.0f;
     float sensitivity = 40.0f;
-    float MaxVelocity = 40.0f;
+    float walkingSpeed = 20.0f;
+    float sprintingSpeed = 60.0f;
+    float slowSpeed = 5.0f;
     
 private:
     void Init();
@@ -69,22 +73,24 @@ private:
     float m_FarClip = 1000.0f;
     float m_AspectRatio;
 
-    glm::vec3 m_Up;
-    glm::vec3 m_Right;
-
     glm::mat4 m_Projection;
     glm::mat4 m_View;
     glm::mat4 m_InverseProjection;
     glm::mat4 m_InverseView;
 
-    glm::quat m_QuatOrientation = glm::quat();
+    glm::quat m_QuatOrientation = glm::quatLookAt(glm::vec3(0, 0, -1), glm::vec3(0, 1, 0));
 
-    glm::vec3 m_Velocity;
-    glm::vec3 m_MovementMomentum;
+    glm::vec3 m_Velocity { 0.0f, 0.0f, 0.0f };
     glm::vec3 m_RotationMomentum;
+    glm::vec3 m_Forward;
+    glm::vec3 m_Right;
 
-    bool m_AllowCameraToMove = false;
+    float m_Yaw   = 0.0f;
+    float m_Pitch = 0.0f;
+
     glm::vec2 m_LastMousePosition { 0.0f, 0.0f };
+    float m_LastFOV = 60.0f;
+    bool m_AllowCameraToMove = false;
     bool m_FirstMouse = true;
 
     uint32_t m_ViewportWidth = 0, m_ViewportHeight = 0;

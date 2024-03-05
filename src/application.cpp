@@ -30,7 +30,10 @@ void Application::Run()
     {
         // Input
         //m_Window->ProcessInput();
-        m_Settings.vsync == true ? glfwSwapInterval(1) : glfwSwapInterval(0);
+        /*if (glfwGetKey(m_Window->GetWindow(), GLFW_KEY_G) == GLFW_PRESS)
+            m_Settings.enableGui = !m_Settings.enableGui ? true : false;*/
+
+        m_Settings.enableVsync == true ? glfwSwapInterval(1) : glfwSwapInterval(0);
 
         m_Gui->NewFrame();
 

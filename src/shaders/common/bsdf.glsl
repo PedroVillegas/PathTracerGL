@@ -145,6 +145,6 @@ vec3 EvalIndirect(Payload hitrec, inout Ray ray, out bool lastBounceSpecular)
     ray.direction = scattered;
     lastBounceSpecular = bool(specularFactor) || bool(refractiveFactor);
 
-    return mix(albedo, vec3(1.0), refractiveFactor);
+    return mix(albedo /** abs(dot(N, V))*/, vec3(1.0), refractiveFactor);
     // return mix(mix(albedo, vec3(1.0), specularFactor), vec3(1.0), refractiveFactor);
 }

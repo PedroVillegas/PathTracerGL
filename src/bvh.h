@@ -26,10 +26,7 @@ struct LinearBVH_Node
     int axis = -1;
 };
 
-bool box_compare(Primitive a, Primitive b, int axis);
-bool box_x_compare(Primitive a, Primitive b);
-bool box_y_compare(Primitive a, Primitive b);
-bool box_z_compare(Primitive a, Primitive b);
+struct BVHPrimitiveInfo;
 
 class BVH
 {
@@ -37,15 +34,18 @@ public:
     BVH() {};
     BVH(std::vector<Primitive>& primitives);
     ~BVH();
-    int CountNodes(BVH_Node* root);
     void RebuildBVH(std::vector<Primitive>& primitives);
+
 public:
     BVH_Node* bvh_root = nullptr;
     LinearBVH_Node* flat_root = nullptr;
     bool b_Rebuilt = false;
     int totalNodes = 0;
+    std::vector<int> primitivesIndexBuffer;
+
 private:
-    BVH_Node* RecursiveBuild(std::vector<Primitive>& primitives, size_t start, size_t end, int* nodeCount);
+    BVH_Node* RecursiveBuild(
+        std::vector<BVHPrimitiveInfo>& primitiveInfo, size_t start, size_t end, int* nodeCount);
     void DeleteBVHTree(BVH_Node* node);
     int FlattenBVHTree(LinearBVH_Node* flatten, BVH_Node* root, int* offset);
 };

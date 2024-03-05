@@ -3,10 +3,12 @@
 uniform int u_SampleIterations;
 uniform int u_SamplesPerPixel;
 uniform sampler2D u_AccumulationTexture;
+uniform sampler2D u_BlueNoise;
 uniform vec2 u_Resolution;
 uniform int u_BVHEnabled;
 uniform int u_DebugBVHVisualisation;
 uniform int u_TotalNodes;
+uniform int u_UseBlueNoise;
 
 layout (std140) uniform PrimsBlock
 {
@@ -37,7 +39,8 @@ layout (std140) uniform CameraBlock
     float focalLength;
 } Camera;
 
-layout (std140) uniform BVH
+layout (std430) uniform BVH
 {
     LinearBVHNode bvh[1000];
+    int PrimitiveIndexBuffer[100];
 } bvh;

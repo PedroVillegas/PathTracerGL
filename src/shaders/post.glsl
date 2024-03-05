@@ -4,7 +4,9 @@ out vec4 colour;
 
 uniform vec2 u_Resolution;
 uniform sampler2D u_PT_Texture;
+uniform sampler3D u_TonyMcMapfaceLUT;
 uniform int u_Tonemap;
+uniform int u_EnableCrosshair;
 
 #define sat(x) clamp(x, 0., 1.)
 
@@ -41,6 +43,17 @@ vec3 SRGBToLinear(vec3 rgb)
         rgb / 12.92,
         LessThan(rgb, 0.04045)
 	);
+}
+
+vec3 TonyMcMapface(vec3 stimulus) {
+    // Apply a non-linear transform that the LUT is encoded with.
+    const vec3 encoded = stimulus / (stimulus + 1.0);
+
+    // Align the encoded range to texel centers.
+    const float LUT_DIMS = 48.0;
+    vec3 uv = encoded * ((LUT_DIMS - 1.0) / LUT_DIMS) + 0.5 / LUT_DIMS;
+
+    return texture3D(u_TonyMcMapfaceLUT, uv).rbg;
 }
 
 // Sources:
@@ -231,28 +244,21 @@ void main()
             tonemapped = ACESFitted(hdrCol);
             break;
         case 3:
-            tonemapped = agx(hdrCol);
-            tonemapped = agxLook(tonemapped, 0);
-            tonemapped = agxEotf(tonemapped);
+        default:
+            tonemapped = TonyMcMapface(hdrCol);
             break;
         case 4:
             tonemapped = agx(hdrCol);
             tonemapped = agxLook(tonemapped, 1);
             tonemapped = agxEotf(tonemapped);
             break;
-        default:
-            tonemapped = agx(hdrCol);
-            tonemapped = agxLook(tonemapped, 0);
-            tonemapped = agxEotf(tonemapped);
-            break;
-
     }
     // Apply gamma correction
-    // vec3 final = LinearToSRGB(tonemapped);
-    vec3 final = pow(tonemapped, vec3(1.0 / 2.2));
+    vec3 final = LinearToSRGB(tonemapped);
+//    vec3 final = pow(tonemapped, vec3(1.0 / 2.2));
 
     // vignetting
-    // final *= 0.5 + 0.5*pow( 16.0*uv.x*uv.y*(1.0-uv.x)*(1.0-uv.y), 0.1 );
+//    final *= 0.5 + 0.5*pow( 16.0*uv.x*uv.y*(1.0-uv.x)*(1.0-uv.y), 0.1 );
 
     vec2 centre = u_Resolution * vec2(0.5);
     vec2 d = abs(centre - gl_FragCoord.xy);
@@ -262,7 +268,10 @@ void main()
     
     float backgroundMask = not_(crosshairMask);
     
-    colour = crosshairMask * crosshairsColor + backgroundMask * vec4(final, 1.0); 
+    if (u_EnableCrosshair == 1)
+        colour = crosshairMask * crosshairsColor + backgroundMask * vec4(final, 1.0);
+    else
+        colour = vec4(final, 1.0);
 
     // colour = vec4(final, 1.0);
 }

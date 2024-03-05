@@ -32,7 +32,7 @@ set(HEADER_FILES
 	"src/shader.h"
 	"src/utils.h"
 	"src/window.h"
-)
+ "src/lodepng.h")
 
 set(SRC_FILES
 	"dependencies/imgui/imgui.cpp"
@@ -54,7 +54,7 @@ set(SRC_FILES
 	"src/shader.cpp"
 	"src/utils.cpp"
 	"src/window.cpp"
-)
+ "src/lodepng.cpp")
 
 # Dependencies
 

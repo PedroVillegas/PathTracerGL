@@ -7,6 +7,7 @@
 #include "camera.h"
 #include "bvh.h"
 #include "utils.h"
+#include "lodepng.h"
 
 class Renderer
 {

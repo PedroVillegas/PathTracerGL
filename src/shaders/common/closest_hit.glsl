@@ -22,11 +22,12 @@ void ClosestHitBVHTraversal(in Ray r, float tNear, float tFar, inout Payload pay
 			if (node.n_Primitives > 0)
 			{
                 int i = node.primitiveOffset;
-                if (Intersect(r, Prims.Primitives[i], payload))
+                Primitive p = Prims.Primitives[bvh.PrimitiveIndexBuffer[i]];
+                if (Intersect(r, p, payload))
                 {   
                     // payload returned with closest intersection point so far
                     hit = true;
-                    payload.primID = Prims.Primitives[i].id;
+                    payload.primID = p.id;
                 }
 
                 if (toVisitOffset == 0) break;

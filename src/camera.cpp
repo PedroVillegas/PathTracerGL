@@ -7,7 +7,7 @@
 #include <vector>
 #include <iostream>
 
-#define PI 3.14159f
+#define PI 3.14159265358979323
 
 Camera::Camera(float FOV, float nearClip, float farClip)
     :
@@ -15,7 +15,6 @@ Camera::Camera(float FOV, float nearClip, float farClip)
     m_NearClip(nearClip), 
     m_FarClip(farClip)
 {
-    forward = glm::vec3(0, 0, -1);
     position = glm::vec3(0, 0, 3);
     Init();
 }
@@ -26,18 +25,6 @@ Camera::Camera(glm::vec3 position, float FOV, float nearClip, float farClip)
     m_NearClip(nearClip), 
     m_FarClip(farClip),
     position(position)
-{
-    forward = glm::vec3(0, 0, -1);
-    Init();
-}
-
-Camera::Camera(glm::vec3 position, glm::vec3 forwardDirection, float FOV, float nearClip, float farClip)
-    :
-    FOV(FOV),
-    m_NearClip(nearClip), 
-    m_FarClip(farClip),
-    position(position),
-    forward(forwardDirection)
 {
     Init();
 }
@@ -58,9 +45,32 @@ void Camera::UpdateParams()
     params.focalLength = focal_length;
 }
 
+void Camera::SetupCamera(
+    glm::vec3 position = {0.0f, 0.0f, 0.0f}, 
+    glm::vec3 forward = {0.0f, 0.0f, -1.0f}, 
+    float fov = 60.0f)
+{
+    this->position = position;
+    this->FOV = fov;
+    glm::vec3 Up = glm::vec3(0.0f, 1.0f, 0.0f);
+    m_Forward = glm::normalize(forward);
+    m_QuatOrientation = glm::quatLookAt(m_Forward, Up);
+
+    m_Yaw = 90.f;
+
+    //m_Yaw = std::atan2f(m_Forward.x, m_Forward.z) * 180.f / PI;
+    //m_Pitch = -glm::asin(m_Forward.y) * 180.f / PI;
+
+    //m_Pitch = glm::degrees(glm::eulerAngles(m_QuatOrientation).x);
+    //m_Yaw   = glm::degrees(glm::eulerAngles(m_QuatOrientation).y);
+
+    RecalculateProjection();
+    RecalculateView();
+}
+
 bool Camera::OnUpdate(float dt, Window* window)
 {
-    bool IsCamMoving;
+    bool IsCamMoving = false;
     switch (type)
     {
         case CAM_TYPE_FPS:
@@ -85,6 +95,7 @@ bool Camera::Orbital(float dt, Window* window)
 
 bool Camera::Cinematic(float dt, Window* window)
 {
+    /*
     GLFWwindow* glfw_win = window->GetWindow();
 
     // Rotation delta
@@ -110,7 +121,7 @@ bool Camera::Cinematic(float dt, Window* window)
         glm::quat q_roll = glm::normalize(glm::angleAxis(roll, forward));
 
         // Update the quaternion orientation (m_QuatOrientation) by multiplying by the rotation delta quaternion (q)
-        m_QuatOrientation = glm::normalize(q_roll * q_pitch * q_yaw * m_QuatOrientation);
+        m_QuatOrientation = glm::normalize(m_QuatOrientation * q_roll * q_pitch * q_yaw);
 
         forward = glm::normalize(m_QuatOrientation * glm::vec3(0.0f, 0.0f, -1.0f));
         m_Up = glm::normalize(m_QuatOrientation * glm::vec3(0.0f, 1.0f, 0.0f));
@@ -126,14 +137,14 @@ bool Camera::Cinematic(float dt, Window* window)
     dm.x = float((glfwGetKey(glfw_win, GLFW_KEY_D) == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_A) == GLFW_PRESS));
     dm.y = float((glfwGetKey(glfw_win, GLFW_KEY_SPACE) == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS));
     dm.z = float((glfwGetKey(glfw_win, GLFW_KEY_W) == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_S) == GLFW_PRESS));
-    float mlen = glm::length(dm) / MaxVelocity; 
+    float mlen = glm::length(dm) / walkingSpeed; 
     if (mlen < 1e-3f) mlen = 1.0f;
 
     glm::mat3 matOrient;
 
-    matOrient[2] = forward; //m_MatOrientation[0];
-    matOrient[1] = m_Up; //m_MatOrientation[1];
-    matOrient[0] = m_Right; //m_MatOrientation[2];
+    matOrient[2] = forward;
+    matOrient[1] = m_Up;
+    matOrient[0] = m_Right;
 
     m_MovementMomentum = m_MovementMomentum * damping + (1.0f - damping) * matOrient * dm / mlen;
 
@@ -149,7 +160,7 @@ bool Camera::Cinematic(float dt, Window* window)
 
     if (mlen > 0.0 || rlen > 0.0) 
         return true;
-        
+    */
     return false;
 }
 
@@ -157,11 +168,11 @@ bool Camera::FPS(float dt, Window* window)
 {   
     GLFWwindow* glfw_win = window->GetWindow();
 
-    if (glfwGetKey(glfw_win, GLFW_KEY_G) == GLFW_PRESS)
+    if (glfwGetKey(glfw_win, GLFW_KEY_ESCAPE) == GLFW_PRESS)
     {
         glfwSetInputMode(glfw_win, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
         m_AllowCameraToMove = false;
-        m_MovementMomentum = glm::vec3(0.0f);
+        m_Velocity = glm::vec3(0.0f);
     }
 
     if (glfwGetKey(glfw_win, GLFW_KEY_F) == GLFW_PRESS)
@@ -173,7 +184,7 @@ bool Camera::FPS(float dt, Window* window)
 
     if (m_AllowCameraToMove)
     {
-        glm::vec2 delta {0.0f};
+        glm::vec2 delta { 0.0f };
 
         double cursor_x = 0.0f;
         double cursor_y = 0.0f;
@@ -190,93 +201,74 @@ bool Camera::FPS(float dt, Window* window)
         delta = (cursor_pos - m_LastMousePosition);
         m_LastMousePosition = cursor_pos;
         
-        float dx = glm::radians(delta.x) * sensitivity * 0.001f;
-        float dy = glm::radians(delta.y) * sensitivity * 0.001f;
+        float dx = glm::radians(delta.x) * sensitivity * 8.0f * dt;
+        float dy = glm::radians(delta.y) * sensitivity * 8.0f * dt;
 
         if (dx != 0.0f || dy != 0.0f)
         {
-            glm::quat q_yaw = glm::angleAxis(-dx, glm::vec3(0.0f, 1.0f, 0.0f));
-            glm::quat q_pitch = glm::angleAxis(-dy, m_Right);
+            m_Yaw   += dx;
+            m_Pitch -= dy;
 
-            m_QuatOrientation = glm::normalize(q_pitch * q_yaw * m_QuatOrientation);
+            m_Yaw   = glm::mod(m_Yaw, 360.0f);
+            m_Pitch = glm::clamp(m_Pitch, -89.0f, 89.0f);
 
-            forward = glm::normalize(m_QuatOrientation * glm::vec3(0.0f, 0.0f, -1.0f));
-            // m_Up = glm::normalize(m_QuatOrientation * glm::vec3(0.0f, 1.0f, 0.0f)); // Rotating the Up vector introduces roll
-            // m_Right = glm::normalize(m_QuatOrientation * glm::vec3(1.0f, 0.0f, 0.0f));
-            m_Right = glm::normalize(glm::cross(forward, m_Up));
+            //m_QuatOrientation *= glm::angleAxis(-dx, glm::vec3(0, 1, 0) * m_QuatOrientation);
+            //m_QuatOrientation *= glm::angleAxis( dy, glm::vec3(1, 0, 0) * m_QuatOrientation);
+
+            glm::vec3 direction;
+            direction.x = cos(glm::radians(m_Yaw)) * cos(glm::radians(m_Pitch));
+            direction.y = sin(glm::radians(m_Pitch));
+            direction.z = sin(glm::radians(m_Yaw)) * cos(glm::radians(m_Pitch));
+            m_Forward = glm::normalize(direction);
+            m_Right = glm::cross(m_Forward, glm::vec3(0, 1, 0));
         }
-
-        // bool Sprinting = false;
-        // float TargetFOV = FOV;
-        float Velocity = MaxVelocity;
+        
+        float topSpeed = walkingSpeed;
         if (glfwGetKey(glfw_win, GLFW_KEY_CAPS_LOCK) == GLFW_PRESS)
         {
-            Velocity = MaxVelocity * 5.0f;
-            // TargetFOV = FOV + 10.0f;
-            // Sprinting = true;
+            topSpeed = sprintingSpeed;
         } 
-        else if (glfwGetKey(glfw_win, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) 
+        if (glfwGetKey(glfw_win, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) 
         {
-            Velocity = MaxVelocity * 0.5f;
-        } 
-        // else if (glfwGetKey(glfw_win, GLFW_KEY_CAPS_LOCK) == GLFW_RELEASE && glfwGetKey(glfw_win, GLFW_KEY_LEFT_CONTROL) == GLFW_RELEASE) 
-        // {
-        //     Velocity = MaxVelocity * 1.0f;
-        // }
+            topSpeed = slowSpeed;
+        }
 
         // Movement delta
-        glm::vec3 M {0.0f, 0.0f, 0.0f};
+        glm::vec3 M { 0.0f, 0.0f, 0.0f };
 
-        M.x = float((glfwGetKey(glfw_win, GLFW_KEY_D)     == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_A)          == GLFW_PRESS));
+        M.x = float((glfwGetKey(glfw_win, GLFW_KEY_D) == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_A) == GLFW_PRESS));
         M.y = float((glfwGetKey(glfw_win, GLFW_KEY_SPACE) == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS));
-        M.z = float((glfwGetKey(glfw_win, GLFW_KEY_W)     == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_S)          == GLFW_PRESS));
-        float mlen = glm::length(M); 
-        if (mlen < 1e-2f) mlen = 1.0f;
+        M.z = float((glfwGetKey(glfw_win, GLFW_KEY_W) == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_S) == GLFW_PRESS));
 
-        glm::mat3 matOrient;
+        glm::mat3 orient;
 
-        matOrient[2] = forward; //m_MatOrientation[0];
-        matOrient[1] = m_Up; //m_MatOrientation[1];
-        matOrient[0] = m_Right; //m_MatOrientation[2];
+        orient[0] = m_Right;
+        orient[1] = glm::vec3(0, 1, 0);
+        orient[2] = m_Forward;
 
-        glm::vec3 TargetMomentum = matOrient * M * Velocity / mlen;
-        // m_MovementMomentum = m_MovementMomentum * damping + (1.0f - damping) * TargetMomentum;
-        // damping = glm::sqrt(damping * 0.5f + 0.5f);
-        float t = (1.0f - glm::exp(-damping * dt));
-        m_MovementMomentum = glm::mix(TargetMomentum, m_MovementMomentum, t);
-        position += m_MovementMomentum * dt;
-        
-        // if (Sprinting)
-        // {
-        //     float t = glm::length(m_MovementMomentum) / Velocity;
-        //     // FOV = glm::mix(FOV, TargetFOV, glm::sin(t * (3.1415f / 2)));
-        //     float AnimatedFOV = glm::mix(FOV, TargetFOV, exp(t));
-        //     SetFov(AnimatedFOV);
-        //     RecalculateProjection();
-        // }
+        glm::vec3 acceleration = glm::length(M) > 0.0f ? glm::normalize(M) : M;
+        m_Velocity += acceleration * topSpeed * 5.0f * dt;
+        //position   += (m_Velocity * m_QuatOrientation) * dt;
+        position   += orient * m_Velocity * dt;
+        m_Velocity  = glm::mix(m_Velocity, glm::vec3(0.0f), damping * dt);
 
         // FOV Zoom
         float zoom = float((glfwGetKey(glfw_win, GLFW_KEY_E) == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_Q) == GLFW_PRESS));
         FOV -= zoom * 100.0f * dt;
+        FOV  = glm::clamp(FOV, 10.0f, 120.0f);
+        FOV  = glm::mix(FOV, m_LastFOV, 15.0f * dt);
+        m_LastFOV = FOV;
 
-        if (FOV < 10.0f)
-        {
-            FOV = 10.0f;
-        }
-        if (FOV > 120.0f)
-        {
-            FOV = 120.0f;
-        }
         if (glm::abs(zoom))
-        {   
+        {
             SetFov(FOV);
             RecalculateProjection();
         }
 
-        if (glm::length(m_MovementMomentum) < 1e-1f) 
-            m_MovementMomentum = {0.0f, 0.0f, 0.0f};
+        if (glm::length(m_Velocity) < 0.5f)
+            m_Velocity = glm::vec3(0.0f);
 
-        if (glm::length(m_MovementMomentum) > 0.0 || dx != 0.0 || dy != 0.0 || glm::abs(zoom))
+        if (glm::length(m_Velocity) > 0.0 || dx != 0.0 || dy != 0.0 || glm::abs(zoom))
         {
             RecalculateView();
             return true;
@@ -299,12 +291,10 @@ void Camera::OnResize(uint32_t width, uint32_t height)
 
 void Camera::Reset()
 {
+    m_QuatOrientation = glm::quatLookAt(glm::vec3(0, 0, -1), glm::vec3(0, 1, 0));
     position = glm::vec3(0.0f, 0.0f, 3.0f);
-    forward = glm::vec3(0.0f, 0.0f, -1.0f);
-    m_Up = glm::vec3(0.0f, 1.0f, 0.0f);
-    m_Right = glm::vec3(1.0f, 0.0f, 0.0f);
-    m_MovementMomentum = glm::vec3(0.0f, 0.0f, 0.0f);
-    m_RotationMomentum = glm::vec3(0.0f, 0.0f, 0.0f);
+    m_Velocity = glm::vec3(0.0f);
+    m_RotationMomentum = glm::vec3(0.0f);
     m_FirstMouse = true;
     RecalculateView();
 }
@@ -317,7 +307,21 @@ void Camera::RecalculateProjection()
 
 void Camera::RecalculateView()
 {
-    m_View = glm::lookAt(position, position + forward, m_Up);
+    //glm::vec3 X = m_QuatOrientation * glm::vec3(1, 0, 0);
+    //glm::vec3 Y = m_QuatOrientation * glm::vec3(0, 1, 0);
+    //glm::vec3 Z = m_QuatOrientation * glm::vec3(0, 0, 1);
+
+    //glm::vec3 P = position;
+
+    //m_View = glm::mat4
+    //(
+    //    X.x, X.y, X.z, 0.0f,
+    //    Y.x, Y.y, Y.z, 0.0f,
+    //    Z.x, Z.y, Z.z, 0.0f,
+    //    P.x, P.y, P.z, 1.0f
+    //);
+
+    m_View = glm::lookAt(position, position + m_Forward, glm::vec3(0, 1, 0));
     m_InverseView = glm::inverse(m_View);
 }
 

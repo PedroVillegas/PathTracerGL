@@ -63,6 +63,8 @@ public:
     void WhiteRoomColouredLights();
     void CornellBox();
     void RTIW();
+    void NewScene();
+
     void Init();
     void EmptyScene();
 };
