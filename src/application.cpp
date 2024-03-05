@@ -5,6 +5,10 @@ Application::Application(std::string title, uint32_t width, uint32_t height)
     , m_ViewportWidth(width)
     , m_ViewportHeight(height)
 {   
+    m_Window   = std::make_unique<Window>(m_Title.c_str(), m_ViewportWidth, m_ViewportHeight);
+    m_Gui      = std::make_unique<Gui>(*m_Window);
+    m_Scene    = std::make_unique<Scene>();
+    m_Renderer = std::make_unique<Renderer>(m_ViewportWidth, m_ViewportHeight, &(*m_Scene));
 }
 
 Application::~Application()
@@ -20,10 +24,6 @@ Application::~Application()
 
 void Application::Run()
 {
-    m_Window    = std::make_unique<Window>(m_Title.c_str(), m_ViewportWidth, m_ViewportHeight);
-    m_Gui       = std::make_unique<Gui>(*m_Window);
-    m_Scene     = std::make_unique<Scene>();
-    m_Renderer  = std::make_unique<Renderer>(m_ViewportWidth, m_ViewportHeight, &(*m_Scene));
     Setup();
 
     while (!m_Window->Closed())

@@ -2,13 +2,22 @@
 
 
 void SetupQuad(uint32_t& VAO, uint32_t& VBO, uint32_t& IBO);
+void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
+
+Application app = Application("Path Tracing", 1280, 720);
 
 int main(void) 
 {
-    Application app = Application("Path Tracing", 1280, 720);
+    glfwSetKeyCallback(app.m_Window->GetWindow(), keyCallback);
     app.Run();
 
     return 1;
+}
+
+void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    if (key == GLFW_KEY_G && action == GLFW_PRESS)
+        app.m_Settings.enableGui = !app.m_Settings.enableGui;
 }
 
 void SetupQuad(uint32_t& VAO, uint32_t& VBO, uint32_t& IBO)

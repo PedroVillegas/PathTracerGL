@@ -18,6 +18,13 @@ public:
     ~Application();
     void Run();
 
+    std::unique_ptr<Window> m_Window;
+    std::unique_ptr<Gui> m_Gui;
+    std::unique_ptr<Renderer> m_Renderer;
+    std::unique_ptr<Scene> m_Scene;
+
+    ApplicationSettings m_Settings;
+
 private:
     void Setup();
     void Resize();
@@ -27,13 +34,6 @@ private:
     std::string m_Title;
     uint32_t m_ViewportWidth;
     uint32_t m_ViewportHeight;
-
-    std::unique_ptr<Window> m_Window;
-    std::unique_ptr<Gui> m_Gui;
-    std::unique_ptr<Renderer> m_Renderer;
-    std::unique_ptr<Scene> m_Scene;
-
-    ApplicationSettings m_Settings;
 
     float m_DeltaTime = 0.f;
     uint32_t m_QuadVAO;

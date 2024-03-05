@@ -215,7 +215,7 @@ void Scene::RTIW()
 
     Eye->SetupCamera(
         vec3(-4.57f, 10.19f, -27.37f),
-        vec3(-1.4f, 4.0f, -4.0f) - vec3(-4.57f, 10.19f, -27.37f),// normalize(vec3(0.15f, -0.27f, 0.95f)),
+        vec3(0.0f, 10.0f, 0.0f) - vec3(-4.57f, 10.19f, -27.37f),// normalize(vec3(0.15f, -0.27f, 0.95f)),
         45.0f
     );
     day = 1;

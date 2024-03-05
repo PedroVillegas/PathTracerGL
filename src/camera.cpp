@@ -56,13 +56,11 @@ void Camera::SetupCamera(
     m_Forward = glm::normalize(forward);
     m_QuatOrientation = glm::quatLookAt(m_Forward, Up);
 
-    m_Yaw = 90.f;
+    m_Pitch = glm::asin(m_Forward.y); // in Radians
+    m_Yaw   = glm::asin(m_Forward.z / glm::cos(m_Pitch));
 
-    //m_Yaw = std::atan2f(m_Forward.x, m_Forward.z) * 180.f / PI;
-    //m_Pitch = -glm::asin(m_Forward.y) * 180.f / PI;
-
-    //m_Pitch = glm::degrees(glm::eulerAngles(m_QuatOrientation).x);
-    //m_Yaw   = glm::degrees(glm::eulerAngles(m_QuatOrientation).y);
+    m_Pitch = glm::degrees(m_Pitch);
+    m_Yaw   = glm::degrees(m_Yaw);
 
     RecalculateProjection();
     RecalculateView();
@@ -212,9 +210,6 @@ bool Camera::FPS(float dt, Window* window)
             m_Yaw   = glm::mod(m_Yaw, 360.0f);
             m_Pitch = glm::clamp(m_Pitch, -89.0f, 89.0f);
 
-            //m_QuatOrientation *= glm::angleAxis(-dx, glm::vec3(0, 1, 0) * m_QuatOrientation);
-            //m_QuatOrientation *= glm::angleAxis( dy, glm::vec3(1, 0, 0) * m_QuatOrientation);
-
             glm::vec3 direction;
             direction.x = cos(glm::radians(m_Yaw)) * cos(glm::radians(m_Pitch));
             direction.y = sin(glm::radians(m_Pitch));
@@ -224,20 +219,20 @@ bool Camera::FPS(float dt, Window* window)
         }
         
         float topSpeed = walkingSpeed;
-        if (glfwGetKey(glfw_win, GLFW_KEY_CAPS_LOCK) == GLFW_PRESS)
+        if (glfwGetKey(glfw_win, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
         {
             topSpeed = sprintingSpeed;
         } 
-        if (glfwGetKey(glfw_win, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) 
-        {
-            topSpeed = slowSpeed;
-        }
+        //if (glfwGetKey(glfw_win, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) 
+        //{
+        //    topSpeed = slowSpeed;
+        //}
 
         // Movement delta
         glm::vec3 M { 0.0f, 0.0f, 0.0f };
 
         M.x = float((glfwGetKey(glfw_win, GLFW_KEY_D) == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_A) == GLFW_PRESS));
-        M.y = float((glfwGetKey(glfw_win, GLFW_KEY_SPACE) == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS));
+        M.y = float((glfwGetKey(glfw_win, GLFW_KEY_SPACE) == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS));
         M.z = float((glfwGetKey(glfw_win, GLFW_KEY_W) == GLFW_PRESS) - (glfwGetKey(glfw_win, GLFW_KEY_S) == GLFW_PRESS));
 
         glm::mat3 orient;
