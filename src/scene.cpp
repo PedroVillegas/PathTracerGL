@@ -107,13 +107,9 @@ void Scene::AddLight(size_t id, glm::vec3 le)
     lights.push_back(light);
 }
 
-Material Scene::CreateGlassMat(glm::vec3 absorption, float ior, float roughness)
+Material Scene::CreateGlassMat(glm::vec3 absorption, float roughness)
 {
     Material out = Material();
-    out.refractionChance = 1.0f;
-    out.specularChance = 0.02f;
-    out.absorption = absorption;
-    out.ior = ior;
     out.roughness = roughness;
     
     return out;
@@ -131,9 +127,8 @@ Material Scene::CreateDiffuseMat(glm::vec3 albedo, float roughness)
 Material Scene::CreateMirrorMat(glm::vec3 albedo, float roughness)
 {
     Material out = Material();
-    out.specularChance = 1.0f;
-    out.metallic = 1.0f;
     out.albedo = albedo;
+    out.metallic = 1.0f;
     out.roughness = roughness;
     
     return out;
@@ -144,7 +139,6 @@ Material Scene::CreateDielectricMat(glm::vec3 albedo, float roughness, float spe
     Material out = Material();
     out.albedo = albedo;
     out.roughness = roughness;
-    out.specularChance = specular;
     
     return out;
 }
@@ -196,8 +190,8 @@ void Scene::WhiteRoomColouredLights()
     AddCube(vec3(0.0f, roomHeight/2.0f, +roomDepth/2.0f), vec3(roomWidth, roomHeight, 0)+thickness, White);
     AddCube(vec3(0.0f, roomHeight/2.0f, -roomDepth/2.0f), vec3(roomWidth, roomHeight, 0)+thickness, White);
 
-    AddSphere(vec3(0.f, roomHeight/2.f, 0.f), 5.0f, CreateGlassMat(vec3(0.0f), 1.55f, 0.01f));
-    // AddSphere(vec3(-12.5f, 4.0f, 4.5f), 4.0f, CreateMirrorMat(vec3(1.0f), 0.1f));
+    //AddSphere(vec3(0.f, roomHeight/2.f, 0.f), 5.0f, CreateGlassMat(vec3(0.0f), 1.55f, 0.01f));
+    AddSphere(vec3(-12.5f, 4.0f, 4.5f), 4.0f, CreateMirrorMat(vec3(1.0f), 0.1f));
 
     vec3 WarmSun = vec3(.992156862745098, .8862745098039216, .6862745098039216);
     vec3 LeftL   = vec3(0.012f, 0.039f, 0.51f);
@@ -330,9 +324,6 @@ void Scene::CornellBox()
 
     // Ground
     AddCube(vec3(0.0f), vec3(10.f, 0.01f, 10.f), whiteDiffuse);
-
-    Material GLASS = CreateGlassMat(vec3(0.0f), 1.55f, 0.04f);
-    AddSphere(vec3(2.5f, 2.0f, 2.0f), 2.0f, GLASS);
 
     Material MIRROR = CreateMirrorMat(vec3(0.7f), 0.04f);
     AddSphere(vec3(-2.5f, 2.0f, -2.0f), 2.0f, MIRROR);

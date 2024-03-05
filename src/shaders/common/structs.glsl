@@ -1,15 +1,10 @@
 struct Material
 {
-    vec3 albedo;                    // Base Colour
-    float specularChance;           // How reflective it is
-    vec3 emissive;                  // How emissive it is
-    float intensity;                // How strong it emits
-    vec3 absorption;                // Absorption for beer's law
-    float refractionChance;         // How transparent it is
-    float ior;                      // Index of Refraction - how refractive it is
-    float metallic;                 // A material is either metallic or it's not
-    float roughness;                // How rough the object is
-    float pad;
+    vec3 albedo;
+    float roughness;
+    vec3 emissive;
+    float intensity;
+    float metallic;
 };
 
 struct LinearBVHNode

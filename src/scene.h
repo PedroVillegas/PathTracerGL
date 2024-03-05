@@ -53,7 +53,7 @@ public:
     void AddCube(glm::vec3 position, glm::vec3 dimensions, Material mat);
     void AddLight(size_t id, glm::vec3 le);
 
-    Material CreateGlassMat(glm::vec3 absorption, float ior, float roughness);
+    Material CreateGlassMat(glm::vec3 absorption, float roughness);
     Material CreateDiffuseMat(glm::vec3 albedo, float roughness);
     Material CreateMirrorMat(glm::vec3 albedo, float roughness);
     Material CreateDielectricMat(glm::vec3 albedo, float roughness, float specular);

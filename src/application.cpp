@@ -71,7 +71,7 @@ void Application::Render()
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0.0f, 0.0f});
     ImGui::Begin("Viewport", 0, ImGuiWindowFlags_NoTitleBar);
 
-    m_ViewportWidth = (uint32_t) ImGui::GetContentRegionAvail().x;
+    m_ViewportWidth  = (uint32_t) ImGui::GetContentRegionAvail().x;
     m_ViewportHeight = (uint32_t) ImGui::GetContentRegionAvail().y;
 
     uint32_t image = m_Renderer->GetViewportFramebuffer().GetTextureID();

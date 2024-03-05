@@ -172,7 +172,7 @@ vec4 PathTrace(Ray ray)
         if (HitRec.fromInside)
         {
             // Apply beer's law
-            throughput *= exp(-HitRec.mat.absorption * HitRec.t);
+            //throughput *= exp(-HitRec.mat.absorption * HitRec.t);
         }
 
         // Calculate direct lighting
@@ -182,14 +182,7 @@ vec4 PathTrace(Ray ray)
         // Calculate indirect lighting
         vec3 indirect;
         float BRDF_pdf = 1.0;
-        if (u_UseBlueNoise == 0)
-        {
-            indirect = EvalIndirect(HitRec, ray, lastBounceSpecular);
-        }
-        else
-        {
-            indirect = EvalIndirectBRDF(ray, HitRec, BRDF_pdf);
-        }
+        indirect = EvalIndirectBRDF(ray, HitRec, BRDF_pdf);
         throughput *= indirect / BRDF_pdf;
     }
     // Debug: Visualize BVH Bounding Boxes

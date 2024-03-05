@@ -327,28 +327,12 @@ void Gui::CreateSceneWindow(Renderer& renderer, Scene& scene)
                 if (ImGui::ColorEdit3("##Albedo", glm::value_ptr(prim.mat.albedo))) 
                     renderer.ResetSamples();
 
-                ImGui::Text("Absorption");
-                if (ImGui::DragFloat3("##Absorption", glm::value_ptr(prim.mat.absorption), 0.001f, 0.0f, 1.0f)) 
-                    renderer.ResetSamples();
-
                 ImGui::Text("Roughness");
                 if (ImGui::SliderFloat("##roughness", &prim.mat.roughness, 0.0f, 1.0f)) 
                     renderer.ResetSamples();
 
                 ImGui::Text("Metallic");
                 if (ImGui::SliderFloat("##metallic", &prim.mat.metallic, 0.0f, 1.0f)) 
-                    renderer.ResetSamples();
-
-                ImGui::Text("Specular Chance");
-                if (ImGui::SliderFloat("##SpecularChance", &prim.mat.specularChance, 0.0f, 1.0f)) 
-                    renderer.ResetSamples();
-
-                ImGui::Text("IOR");
-                if (ImGui::SliderFloat("##IOR", &prim.mat.ior, 1.0f, 2.5f)) 
-                    renderer.ResetSamples();
-
-                ImGui::Text("Refraction Chance");
-                if (ImGui::SliderFloat("##RefractionChance", &prim.mat.refractionChance, 0.0f, 1.0f)) 
                     renderer.ResetSamples();
             }
             else
