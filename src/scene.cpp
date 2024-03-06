@@ -220,7 +220,7 @@ void Scene::RTIW()
     );
     day = 1;
     sunElevation    = 18.7f;
-    sunAzimuth      = -165.0f;
+    sunAzimuth      = -150.0f;
 
     float roomWidth         = 50.0f;
     float roomHeight        = roomWidth/2.0f;
@@ -234,7 +234,7 @@ void Scene::RTIW()
     Material Red    = CreateDiffuseMat(vec3(.886, .102, .102)*1.0f, 1.0f);
     Material Purple = CreateDiffuseMat(vec3(183, 81, 174) / 255.0f, 1.0f);
     Material Orange = CreateDiffuseMat(vec3(226, 161, 26) / 255.0f, 1.0f);
-    Material Green  = CreateDiffuseMat(vec3(81, 183, 81) / 255.0f, 1.0f);
+    Material Green  = CreateDiffuseMat(vec3(64, 98, 57) / 255.0f, 1.0f);
     Material Blue   = CreateDiffuseMat(vec3(.102, .5, .886)*1.0f, 1.0f);  
     
     float floorStripW = roomWidth/6.0f;
@@ -283,7 +283,7 @@ void Scene::RTIW()
     //AddSphere(vec3(14.5f, 4.0f, -1.5f), 4.0f, CreateMirrorMat(vec3(0.75f), 0.0f));
     //AddCube(vec3(-1.4f, 4.0f, -4.0f), vec3(8.0f), CreateDiffuseMat(vec3(136, 82, 153)/255.0f, 1.0f));
 
-    AddSphere(vec3(0.0f, 10.0f, 0.0f), 4.0f, CreateDielectricMat(vec3(0.0f), 0.0f, 0.0f));
+    AddSphere(vec3(0.0f, 10.0f, 0.0f), 4.0f, CreateDielectricMat(vec3(64, 98, 57) / 255.0f, 0.0f, 0.0f));
 
 
     Init();

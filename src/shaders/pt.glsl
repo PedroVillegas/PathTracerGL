@@ -1,7 +1,7 @@
 #version 460 core
 #extension GL_EXT_scalar_block_layout: require
 
-float Saturate( float x ) { return clamp( x, 0.0, 1.0 ); }
+float Saturate( float x ) { return clamp( x, 0.001, 1.0 ); }
 
 #define LIGHT_SPHERE 0
 #define LIGHT_AREA 1
@@ -51,7 +51,7 @@ vec3 EstimateDirect(Light light, Payload payload, Ray ray)
     if (cos_term == 0) return directIlluminance;
 
     // Cast shadow ray from surface to light
-    Ray SR = Ray(payload.position + payload.normal * 0.001, wi);
+    Ray SR = Ray(payload.position + payload.normal * EPS, wi);
     Payload shadowInfo;
     if (AnyHit(SR, shadowInfo, distance(SR.origin, sampledPos)) 
         && shadowInfo.primID == light.id && distance(shadowInfo.position, sampledPos) < 0.1)
@@ -102,7 +102,7 @@ vec3 SampleSun(Payload shadingPoint, Ray ray, bool lastBounceSpecular)
         if (cos_term == 0.0) return directIlluminance;
 
         // Cast shadow ray from surface to light
-        Ray SR = Ray(shadingPoint.position + shadingPoint.normal * 0.001, wi);
+        Ray SR = Ray(shadingPoint.position + shadingPoint.normal * EPS, wi);
         Payload shadowInfo;
         if (!AnyHit(SR, shadowInfo, INF))
         {
@@ -124,22 +124,21 @@ vec4 PathTrace(Ray ray)
     vec3 throughput = vec3(1.0); 
     bool lastBounceSpecular = false;
     float nodeVisits = 0.0;
-    // float bvhDepthReached = 0.0;
     
     for (int bounce = 0; bounce < Scene.Depth; bounce++)
     {
         /* Russian Roulette */
-//        if (bounce >= RUSSIAN_ROULETTE_MIN_BOUNCES)
-//        {
-//            //float rrp = min(0.95, max(throughput.x, max(throughput.y, throughput.z)));
-//            float rrp = min(0.95, Luma(throughput));
-//            if (Randf01() > rrp) break;
-//            else throughput /= rrp;
-//        }
+        if (bounce >= RUSSIAN_ROULETTE_MIN_BOUNCES)
+        {
+            float rrp = min(0.95, Luma(throughput) + 0.01);
+            if (Randf01() > rrp) break;
+            else throughput /= rrp;
+        }
 
         // Keep track of ray intersection point, direction etc
         Payload HitRec = ClosestHit(ray, INF, nodeVisits);
 
+        /* Debug: Visualize BVH Bounding Boxes */
         if (u_DebugBVHVisualisation == 1)
         {
             radiance = nodeVisits > 0 ? InfernoQuintic(nodeVisits / u_TotalNodes) : vec3(0.0);
@@ -172,7 +171,7 @@ vec4 PathTrace(Ray ray)
         if (HitRec.fromInside)
         {
             // Apply beer's law
-            //throughput *= exp(-HitRec.mat.absorption * HitRec.t);
+            //throughput *= exp(-HitRec.mat.albedo * HitRec.t);
         }
 
         // Calculate direct lighting
@@ -183,12 +182,11 @@ vec4 PathTrace(Ray ray)
         vec3 indirect;
         float BRDF_pdf = 1.0;
         indirect = EvalIndirectBRDF(ray, HitRec, BRDF_pdf);
-        throughput *= indirect / BRDF_pdf;
+        if (BRDF_pdf > 0.0)
+            throughput *= indirect / BRDF_pdf;
+        else
+            break;
     }
-    // Debug: Visualize BVH Bounding Boxes
-//    float normalizationFactor = u_TotalNodes;
-//    if (u_DebugBVHVisualisation == 1)
-//        radiance.rgb = InfernoQuintic(nodeVisits / normalizationFactor);
 
     return vec4(radiance, 1.0); 
 }

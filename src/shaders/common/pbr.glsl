@@ -61,6 +61,22 @@ float F_Schlick(float u, float f0, float f90)
 	return f0 + (f90 - f0) * pow(1.0 - u, 5.0);
 }
 
+float F_Dielectric(float cosThetaI, float eta)
+{
+    float sinThetaTSq = eta * eta * (1.0 - cosThetaI * cosThetaI);
+
+    // Total internal reflection
+    if (sinThetaTSq > 1.0)
+        return 1.0;
+
+    float cosThetaT = sqrt(max(1.0 - sinThetaTSq, 0.0));
+
+    float rs = (eta * cosThetaT - cosThetaI) / (eta * cosThetaT + cosThetaI);
+    float rp = (eta * cosThetaI - cosThetaT) / (eta * cosThetaI + cosThetaT);
+
+    return 0.5 * (rs * rs + rp * rp);
+}
+
 float Fd_Lambert()
 {	
 	return ONE_PI;
@@ -155,10 +171,12 @@ vec3 EvalIndirectBRDF(inout Ray ray, Payload shadingPoint, out float pdf)
 	vec3 l;
 	vec3 v = -ray.direction;
 	vec3 n = shadingPoint.normal;
-	vec3 albedo		= shadingPoint.mat.albedo;
-	float metallic  = shadingPoint.mat.metallic;
-	float roughness = shadingPoint.mat.roughness;
-	float alpha		= roughness * roughness;
+	vec3 position	   = shadingPoint.position;
+	vec3 albedo		   = shadingPoint.mat.albedo;
+	float transmission = shadingPoint.mat.transmission;
+	float ior          = shadingPoint.mat.ior;
+	float metallic	   = shadingPoint.mat.metallic;
+	float roughness    = shadingPoint.mat.roughness;
 
 	float rand1 = Randf01();
 	float rand2 = Randf01();
@@ -176,39 +194,45 @@ vec3 EvalIndirectBRDF(inout Ray ray, Payload shadingPoint, out float pdf)
 	float VoH = dot(v, h);
 	vec3 f0 = mix(vec3(0.04), albedo, metallic);
 	vec3 F = F_Schlick(VoH, f0);
+	float n_1 = shadingPoint.fromInside ? ior : 1.0;
+    float n_2 = shadingPoint.fromInside ? 1.0 : ior;
+	float dF = F_Dielectric(abs(VoH), n_1 / n_2);
     
 	// Lobe weight probability
-	float dWeight = (1.0 - metallic);
+	pdf = 1.0;
+	float dWeight = (1.0 - metallic) * (1.0 - transmission);
 	float sWeight = Luma(F);
-	float invW    = 1.0 / (dWeight + sWeight);
+	float tWeight = transmission * (1.0 - metallic) * (1.0 - dF);
+	float invW    = 1.0 / (dWeight + sWeight + tWeight);
 	dWeight *= invW;
 	sWeight *= invW;
+	tWeight *= invW;
     
 	// cdf
-	float cdf[2];
+	float cdf[3];
 	cdf[0] = dWeight;
 	cdf[1] = cdf[0] + sWeight;
+	cdf[2] = cdf[1] + tWeight;
     
 	vec3 brdf = vec3(0.0);
-	float rnd = Randf01();
-	if (rnd < cdf[0]) // Diffuse
+	if (rand1 < cdf[0]) // Diffuse
 	{
 		l = SampleCosineHemisphere(rand1, rand2, n);
 		h = normalize(l + v);
 
 		ray.direction = l;
-		ray.origin = shadingPoint.position + n * 0.001;
+		ray.origin = position + n * EPS;
 		
-		pdf = 1.0;
-		vec3 Fd = albedo;// * (1.0 - F);
+		pdf *= dWeight;
+		vec3 Fd = albedo * (1.0 - F);
 		brdf = Fd * abs(dot(n, l));
 	} 
-	else if (rnd < cdf[1]) // Specular
+	else if (rand1 < cdf[1]) // Specular
 	{
 		l = reflect(-v, h);
 
 		ray.direction = l;
-		ray.origin = shadingPoint.position + n * 0.001;
+		ray.origin = position + n * EPS;
         
 		float NoL = dot(n, l);
 		float NoV = dot(n, v);
@@ -217,11 +241,10 @@ vec3 EvalIndirectBRDF(inout Ray ray, Payload shadingPoint, out float pdf)
         
 		float G1 = V_SmithGGXMasking(NoV, roughness);
 		float G2 = V_SmithGGXMaskingShadowing(NoV, NoL, roughness);
-		//float G2 = V_SmithGGXCorrelated(NoV, NoL, roughness);
+		if (G1 <= 0.0) return vec3(0.0);
 
 		// float D  = D_GGX(NoH, roughness);
 		// pdf = G1 * VoH * D / NoV * 4 * VoH;
-		pdf = 1.0;
 
 		/*
 		* Note: the pdf is 1.0 after cancelling terms as follows
@@ -232,8 +255,59 @@ vec3 EvalIndirectBRDF(inout Ray ray, Payload shadingPoint, out float pdf)
 		*
 		*/		
 
+		pdf *= sWeight;
 		vec3 Fs = F * (G2 / G1);
 		brdf = Fs;
+	}
+	else //if (rand1 < cdf[2]) // Transmission
+	{
+		float eta = shadingPoint.fromInside ? ior : (1.0 / ior);
+		l = refract(-v, h, eta);
+
+		ray.direction = l;
+		ray.origin = position - n * EPS;
+
+		h = normalize(v + l * eta);
+
+		float NoL = Saturate(abs(dot(n, l)));
+        float NoV = Saturate(abs(dot(n, v)));
+		float LoH = Saturate(abs(dot(l, h)));
+		float VoH = Saturate(abs(dot(v, h)));
+
+		float iorV = shadingPoint.fromInside ? ior : 1.0;
+        float iorL = !shadingPoint.fromInside ? ior : 1.0;
+		
+		// https://www.cs.cornell.edu/~srm/publications/EGSR07-btdf.pdf - Eq. 21
+		//float D = D_GGX(NoH, roughness);
+		float G1 = V_SmithGGXMasking(NoV, roughness);
+		float G2 = V_SmithGGXMaskingShadowing(NoV, NoL, roughness);
+		float denom = iorL * LoH + iorV * VoH;
+		denom *= denom;
+		if (denom <= EPS || G1 <= 0.0 || dF > 1.0) return vec3(0.0);
+		//float jacobian = LoH / denom;
+		//pdf = G1 * D * max(0.0, dot(v, h)) * jacobian / NoV;
+		//vec3 Ft = vec3(1.0) * jacobian * VoH * iorV * iorV * (1.0 - dF) * G2 * D / (denom * NoL * NoV);
+
+		/*
+		* Note: the pdf is 1.0 after cancelling terms as follows
+		*
+		*		 J * VoH * iorV * iorV * (1.0 - F) * G2 * D		1
+		* Ft =  -------------------------------------------- * ---
+		*						NoL * NoV		               pdf
+		*
+		*        J * VoH * iorV * iorV * (1.0 - F) * G2 * D			   NoV
+		*	 =  -------------------------------------------- * ------------------
+		*						NoL * NoV						G1 * D * VoH * J
+		*
+		*        iorV * iorV * (1.0 - F) * G2
+		*	 =  ------------------------------
+		*					 G1
+		*
+		*/
+
+		pdf *= tWeight;
+		vec3 Ft = vec3(1.0) * iorV * iorV * (1.0 - dF) * G2 / G1;
+		brdf = Ft * (1.0 - metallic) * transmission;
 	}
 
 	return brdf;
@@ -253,7 +327,7 @@ vec3 EvalBRDF(Ray ray, Payload shadingPoint, vec3 l, out float pdf)
 	vec3 albedo		= shadingPoint.mat.albedo;
 	float metallic  = shadingPoint.mat.metallic;
 	float roughness = shadingPoint.mat.roughness;
-	float alpha		= roughness * roughness;
+	float transmission = shadingPoint.mat.transmission;
 
 	float rand1 = Randf01();
 	float rand2 = Randf01();
@@ -281,8 +355,8 @@ vec3 EvalBRDF(Ray ray, Payload shadingPoint, vec3 l, out float pdf)
 	*
 	*/	
 
-	vec3 Fs = F * (G2 / G1);
-	vec3 Fd = albedo * (1.0 - F) * (1.0 - metallic);
+	vec3 Fs = F * (G2 / G1) * (1.0 - transmission) * (1.0 - metallic);
+	vec3 Fd = albedo * (1.0 - F) * (1.0 - transmission) * (1.0 - metallic);
 	vec3 brdf = Fd + Fs;
 
 	return brdf;

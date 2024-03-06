@@ -5,6 +5,8 @@ struct Material
     vec3 emissive;
     float intensity;
     float metallic;
+    float transmission;
+    float ior;
 };
 
 struct LinearBVHNode

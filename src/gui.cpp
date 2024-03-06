@@ -334,6 +334,14 @@ void Gui::CreateSceneWindow(Renderer& renderer, Scene& scene)
                 ImGui::Text("Metallic");
                 if (ImGui::SliderFloat("##metallic", &prim.mat.metallic, 0.0f, 1.0f)) 
                     renderer.ResetSamples();
+
+                ImGui::Text("Transmission");
+                if (ImGui::SliderFloat("##transmission", &prim.mat.transmission, 0.0f, 1.0f))
+                    renderer.ResetSamples();
+
+                ImGui::Text("IOR");
+                if (ImGui::SliderFloat("##ior", &prim.mat.ior, 1.0f, 2.5f))
+                    renderer.ResetSamples();
             }
             else
             {

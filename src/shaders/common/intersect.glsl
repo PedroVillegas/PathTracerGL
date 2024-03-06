@@ -28,9 +28,9 @@ vec3 GetAABBNormal(vec3 position, vec3 dimensions, vec3 surfacePosition)
     vec3 centerSurface = surfacePosition - (bmax + bmin) * 0.5;
     
     vec3 normal = vec3(0.0);
-    normal += vec3(sign(centerSurface.x), 0.0, 0.0) * step(abs(abs(centerSurface.x) - halfSize.x), EPSILON);
-    normal += vec3(0.0, sign(centerSurface.y), 0.0) * step(abs(abs(centerSurface.y) - halfSize.y), EPSILON);
-    normal += vec3(0.0, 0.0, sign(centerSurface.z)) * step(abs(abs(centerSurface.z) - halfSize.z), EPSILON);
+    normal += vec3(sign(centerSurface.x), 0.0, 0.0) * step(abs(abs(centerSurface.x) - halfSize.x), EPS);
+    normal += vec3(0.0, sign(centerSurface.y), 0.0) * step(abs(abs(centerSurface.y) - halfSize.y), EPS);
+    normal += vec3(0.0, 0.0, sign(centerSurface.z)) * step(abs(abs(centerSurface.z) - halfSize.z), EPS);
     return normalize(normal);
 }
 
@@ -76,7 +76,7 @@ bool Intersect(Ray ray, Primitive prim, inout Payload payload)
             // IntersectSphere tNear and tFar to be the intersection points of the ray and object
             // These intersections are only valid if the far one is in front of the camera and
             // the near one is in front of the closest object so far
-            if (IntersectSphere(prim.position, prim.radius, ray, tNear, tFar) && tFar > 0.001 && tNear < payload.t)
+            if (IntersectSphere(prim.position, prim.radius, ray, tNear, tFar) && tFar > EPS && tNear < payload.t)
             {
                 payload.t = tNear < 0 ? tFar : tNear;
                 payload.position = ray.origin + ray.direction * payload.t;
@@ -88,7 +88,7 @@ bool Intersect(Ray ray, Primitive prim, inout Payload payload)
             }
             break;
         case 1: // AABB
-            if (IntersectAABB(prim.position, prim.dimensions, ray, tNear, tFar) && tFar > 0.001 && tNear < payload.t)
+            if (IntersectAABB(prim.position, prim.dimensions, ray, tNear, tFar) && tFar > EPS && tNear < payload.t)
             {
                 payload.t = tNear < 0 ? tFar : tNear;
                 payload.position = ray.origin + ray.direction * payload.t;

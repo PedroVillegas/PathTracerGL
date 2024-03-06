@@ -15,7 +15,7 @@ enum { JODIE_REINHARD = 0, ACES_FILM, ACES_FITTED, TONY_MCMAPFACE, AGX_PUNCHY };
 struct ApplicationSettings
 {
     int tonemap = TONY_MCMAPFACE;
-    bool enableVsync = true;
+    bool enableVsync = false;
     bool enableBVH = false;
     bool enableDebugBVHVisualisation = false;
     bool enableGui = true;

@@ -9,16 +9,22 @@ struct alignas(16) Material
     glm::vec3 emissive { 0.0f };
     float intensity = 0.0f;
     float metallic = 0.0f;
+    float transmission = 0.0f;
+    float ior = 1.55f;
 
     Material() = default;
 
     Material(glm::vec3 albedo,
              glm::vec3 emissive, float intensity,
-             float metallic, float roughness)
+             float roughness, float metallic,
+             float transmission, float ior
+    )
     : albedo(albedo)
     , emissive(emissive)
     , intensity(intensity)
     , metallic(metallic)
     , roughness(roughness)
+    , transmission(transmission)
+    , ior(ior)
     {}
 };
