@@ -159,7 +159,7 @@ vec3 toLocal(vec3 x, vec3 y, vec3 z, vec3 v)
 }
 
 // https://schuttejoe.github.io/post/ggximportancesamplingpart2/
-vec3 EvalIndirectBRDF(inout Ray ray, Payload shadingPoint, out float pdf)
+vec3 EvalIndirectBRDF(inout Ray ray, Payload shadingPoint, out float pdf, inout bool lastBounceSpecular)
 {
 	/*
 	* View Vector	   : v || wo
@@ -224,11 +224,12 @@ vec3 EvalIndirectBRDF(inout Ray ray, Payload shadingPoint, out float pdf)
 		ray.origin = position + n * EPS;
 		
 		pdf *= dWeight;
-		vec3 Fd = albedo * (1.0 - F);
+		vec3 Fd = albedo ;
 		brdf = Fd * abs(dot(n, l));
 	} 
 	else if (rand1 < cdf[1]) // Specular
 	{
+		lastBounceSpecular = true;
 		l = reflect(-v, h);
 
 		ray.direction = l;
@@ -247,7 +248,7 @@ vec3 EvalIndirectBRDF(inout Ray ray, Payload shadingPoint, out float pdf)
 		// pdf = G1 * VoH * D / NoV * 4 * VoH;
 
 		/*
-		* Note: the pdf is 1.0 after cancelling terms as follows
+		* Note: the pdf = G1 after cancelling terms as follows
 		*
 		*		 F * G2 * D * NoL	  1		  F * G2 * D * NoL	    NoV * 4 * VoH		F * G2
 		* Fs =  -----------------  * ---  =  -----------------  *  ---------------  =  --------
@@ -256,11 +257,13 @@ vec3 EvalIndirectBRDF(inout Ray ray, Payload shadingPoint, out float pdf)
 		*/		
 
 		pdf *= sWeight;
+		// Move G1 to Fs
 		vec3 Fs = F * (G2 / G1);
 		brdf = Fs;
 	}
 	else //if (rand1 < cdf[2]) // Transmission
 	{
+		lastBounceSpecular = true;
 		float eta = shadingPoint.fromInside ? ior : (1.0 / ior);
 		l = refract(-v, h, eta);
 
@@ -289,7 +292,7 @@ vec3 EvalIndirectBRDF(inout Ray ray, Payload shadingPoint, out float pdf)
 		//vec3 Ft = vec3(1.0) * jacobian * VoH * iorV * iorV * (1.0 - dF) * G2 * D / (denom * NoL * NoV);
 
 		/*
-		* Note: the pdf is 1.0 after cancelling terms as follows
+		* Note: the pdf = G1 after cancelling terms as follows
 		*
 		*		 J * VoH * iorV * iorV * (1.0 - F) * G2 * D		1
 		* Ft =  -------------------------------------------- * ---
@@ -306,10 +309,11 @@ vec3 EvalIndirectBRDF(inout Ray ray, Payload shadingPoint, out float pdf)
 		*/
 
 		pdf *= tWeight;
+		// Move G1 to Ft
 		vec3 Ft = vec3(1.0) * iorV * iorV * (1.0 - dF) * G2 / G1;
-		brdf = Ft * (1.0 - metallic) * transmission;
+		brdf = Ft;
 	}
-
+	pdf = 1.0;
 	return brdf;
 }
 

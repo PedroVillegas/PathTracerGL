@@ -94,7 +94,7 @@ void Gui::CreateCameraWindow(Renderer& renderer, Scene& scene)
         ImGui::Text("Camera Type");
         if (ImGui::Combo("##CameraType", &scene.Eye->type, "FREE\0CINEMATIC\0")) 
         {
-            scene.Eye->Reset();
+            //scene.Eye->Reset();
             renderer.ResetSamples();
         }
 
@@ -105,7 +105,7 @@ void Gui::CreateCameraWindow(Renderer& renderer, Scene& scene)
         ImGui::Text("Sensitivity");
         ImGui::SliderFloat("##Sensitivity", &scene.Eye->sensitivity, 1.0f, 100.0f);
         ImGui::Text("Slow Walk Speed");
-        ImGui::SliderFloat("##SlowWalkingSpeed", &scene.Eye->slowSpeed, 1.0f, 10.0f);
+        ImGui::SliderFloat("##SlowWalkingSpeed", &scene.Eye->slowSpeed, 3.0f, 10.0f);
         ImGui::Text("Walking Speed");
         ImGui::SliderFloat("##WalkingSpeed", &scene.Eye->walkingSpeed, 10.0f, 50.0f);
         ImGui::Text("Sprinting Speed");
@@ -325,6 +325,10 @@ void Gui::CreateSceneWindow(Renderer& renderer, Scene& scene)
 
                 ImGui::Text("Albedo");
                 if (ImGui::ColorEdit3("##Albedo", glm::value_ptr(prim.mat.albedo))) 
+                    renderer.ResetSamples();
+
+                ImGui::Text("Absorption");
+                if (ImGui::ColorEdit3("##Absorption", glm::value_ptr(prim.mat.absorption)))
                     renderer.ResetSamples();
 
                 ImGui::Text("Roughness");

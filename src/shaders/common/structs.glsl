@@ -4,9 +4,10 @@ struct Material
     float roughness;
     vec3 emissive;
     float intensity;
+    vec3 absorption;
+    float ior;
     float metallic;
     float transmission;
-    float ior;
 };
 
 struct LinearBVHNode

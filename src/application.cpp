@@ -25,13 +25,19 @@ Application::~Application()
 void Application::Run()
 {
     Setup();
-
+    
+    // https://gafferongames.com/post/fix_your_timestep/
+    constexpr double dt = 1.0 / 144.0;
+    double t = 0.0;
+    double currentTime = glfwGetTime();
+    double accumulator = 0.0;
     while (!m_Window->Closed())
     {
-        // Input
-        //m_Window->ProcessInput();
-        /*if (glfwGetKey(m_Window->GetWindow(), GLFW_KEY_G) == GLFW_PRESS)
-            m_Settings.enableGui = !m_Settings.enableGui ? true : false;*/
+        double newTime = glfwGetTime();
+        double frameTime = newTime - currentTime;
+        currentTime = newTime;
+
+        accumulator += frameTime;
 
         m_Settings.enableVsync == true ? glfwSwapInterval(1) : glfwSwapInterval(0);
 
@@ -39,8 +45,13 @@ void Application::Run()
 
         Resize();
 
-        if (m_Scene->Eye->OnUpdate(m_DeltaTime, &(*m_Window))) 
-            m_Renderer->ResetSamples();
+        while (accumulator >= dt)
+        {
+            if (m_Scene->Eye->OnUpdate(dt, &(*m_Window))) 
+                m_Renderer->ResetSamples();
+            accumulator -= dt;
+            t += dt;
+        }
 
         Render();
 

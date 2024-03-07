@@ -110,6 +110,8 @@ void Scene::AddLight(size_t id, glm::vec3 le)
 Material Scene::CreateGlassMat(glm::vec3 absorption, float roughness)
 {
     Material out = Material();
+    out.transmission = 1.0;
+    out.absorption = absorption;
     out.roughness = roughness;
     
     return out;
@@ -234,7 +236,7 @@ void Scene::RTIW()
     Material Red    = CreateDiffuseMat(vec3(.886, .102, .102)*1.0f, 1.0f);
     Material Purple = CreateDiffuseMat(vec3(183, 81, 174) / 255.0f, 1.0f);
     Material Orange = CreateDiffuseMat(vec3(226, 161, 26) / 255.0f, 1.0f);
-    Material Green  = CreateDiffuseMat(vec3(64, 98, 57) / 255.0f, 1.0f);
+    Material Green  = CreateDiffuseMat(vec3(117, 176, 105) / 255.0f, 1.0f);
     Material Blue   = CreateDiffuseMat(vec3(.102, .5, .886)*1.0f, 1.0f);  
     
     float floorStripW = roomWidth/6.0f;
@@ -325,13 +327,16 @@ void Scene::CornellBox()
     // Ground
     AddCube(vec3(0.0f), vec3(10.f, 0.01f, 10.f), whiteDiffuse);
 
-    Material MIRROR = CreateMirrorMat(vec3(0.7f), 0.04f);
+    Material MIRROR = CreateMirrorMat(vec3(1.0f), 0.0f);
     AddSphere(vec3(-2.5f, 2.0f, -2.0f), 2.0f, MIRROR);
     //AddCube(vec3(0.0f, 2.0f, 0.0f), vec3(2.0f), MIRROR);
 
+    Material Glass = CreateGlassMat(vec3(0.8, 0.0, 0.2), 0.0f);
+    AddSphere(vec3(2.0f, 2.0f, 2.0f), 2.0f, Glass);
+
     Material light = CreateLightMat(vec3(.992156862745098f, .8862745098039216f, .6862745098039216f), 10.f);
     // AddSphere(vec3(0.0f, 8.0f, 0.0f), 1.0f, light);
-    AddCube(vec3(0.0f, 10.0f - 0.01f, 0.0f), vec3(2.5f, 0.01f, 2.5f), light);
+    // AddCube(vec3(0.0f, 10.0f - 0.01f, 0.0f), vec3(2.5f, 0.01f, 2.5f), light);
 
     Init();
 }

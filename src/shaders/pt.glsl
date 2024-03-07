@@ -9,6 +9,7 @@ float Saturate( float x ) { return clamp( x, 0.001, 1.0 ); }
 #define SUN_COLOUR vec3(.992156862745098, .8862745098039216, .6862745098039216)
 #define SUN_SUNSET vec3(182, 126, 91) / 255.0
 #define SUN_INTENSITY 25.0
+#define ENABLE_RUSSIAN_ROULETTE 1
 #define RUSSIAN_ROULETTE_MIN_BOUNCES 5
 
 #include <common/structs.glsl>
@@ -128,12 +129,14 @@ vec4 PathTrace(Ray ray)
     for (int bounce = 0; bounce < Scene.Depth; bounce++)
     {
         /* Russian Roulette */
+#if ENABLE_RUSSIAN_ROULETTE
         if (bounce >= RUSSIAN_ROULETTE_MIN_BOUNCES)
         {
-            float rrp = min(0.95, Luma(throughput) + 0.01);
+            float rrp = min(0.95, max(Luma(throughput), EPS));
             if (Randf01() > rrp) break;
             else throughput /= rrp;
         }
+#endif
 
         // Keep track of ray intersection point, direction etc
         Payload HitRec = ClosestHit(ray, INF, nodeVisits);
@@ -171,7 +174,7 @@ vec4 PathTrace(Ray ray)
         if (HitRec.fromInside)
         {
             // Apply beer's law
-            //throughput *= exp(-HitRec.mat.albedo * HitRec.t);
+            throughput *= exp(-HitRec.mat.absorption * HitRec.t);
         }
 
         // Calculate direct lighting
@@ -181,7 +184,7 @@ vec4 PathTrace(Ray ray)
         // Calculate indirect lighting
         vec3 indirect;
         float BRDF_pdf = 1.0;
-        indirect = EvalIndirectBRDF(ray, HitRec, BRDF_pdf);
+        indirect = EvalIndirectBRDF(ray, HitRec, BRDF_pdf, lastBounceSpecular);
         if (BRDF_pdf > 0.0)
             throughput *= indirect / BRDF_pdf;
         else
