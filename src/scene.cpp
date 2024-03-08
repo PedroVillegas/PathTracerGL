@@ -285,7 +285,7 @@ void Scene::RTIW()
     //AddSphere(vec3(14.5f, 4.0f, -1.5f), 4.0f, CreateMirrorMat(vec3(0.75f), 0.0f));
     //AddCube(vec3(-1.4f, 4.0f, -4.0f), vec3(8.0f), CreateDiffuseMat(vec3(136, 82, 153)/255.0f, 1.0f));
 
-    AddSphere(vec3(0.0f, 10.0f, 0.0f), 4.0f, CreateDielectricMat(vec3(64, 98, 57) / 255.0f, 0.0f, 0.0f));
+    AddSphere(vec3(0.0f, 10.0f, 0.0f), 4.0f, CreateDielectricMat(vec3(117, 176, 105) / 255.0f, 0.0f, 0.0f));
 
 
     Init();

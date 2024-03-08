@@ -88,12 +88,17 @@ bool Intersect(Ray ray, Primitive prim, inout Payload payload)
             }
             break;
         case 1: // AABB
-            if (IntersectAABB(prim.position, prim.dimensions, ray, tNear, tFar) && tFar > EPS && tNear < payload.t)
+            // Transform ray into object space
+            Ray rotatedRay = Ray(vec3(prim.rotation * vec4(ray.origin - prim.position, 1.0)), vec3(prim.rotation * vec4(ray.direction, 1.0)));
+            if (IntersectAABB(vec3(0.0), prim.dimensions, rotatedRay, tNear, tFar) && tFar > EPS && tNear < payload.t)
             {
                 payload.t = tNear < 0 ? tFar : tNear;
                 payload.position = ray.origin + ray.direction * payload.t;
+                // Hit position in object space
+                vec3 p = rotatedRay.origin + rotatedRay.direction * payload.t;
                 payload.mat = prim.mat;
-                vec3 outward_normal = GetAABBNormal(prim.position, prim.dimensions, payload.position);
+                // Rotate normal to world space orientation
+                vec3 outward_normal = vec3(prim.inverseRotation * vec4(GetAABBNormal(prim.position, prim.dimensions, p + prim.position), 1.0));
                 payload.fromInside = payload.t == tFar;
                 payload.normal = payload.fromInside ? -outward_normal : outward_normal;
                 return true;

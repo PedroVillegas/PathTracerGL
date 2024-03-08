@@ -63,7 +63,7 @@ vec3 EstimateDirect(Light light, Payload payload, Ray ray)
         pdf = (r*r) / cos_term * pdf;
         if (pdf < 0.01) return directIlluminance;
         float brdf_pdf;
-        directIlluminance += (EvalBRDF(ray, payload, wi, brdf_pdf) * cos_term * primitive.mat.emissive * primitive.mat.intensity) / pdf;
+        directIlluminance += (EvalBSDF(ray, payload, wi, brdf_pdf) * cos_term * primitive.mat.emissive * primitive.mat.intensity) / pdf;
     }
 
     return directIlluminance;
@@ -110,7 +110,7 @@ vec3 SampleSun(Payload shadingPoint, Ray ray, bool lastBounceSpecular)
             // Only sample if bsdf is non-specular (refl or refr)
             float pdf = 1.0;
             //directIlluminance += EvalBSDF(shadingPoint, ray, wi) * Scene.SunColour * abs(cos_term) * SUN_INTENSITY;
-            directIlluminance += EvalBRDF(ray, shadingPoint, wi, pdf) * Scene.SunColour * abs(cos_term) * SUN_INTENSITY / pdf;
+            directIlluminance += EvalBSDF(ray, shadingPoint, wi, pdf) * Scene.SunColour * abs(cos_term) * SUN_INTENSITY / pdf;
         }
     }
 #endif
@@ -168,7 +168,7 @@ vec4 PathTrace(Ray ray)
         }
 
         // DEBUG Normals
-        // return vec3(HitRec.normal * 0.5 + 0.5);
+        //return vec4(HitRec.normal * 0.5 + 0.5, 1.0);
 
         // https://blog.demofox.org/2020/06/14/casual-shadertoy-path-tracing-3-fresnel-rough-refraction-absorption-orbit-camera/
         if (HitRec.fromInside)
@@ -184,7 +184,7 @@ vec4 PathTrace(Ray ray)
         // Calculate indirect lighting
         vec3 indirect;
         float BRDF_pdf = 1.0;
-        indirect = EvalIndirectBRDF(ray, HitRec, BRDF_pdf, lastBounceSpecular);
+        indirect = EvalIndirectBSDF(ray, HitRec, BRDF_pdf, lastBounceSpecular);
         if (BRDF_pdf > 0.0)
             throughput *= indirect / BRDF_pdf;
         else

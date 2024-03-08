@@ -159,7 +159,7 @@ vec3 toLocal(vec3 x, vec3 y, vec3 z, vec3 v)
 }
 
 // https://schuttejoe.github.io/post/ggximportancesamplingpart2/
-vec3 EvalIndirectBRDF(inout Ray ray, Payload shadingPoint, out float pdf, inout bool lastBounceSpecular)
+vec3 EvalIndirectBSDF(inout Ray ray, Payload shadingPoint, out float pdf, inout bool lastBounceSpecular)
 {
 	/*
 	* View Vector	   : v || wo
@@ -317,7 +317,7 @@ vec3 EvalIndirectBRDF(inout Ray ray, Payload shadingPoint, out float pdf, inout 
 	return brdf;
 }
 
-vec3 EvalBRDF(Ray ray, Payload shadingPoint, vec3 l, out float pdf)
+vec3 EvalBSDF(Ray ray, Payload shadingPoint, vec3 l, out float pdf)
 {
 	/*
 	* View Vector	   : v || wo

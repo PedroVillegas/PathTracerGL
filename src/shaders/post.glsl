@@ -9,6 +9,7 @@ uniform int u_Tonemap;
 uniform int u_EnableCrosshair;
 
 #define sat(x) clamp(x, 0., 1.)
+#define ENABLE_TONEMAP 1
 
 float Luminance(vec3 c)
 {
@@ -254,8 +255,11 @@ void main()
             break;
     }
     // Apply gamma correction
+#if ENABLE_TONEMAP
     vec3 final = LinearToSRGB(tonemapped);
-//    vec3 final = pow(tonemapped, vec3(1.0 / 2.2));
+#else
+    vec3 final = LinearToSRGB(hdrCol);
+#endif
 
     // vignetting
 //    final *= 0.5 + 0.5*pow( 16.0*uv.x*uv.y*(1.0-uv.x)*(1.0-uv.y), 0.1 );

@@ -247,12 +247,18 @@ void Gui::CreateSceneWindow(Renderer& renderer, Scene& scene)
                     case PRIM_SPHERE: // Sphere
                         ImGui::Text("Radius");
                         if (ImGui::DragFloat("##LightRadius", &prim.radius, 0.05f, 0.1f, 1000.0f)) 
+                        {
                             renderer.ResetSamples();
+                            renderer.m_BVH->RebuildBVH(scene.primitives);
+                        }
                         break;
                     case PRIM_AABB: // AABB
                         ImGui::Text("Dimensions");
                         if (ImGui::DragFloat3("##LightDims", glm::value_ptr(prim.dimensions), 0.1f, 0.1f, 1000.0f)) 
+                        {
                             renderer.ResetSamples();
+                            renderer.m_BVH->RebuildBVH(scene.primitives);
+                        }
                         break;
                 }
 
@@ -309,17 +315,31 @@ void Gui::CreateSceneWindow(Renderer& renderer, Scene& scene)
                     renderer.m_BVH->RebuildBVH(scene.primitives);
                 }
 
+                ImGui::Text("Rotation");
+                if (ImGui::DragFloat3("##Rotation", glm::value_ptr(prim.euler), 0.1f, -360.0f, 360.0f))
+                {
+                    prim.UpdateRotation();
+                    renderer.ResetSamples();
+                    renderer.m_BVH->RebuildBVH(scene.primitives);
+                }
+
                 switch (prim.type)
                 {
                     case PRIM_SPHERE: // Sphere
                         ImGui::Text("Radius");
                         if (ImGui::DragFloat("##Radius", &prim.radius, 0.05f, 0.1f, 1000.0f)) 
+                        {
                             renderer.ResetSamples();
+                            renderer.m_BVH->RebuildBVH(scene.primitives);
+                        }
                         break;
                     case PRIM_AABB: // AABB
                         ImGui::Text("Dimensions");
                         if (ImGui::DragFloat3("##Dimensions", glm::value_ptr(prim.dimensions), 0.1f, 0.1f, 1000.0f)) 
+                        {
                             renderer.ResetSamples();
+                            renderer.m_BVH->RebuildBVH(scene.primitives);
+                        }
                         break;
                 }
 

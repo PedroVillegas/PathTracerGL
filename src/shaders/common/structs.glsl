@@ -24,10 +24,13 @@ struct Primitive
 {
     int id;
     int type;
-    vec3 position;
     float radius;
+    vec3 position;
+    mat4 rotation;
+    mat4 inverseRotation;
     vec3 dimensions;
     Material mat;
+    vec3 euler;
 };
 
 struct Light
