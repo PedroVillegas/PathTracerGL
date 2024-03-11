@@ -1,27 +1,10 @@
-#include <glad/glad.h>
-#include <glm/gtc/type_ptr.hpp>
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <sstream>
-#include <string>
-#include <unordered_map>
-
-#include "utils.h"
 #include "shader.h"
 
-
-Shader::Shader(const char* vs_path, const char* fs_path)
-{
-    m_VSPath = vs_path;
-    m_FSPath = fs_path;
-    std::string vs = ParseShader(vs_path);
-    std::string fs = ParseShader(fs_path);
-    m_ID = CreateShader(vs, fs);
-    std::cout << std::endl;
-}
-
 Shader::Shader(std::string vs_path, std::string fs_path)
+    : hasReloaded(false)
+    , m_ID(0)
+    , m_VSPath("")
+    , m_FSPath("")
 {
     m_VSPath = vs_path.c_str();
     m_FSPath = fs_path.c_str();
@@ -48,7 +31,7 @@ void Shader::ReloadShader()
     uint32_t tempID = CreateShader(vs, fs);
     glDeleteProgram(m_ID); 
     m_ID = tempID;
-    b_Reloaded = true;
+    hasReloaded = true;
     std::cout << std::endl;
 }
 

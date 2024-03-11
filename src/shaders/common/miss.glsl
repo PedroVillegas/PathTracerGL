@@ -10,9 +10,20 @@ vec3 SunWithBloom(vec3 rayDir, vec3 sunDir) {
     float invBloom = 1.0/(0.02 + offset*300.0)*0.01;
     return vec3(gaussianBloom+invBloom);
 }
-
+#define ENABLE_ENV_MAP 1
 vec3 Miss(vec3 V)
 {
+#if ENABLE_ENV_MAP
+    float theta = acos(clamp(V.y, -1.0, 1.0));
+    vec2 uv = vec2((PI + atan(V.z, V.x)) * INV_TWO_PI, theta * INV_PI) + vec2(u_EnvMapRotation, 0.0);
+    
+    vec2 ts = textureSize(u_EnvMapTex, 0);
+    vec3 color = texture(u_EnvMapTex, uv).rgb;
+    float pdf = Luminance(color) / u_EnvMapTotalSum;
+    pdf = (pdf * ts.x * ts.y) / (TWO_PI * PI * sin(theta));
+    pdf = 1.0;
+    return color / pdf;
+#endif
     vec3 lum;
     // Sun from https://www.shadertoy.com/view/slSXRW
     vec3 sunLum = SunWithBloom(V, Scene.SunDirection);

@@ -19,7 +19,7 @@ public:
     Gui() {}
     Gui(Window& window);
     ~Gui();
-    void Render(Renderer& renderer, Scene& scene, ApplicationSettings& settings);
+    void Render(Renderer& renderer, Scene& scene, ApplicationSettings& settings, const std::vector<std::string>& envMaps);
     void NewFrame();
 
 private:
@@ -27,7 +27,7 @@ private:
     void Shutdown();
     void SetupStyle();
     void CreateCameraWindow(Renderer& renderer, Scene& scene);
-    void CreateSceneWindow(Renderer& renderer, Scene& scene);
+    void CreateSceneWindow(Renderer& renderer, Scene& scene, const std::vector<std::string>& envMaps);
 
 private:
     Window m_Window;

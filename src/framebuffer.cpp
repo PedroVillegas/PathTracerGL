@@ -1,27 +1,10 @@
-#include <glad/glad.h>
-#include <iostream>
-#include <signal.h>
-
-
 #include "framebuffer.h"
 
-Framebuffer::Framebuffer()
-{
-}
-
-Framebuffer::Framebuffer(FramebufferSpec& FBspec)
-    : m_Spec(FBspec)
-{
-}
-
-Framebuffer::~Framebuffer()
-{
-}
 
 void Framebuffer::OnResize(uint32_t width, uint32_t height)
 {
-    m_Spec.width = width;
-    m_Spec.height = height;
+    m_Width = width;
+    m_Height = height;
     Destroy();
     Create();
 }
@@ -29,6 +12,11 @@ void Framebuffer::OnResize(uint32_t width, uint32_t height)
 void Framebuffer::Bind() const
 {
     glBindFramebuffer(GL_FRAMEBUFFER, m_ID); 
+}
+
+void Framebuffer::Unbind() const
+{
+    glBindFramebuffer(GL_FRAMEBUFFER, 0); 
 }
 
 void Framebuffer::Create()
@@ -39,12 +27,9 @@ void Framebuffer::Create()
     // Create colour texture size: width, height
     glGenTextures(1, &m_TextureID);  // Generate texture with ID: m_TextureID
     glBindTexture(GL_TEXTURE_2D, m_TextureID);  // Select texture as current 2D Texture
-    glTexImage2D(
-        GL_TEXTURE_2D, 0, GL_RGBA32F, m_Spec.width, m_Spec.height, 0, GL_RGBA, 
-        GL_FLOAT, nullptr
-    );  // Build texture with specified dimensions
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); 
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, m_Width, m_Height, 0, GL_RGBA, GL_FLOAT, nullptr); // Build texture with specified dimensions
 
     // Attach texture to the framebuffer
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_TextureID, 0); 
@@ -66,19 +51,4 @@ void Framebuffer::Destroy()
     m_ID = 0;
     glDeleteTextures(1, &m_TextureID); 
     m_TextureID = 0;
-}
-
-void Framebuffer::Unbind() const
-{
-    glBindFramebuffer(GL_FRAMEBUFFER, 0); 
-}
-
-void Framebuffer::SetWidth(uint32_t width)
-{
-    m_Spec.width = width;
-}
-
-void Framebuffer::SetHeight(uint32_t height)
-{
-    m_Spec.height = height;
 }

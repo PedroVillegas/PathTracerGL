@@ -50,22 +50,15 @@ void APIENTRY glDebugOutput(GLenum source,
     std::cout << std::endl;
 
     DebugBreak();
-    // __builtin_trap();
 }
 
-Window::Window(const char* title, uint32_t width, uint32_t height)
-    :
-    m_Title(title),
-    m_Width(width),
-    m_Height(height)
+Window::Window(std::string title, uint32_t width, uint32_t height)
+    : m_Title(title)
+    , m_Width(width)
+    , m_Height(height)
 {
     if (!Window::Init())
         glfwTerminate();
-}
-
-Window::~Window() 
-{
-    glfwTerminate();
 }
 
 bool Window::Init()
@@ -83,7 +76,7 @@ bool Window::Init()
     glfwWindowHint(GLFW_RESIZABLE, GL_TRUE);
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true); // comment this line in a release build! 
 
-    m_Window = glfwCreateWindow(m_Width, m_Height, m_Title, NULL, NULL);
+    m_Window = glfwCreateWindow(m_Width, m_Height, m_Title.c_str(), NULL, NULL);
     if (!m_Window)
     {
         std::cout << "\033[1;31m[ERROR]\033[0;37m Failed to create GLFW window" << std::endl;
@@ -150,14 +143,4 @@ void Window::Update() const
 bool Window::Closed() const
 {
     return glfwWindowShouldClose(m_Window);
-}
-
-void Window::SetWidth(uint32_t width)
-{
-    m_Width = width;
-}
-
-void Window::SetHeight(uint32_t height)
-{
-    m_Height = height;
 }

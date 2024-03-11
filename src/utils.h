@@ -8,6 +8,7 @@
 
 #define PATH_TO_SHADERS std::string("../../src/shaders/")
 #define PROJECT_PATH std::string("../../")
+#define PATH_TO_HDR std::string("../../assets/hdr/")
 
 //"Jodie-Reinhard\0ACES film\0ACES fitted\0Tony McMapface\0AgX Punchy\0"
 enum { JODIE_REINHARD = 0, ACES_FILM, ACES_FITTED, TONY_MCMAPFACE, AGX_PUNCHY };

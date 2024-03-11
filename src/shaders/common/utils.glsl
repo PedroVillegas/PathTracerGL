@@ -1,9 +1,11 @@
 #define INF             3.402823466e+38
 #define FLT_MIN        -3.402823466e+38
 #define PI              3.14159265358979323
+#define INV_PI          0.31830988618379067
+#define TWO_PI          6.28318530717958648
+#define INV_TWO_PI      0.15915494309189533
 #define GOLDEN_RATIO    1.61803398874989485    
-#define ONE_PI          0.3183098861837907
-#define EPS             1e-3
+#define EPS             1e-4
 
 uint g_Seed;
 vec2 uv;
@@ -39,9 +41,14 @@ float Randf()
     return float(PCGHash());
 }
 
+float Luminance(vec3 c)
+{
+    return 0.212671 * c.x + 0.715160 * c.y + 0.072169 * c.z;
+}
+
 vec2 SampleUniformUnitCirle(float r_1, float r_2)
 {
-    float theta = r_1 * 2.0 * PI;
+    float theta = r_1 * TWO_PI;
     float r = sqrt(r_2);
     return vec2(cos(theta), sin(theta)) * r;
 }
@@ -49,7 +56,7 @@ vec2 SampleUniformUnitCirle(float r_1, float r_2)
 vec3 SampleUniformUnitSphere(float u_1, float u_2)
 {
     vec3 dir;
-    float theta = u_1 * 2.0 * PI;
+    float theta = u_1 * TWO_PI;
     float z = u_2 * 2.0 - 1.0;
     float r = sqrt(1.0 - z * z);
     float x = r * cos(theta);
@@ -64,12 +71,8 @@ vec3 SampleHemisphereUniform(vec3 N)
     float u = Randf01();
     float v = Randf01();
 
-    // vec3 B = normalize(cross(N, vec3(0.0, 1.0, 1.0)));
-	// vec3 T = cross(B, N);
-
     vec3 p = SampleUniformUnitSphere(u, v);
     return p * sign(dot(p, N));
-    // return vec3(cos(phi) * sin(theta), y, sin(phi) * sin(theta));
 }
 
 
@@ -94,7 +97,7 @@ vec3 GetConeSample(vec3 dir, float extent)
 vec3 SampleSphere(vec3 position, float radius, inout float pdf, vec3 hitpos)
 {
     vec3 sampledPoint = position + SampleHemisphereUniform(normalize(hitpos - position)) * radius;
-    pdf = 1.0 / (2.0 * PI * radius * radius); // 1.0 / Area
+    pdf = 1.0 / (TWO_PI * radius * radius); // 1.0 / Area
 
     return sampledPoint;
 }
@@ -235,21 +238,6 @@ vec3 SamplePointOnPrimitive(Primitive primitive, inout float pdf, vec3 hitpos)
             return SampleCubeNew(primitive.position, primitive.dimensions, pdf, hitpos);
     }
 }
-
-// vec3 SampleHemisphereCosine(float r_1, float r_2, vec3 N)
-// {
-//     vec3 dir;
-//     vec3 B = normalize(cross(N, vec3(0.0, 1.0, 1.0)));
-// 	vec3 T = cross(B, N);
-// 	float r = sqrt(r_1);
-//     float phi = 2.0 * PI * r_2;
-// 	vec3 x = r * cos(phi) * B; 
-// 	vec3 y = r * sin(phi) * T;
-// 	vec3 z = sqrt(1.0 - r*r) * N;
-//     dir = x + y + z;
-    
-//     return normalize(dir);
-// }
 
 vec3 SampleCosineHemisphere(float u_1, float u_2, vec3 N) 
 {

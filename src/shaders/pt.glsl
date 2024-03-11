@@ -13,7 +13,7 @@ float Saturate( float x ) { return clamp( x, 0.001, 1.0 ); }
 #define RUSSIAN_ROULETTE_MIN_BOUNCES 5
 
 #include <common/structs.glsl>
-#include <common/data.glsl>
+#include <common/uniforms.glsl>
 #include <common/utils.glsl>
 #include <common/ray_gen.glsl>
 #include <common/miss.glsl>
@@ -132,7 +132,7 @@ vec4 PathTrace(Ray ray)
 #if ENABLE_RUSSIAN_ROULETTE
         if (bounce >= RUSSIAN_ROULETTE_MIN_BOUNCES)
         {
-            float rrp = min(0.95, max(Luma(throughput), EPS));
+            float rrp = min(0.95, max(Luminance(throughput), EPS));
             if (Randf01() > rrp) break;
             else throughput /= rrp;
         }

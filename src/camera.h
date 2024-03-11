@@ -25,9 +25,39 @@ class Camera
     };
 
 public:
-    Camera() {}
-    Camera(float FOV, float nearClip, float farClip);
-    Camera(glm::vec3 position, float FOV, float nearClip, float farClip);
+    Camera()
+        : position(glm::vec3(0))
+        , type(0)
+        , FOV(60.0f)
+        , damping(4.0f)
+        , focal_length(1.0f)
+        , aperture(0.0f)
+        , sensitivity(40.0f)
+        , walkingSpeed(20.0f)
+        , sprintingSpeed(60.0f)
+        , slowSpeed(5.0f)
+        , m_NearClip(0.1f)
+        , m_FarClip(1000.0f)
+        , m_AspectRatio(0.0f)
+        , m_Projection(glm::mat4(1.0f))
+        , m_View(glm::mat4(1.0f))
+        , m_InverseProjection(glm::mat4(1.0f))
+        , m_InverseView(glm::mat4(1.0f))
+        , m_QuatOrientation(glm::quatLookAt(glm::vec3(0, 0, -1), glm::vec3(0, 1, 0)))
+        , m_Velocity(glm::vec3(0))
+        , m_RotVelocity(glm::vec3(0))
+        , m_Forward(glm::vec3(0, 0, -1))
+        , m_Up(glm::vec3(0, 1, 0))
+        , m_Right(glm::vec3(1, 0, 0))
+        , m_Yaw(0.0f)
+        , m_Pitch(0.0f)
+        , m_LastMousePosition(glm::vec2(0))
+        , m_LastFOV(0.0f)
+        , m_AllowCameraToMove(false)
+        , m_FirstMouse(true)
+        , m_ViewportWidth(0)
+        , m_ViewportHeight(0)
+    {};
 
     bool Orbital(float dt, Window* window);
     bool Cinematic(float dt, Window* window);
@@ -48,7 +78,7 @@ public:
     const glm::vec3& GetVelocity() const { return m_Velocity; }
     //const glm::vec3& GetDirection() { return m_QuatOrientation * glm::vec3(0, 0, -1); };
     const glm::vec3& GetDirection() { return m_Forward; };
-    
+
     void RecalculateProjection();
     void RecalculateView();
 
@@ -56,21 +86,19 @@ public:
 
     glm::vec3 position;
 
-    int type = 0;
-    float FOV = 60.0f;
-    float damping = 4.0f;
-    float focal_length = 4.0f;
-    float aperture = 0.0f;
-    float sensitivity = 40.0f;
-    float walkingSpeed = 20.0f;
-    float sprintingSpeed = 60.0f;
-    float slowSpeed = 5.0f;
-    
-private:
-    void Init();
+    int type;
+    float FOV;
+    float damping;
+    float focal_length;
+    float aperture;
+    float sensitivity;
+    float walkingSpeed;
+    float sprintingSpeed;
+    float slowSpeed;
 
-    float m_NearClip = 0.1f;
-    float m_FarClip = 1000.0f;
+private:
+    float m_NearClip;
+    float m_FarClip;
     float m_AspectRatio;
 
     glm::mat4 m_Projection;
@@ -78,21 +106,22 @@ private:
     glm::mat4 m_InverseProjection;
     glm::mat4 m_InverseView;
 
-    glm::quat m_QuatOrientation = glm::quatLookAt(glm::vec3(0, 0, -1), glm::vec3(0, 1, 0));
+    glm::quat m_QuatOrientation;
 
-    glm::vec3 m_Velocity { 0.0f, 0.0f, 0.0f };
-    glm::vec3 m_RotVelocity { 0.0f, 0.0f, 0.0f };
-    glm::vec3 m_Forward { 0.0f, 0.0f, -1.0f };
-    glm::vec3 m_Right { 1.0f, 0.0f, 0.0f };
-    glm::vec3 m_Up { 0.0f, 1.0f, 0.0f };
+    glm::vec3 m_Velocity;
+    glm::vec3 m_RotVelocity;
+    glm::vec3 m_Forward;
+    glm::vec3 m_Right;
+    glm::vec3 m_Up;
 
-    float m_Yaw   = 0.0f;
-    float m_Pitch = 0.0f;
+    float m_Yaw;
+    float m_Pitch;
 
-    glm::vec2 m_LastMousePosition { 0.0f, 0.0f };
-    float m_LastFOV = 60.0f;
-    bool m_AllowCameraToMove = false;
-    bool m_FirstMouse = true;
+    glm::vec2 m_LastMousePosition;
+    float m_LastFOV;
+    bool m_AllowCameraToMove;
+    bool m_FirstMouse;
 
-    uint32_t m_ViewportWidth = 0, m_ViewportHeight = 0;
+    uint32_t m_ViewportWidth;
+    uint32_t m_ViewportHeight;
 };

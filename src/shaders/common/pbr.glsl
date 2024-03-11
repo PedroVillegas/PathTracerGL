@@ -8,7 +8,7 @@ float D_GGX(float NoH, float roughness)
 	*/
 	float a = NoH * roughness;
 	float k = roughness / (1.0 - NoH * NoH + a * a);
-	return k * k * (ONE_PI);
+	return k * k * (INV_PI);
 }
 
 float V_SmithGGXCorrelated(float NoV, float NoL, float roughness)
@@ -28,10 +28,10 @@ float V_SmithGGXMaskingShadowing(float NoV, float NoL, float roughness)
 {
 	// Non height-correlated masking-shadowing function
 	float a2 = roughness * roughness;
-    float denomA = NoV * sqrt(a2 + (1.0 - a2) * NoL * NoL);
-    float denomB = NoL * sqrt(a2 + (1.0 - a2) * NoV * NoV);
+	float GGXV = NoL * sqrt(NoV * NoV * (1.0 - a2) + a2);
+	float GGXL = NoV * sqrt(NoL * NoL * (1.0 - a2) + a2);
 
-    return 2.0 * NoL * NoV / (denomA + denomB);
+    return 2.0 * NoL * NoV / (GGXV + GGXL);
 }
 
 float V_SmithGGXMasking(float NoV, float roughness)
@@ -79,7 +79,7 @@ float F_Dielectric(float cosThetaI, float eta)
 
 float Fd_Lambert()
 {	
-	return ONE_PI;
+	return INV_PI;
 }
 
 float Fd_Burley(float NoV, float NoL, float LoH, float roughness)
@@ -91,7 +91,7 @@ float Fd_Burley(float NoV, float NoL, float LoH, float roughness)
 	float f90 = 0.5 + 2.0 * roughness * LoH * LoH;
 	float lightScatter = F_Schlick(NoL, 1.0, f90);
 	float viewScatter = F_Schlick(NoV, 1.0, f90);
-	return lightScatter * viewScatter * (ONE_PI);
+	return lightScatter * viewScatter * (INV_PI);
 }
 
 // From Pixar - https://graphics.pixar.com/library/OrthonormalB/paper.pdf
@@ -130,7 +130,7 @@ vec3 SampleGGXVNDF(vec3 Ve, float alpha_x, float alpha_y, float U1, float U2)
 
 	// Section 4.2: parameterization of the projected area
 	float r = sqrt(U1);
-	float phi = 2.0 * PI * U2;
+	float phi = TWO_PI * U2;
 	float t1 = r * cos(phi);
 	float t2 = r * sin(phi);
 	float s = 0.5 * (1.0 + Vh.z);
@@ -142,10 +142,6 @@ vec3 SampleGGXVNDF(vec3 Ve, float alpha_x, float alpha_y, float U1, float U2)
 	// Section 3.4: transforming the normal back to the ellipsoid configuration
 	vec3 Ne = normalize(vec3(alpha_x * Nh.x, alpha_y * Nh.y, max(0.0, Nh.z)));
 	return Ne;
-}
-
-float Luma(vec3 color) {
-    return dot(color, vec3(0.299, 0.587, 0.114));
 }
 
 vec3 toWorld(vec3 x, vec3 y, vec3 z, vec3 v)
@@ -201,7 +197,7 @@ vec3 EvalIndirectBSDF(inout Ray ray, Payload shadingPoint, out float pdf, inout 
 	// Lobe weight probability
 	pdf = 1.0;
 	float dWeight = (1.0 - metallic) * (1.0 - transmission);
-	float sWeight = Luma(F);
+	float sWeight = Luminance(F);
 	float tWeight = transmission * (1.0 - metallic) * (1.0 - dF);
 	float invW    = 1.0 / (dWeight + sWeight + tWeight);
 	dWeight *= invW;

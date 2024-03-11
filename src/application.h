@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <filesystem>
 #include "utils.h"
 #include "imgui/imgui.h"
 #include "window.h"
@@ -30,16 +31,20 @@ private:
     void Resize();
     void Update();
     void Render();
+    void GetEnvMaps();
 
     std::string m_Title;
     uint32_t m_ViewportWidth;
     uint32_t m_ViewportHeight;
 
-    float m_DeltaTime = 0.f;
+    float m_DeltaTime;
     uint32_t m_QuadVAO;
     uint32_t m_QuadVBO;
     uint32_t m_QuadIBO;
     uint32_t m_BVHDebugVAO;
     uint32_t m_BVHDebugVBO;
     uint32_t m_BVHDebugIBO;
+
+    std::vector<std::string> m_EnvMaps;
+
 };

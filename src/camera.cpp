@@ -9,32 +9,6 @@
 
 #define PI 3.14159265358979323
 
-Camera::Camera(float FOV, float nearClip, float farClip)
-    :
-    FOV(FOV),
-    m_NearClip(nearClip), 
-    m_FarClip(farClip)
-{
-    position = glm::vec3(0, 0, 3);
-    Init();
-}
-
-Camera::Camera(glm::vec3 position, float FOV, float nearClip, float farClip)
-    :
-    FOV(FOV), 
-    m_NearClip(nearClip), 
-    m_FarClip(farClip),
-    position(position)
-{
-    Init();
-}
-
-void Camera::Init()
-{
-    RecalculateView();
-    RecalculateProjection();
-    UpdateParams();
-}
 
 void Camera::UpdateParams()
 {
@@ -56,11 +30,8 @@ void Camera::SetupCamera(
     m_Forward = glm::normalize(forward);
     m_QuatOrientation = glm::quatLookAt(m_Forward, Up);
 
-    m_Pitch = glm::asin(m_Forward.y); // in Radians
-    m_Yaw   = glm::asin(m_Forward.z / glm::cos(m_Pitch));
-
-    m_Pitch = glm::degrees(m_Pitch);
-    m_Yaw   = glm::degrees(m_Yaw);
+    m_Pitch = glm::degrees(glm::asin(m_Forward.y));
+    m_Yaw   = glm::degrees(glm::atan(m_Forward.z, m_Forward.x));
 
     RecalculateProjection();
     RecalculateView();

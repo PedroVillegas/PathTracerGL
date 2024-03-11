@@ -21,7 +21,7 @@ void Gui::NewFrame()
 
 }
 
-void Gui::Render(Renderer& renderer, Scene& scene, ApplicationSettings& settings)
+void Gui::Render(Renderer& renderer, Scene& scene, ApplicationSettings& settings, const std::vector<std::string>& envMaps)
 {
     if (settings.enableGui)
     {
@@ -31,7 +31,7 @@ void Gui::Render(Renderer& renderer, Scene& scene, ApplicationSettings& settings
             ImGui::Text("Render time: %.3f ms/frame", 1000.0f / ImGui::GetIO().Framerate);
             ImGui::Text("Framerate: %.1f FPS", ImGui::GetIO().Framerate);
             ImGui::Text("Iterations: %i", renderer.GetIterations());
-            ImGui::Checkbox("Pause", &renderer.b_Pause);
+            ImGui::Checkbox("Pause", &renderer.hasPaused);
 
             if (ImGui::CollapsingHeader("Application Settings"))
             {
@@ -57,14 +57,14 @@ void Gui::Render(Renderer& renderer, Scene& scene, ApplicationSettings& settings
                 {
                     if (ImGui::Checkbox("Visualise BVH", &settings.enableDebugBVHVisualisation))
                         renderer.ResetSamples();
-                    ImGui::Checkbox("Draw BVH", &renderer.b_DrawBVH);
+                    ImGui::Checkbox("Draw BVH", &renderer.shouldDrawBVH);
                     ImGui::Text("BVH Depth");
                     ImGui::SliderInt("##BVH-Depth", &renderer.BVHDepth, 0, 10);
                 }
                 else
                 {
                     settings.enableDebugBVHVisualisation = false;
-                    renderer.b_DrawBVH = false;
+                    renderer.shouldDrawBVH = false;
                     renderer.BVHDepth = 0;
                 }
             }
@@ -72,7 +72,7 @@ void Gui::Render(Renderer& renderer, Scene& scene, ApplicationSettings& settings
         ImGui::End();
 
         Gui::CreateCameraWindow(renderer, scene);
-        Gui::CreateSceneWindow(renderer, scene);
+        Gui::CreateSceneWindow(renderer, scene, envMaps);
     }
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -114,8 +114,11 @@ void Gui::CreateCameraWindow(Renderer& renderer, Scene& scene)
         ImGui::SliderFloat("##DampingCoeff", &scene.Eye->damping, 1.0f, 5.0f);
 
         ImGui::Text("Focal Length");
-        if (ImGui::InputFloat("##FocalLength", &scene.Eye->focal_length, 0.05f, 1.0f)) 
+        if (ImGui::InputFloat("##FocalLength", &scene.Eye->focal_length, 0.05f, 1.0f))
+        {
+            scene.Eye->focal_length = glm::max(scene.Eye->focal_length, 1.0f);
             renderer.ResetSamples();
+        }
 
         ImGui::Text("Aperture Diameter");
         if (ImGui::SliderFloat("##Aperture", &scene.Eye->aperture, 0.0f, 2.0f)) 
@@ -135,7 +138,7 @@ void Gui::CreateCameraWindow(Renderer& renderer, Scene& scene)
     ImGui::End();
 }
 
-void Gui::CreateSceneWindow(Renderer& renderer, Scene& scene)
+void Gui::CreateSceneWindow(Renderer& renderer, Scene& scene, const std::vector<std::string>& envMaps)
 {
     if (ImGui::Begin("Scene"))
     {
@@ -187,6 +190,23 @@ void Gui::CreateSceneWindow(Renderer& renderer, Scene& scene)
         if (ImGui::SliderInt("##MaxRayDepth", &scene.maxRayDepth, 1, 50)) 
             renderer.ResetSamples();
 
+        // Environment maps
+        std::vector<const char*> envMapsList;
+        for (int i = 0; i < envMaps.size(); ++i)
+            envMapsList.push_back(envMaps[i].c_str());
+
+        ImGui::Text("Enviroment Maps");
+        if (ImGui::Combo("EnvMaps", &scene.envMapIdx, envMapsList.data(), envMapsList.size()))
+        {
+            scene.AddEnvMap(envMaps[scene.envMapIdx]);
+            scene.envMapHasChanged = true;
+            renderer.ResetSamples();
+        }
+        
+        ImGui::Text("Environment Map Rotation");
+        if (ImGui::DragFloat("##EnvMapRotation", &scene.envMapRotation, 0.001f, -1.0f, 1.0f)) 
+            renderer.ResetSamples();
+
         if (ImGui::CollapsingHeader("Edit Lights"))
         {
             if (ImGui::Button("Add Sphere Light"))
@@ -212,12 +232,10 @@ void Gui::CreateSceneWindow(Renderer& renderer, Scene& scene)
                     renderer.ResetSamples();
 
                 ImGui::Text("Sun Elevation (deg)");
-                //if (ImGui::SliderFloat("##Elevation", &scene.sunElevation, -90.0f, 90.0f))
                 if (ImGui::DragFloat("##Elevation", &scene.sunElevation, 0.1f, -90.f, 90.f))
                     renderer.ResetSamples();
 
                 ImGui::Text("Sun Azimuth (deg)");
-                //if (ImGui::SliderFloat("##Azimuth", &scene.sunAzimuth, -360.0f, 360.0f))
                 if (ImGui::DragFloat("##Azimuth", &scene.sunAzimuth, 0.1f, -360.f, 360.f))
                     renderer.ResetSamples();
             }

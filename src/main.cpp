@@ -1,4 +1,6 @@
 #include "application.h"
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb/stb_image.h"
 
 
 void SetupQuad(uint32_t& VAO, uint32_t& VBO, uint32_t& IBO);

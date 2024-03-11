@@ -20,6 +20,7 @@ set(HEADER_FILES
 	"dependencies/imgui/imstb_rectpack.h"
 	"dependencies/imgui/imstb_textedit.h"
 	"dependencies/imgui/imstb_truetype.h"
+	"dependencies/stb/stb_image.h"
 	"src/application.h"
 	"src/bvh.h"
 	"src/camera.h"
@@ -32,7 +33,8 @@ set(HEADER_FILES
 	"src/shader.h"
 	"src/utils.h"
 	"src/window.h"
- "src/lodepng.h")
+	"src/lodepng.h"#
+	"src/hdri.h")
 
 set(SRC_FILES
 	"dependencies/imgui/imgui.cpp"
@@ -54,7 +56,8 @@ set(SRC_FILES
 	"src/shader.cpp"
 	"src/utils.cpp"
 	"src/window.cpp"
- "src/lodepng.cpp")
+	"src/lodepng.cpp"
+	"src/hdri.cpp")
 
 # Dependencies
 

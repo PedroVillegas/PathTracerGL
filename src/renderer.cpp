@@ -12,18 +12,30 @@ Renderer::Renderer(
     uint32_t ViewportWidth,
     uint32_t ViewportHeight,
     Scene* scene)
-    :
-    m_ViewportWidth(ViewportWidth),
-    m_ViewportHeight(ViewportHeight),
-    m_Scene(scene)
+    : m_BVH(nullptr)
+    , BVHDepth(0)
+    , hasPaused(false)
+    , shouldDrawBVH(false)
+    , debugVAO(0)
+    , m_ViewportWidth(ViewportWidth)
+    , m_ViewportHeight(ViewportHeight)
+    , m_SampleIterations(0)
+    , m_CameraBlockBuffer(0)
+    , m_SceneBlockBuffer(0)
+    , m_PrimsBlockBuffer(0)
+    , m_BVHBlockBuffer(0)
+    , m_Scene(scene)
+    , m_PathTraceShader(nullptr)
+    , m_AccumShader(nullptr)
+    , m_FinalOutputShader(nullptr)
+    , m_BVHDebugShader(nullptr)
+    , m_EnvMapTex(0)
 {
-    m_ViewportSpec.width = m_ViewportWidth;
-    m_ViewportSpec.height = m_ViewportHeight;
-    m_PathTraceFBO = Framebuffer(m_ViewportSpec);
+    m_PathTraceFBO = Framebuffer(m_ViewportWidth, m_ViewportHeight);
     m_PathTraceFBO.Create();
-    m_AccumulationFBO = Framebuffer(m_ViewportSpec);
+    m_AccumulationFBO = Framebuffer(m_ViewportWidth, m_ViewportHeight);
     m_AccumulationFBO.Create();
-    m_FinalOutputFBO = Framebuffer(m_ViewportSpec);
+    m_FinalOutputFBO = Framebuffer(m_ViewportWidth, m_ViewportHeight);
     m_FinalOutputFBO.Create();
 
     m_BVHDebugShader    = std::make_unique<Shader>(PATH_TO_SHADERS + "debugVert.glsl", PATH_TO_SHADERS + "debug.glsl");
@@ -34,31 +46,25 @@ Renderer::Renderer(
     m_Scene->SelectScene();
     m_BVH = std::make_unique<BVH>(m_Scene->primitives);
 
-    int treeSize = m_BVH->totalNodes;
-
     // Setup BVH UBO
+    int bvhBlockOffset = 0;
+    int bvhBlockMem = 1000 * sizeof(LinearBVH_Node) + MAX_PRIMITIVES * sizeof(int);
     glGenBuffers(1, &m_BVHBlockBuffer); 
     glBindBuffer(GL_UNIFORM_BUFFER, m_BVHBlockBuffer);
-    int bvhBlockMem = 1000 * sizeof(LinearBVH_Node) + MAX_PRIMITIVES * sizeof(int);
     glBufferData(GL_UNIFORM_BUFFER, bvhBlockMem, nullptr, GL_STATIC_DRAW);
-    int bvhBlockOffset = 0;
-    glBufferSubData(GL_UNIFORM_BUFFER, bvhBlockOffset, treeSize * sizeof(LinearBVH_Node), m_BVH->flat_root);
+    glBufferSubData(GL_UNIFORM_BUFFER, bvhBlockOffset, m_BVH->totalNodes * sizeof(LinearBVH_Node), m_BVH->flat_root);
     bvhBlockOffset += 1000 * sizeof(LinearBVH_Node);
-    glBufferSubData(
-        GL_UNIFORM_BUFFER, bvhBlockOffset, 
-        m_BVH->primitivesIndexBuffer.size() * sizeof(int),
-        m_BVH->primitivesIndexBuffer.data()
-    );
+    glBufferSubData(GL_UNIFORM_BUFFER, bvhBlockOffset, m_BVH->primitivesIndexBuffer.size() * sizeof(int), m_BVH->primitivesIndexBuffer.data());
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
     glBindBufferBase(GL_UNIFORM_BUFFER, 0, m_BVHBlockBuffer); 
     m_PathTraceShader->SetUBO("BVH", 0);
 
     // Setup PrimsBlock UBO
+    int primsBlockMem = sizeof(glm::vec4) + MAX_LIGHTS * sizeof(Light) + MAX_PRIMITIVES * sizeof(Primitive);
     glGenBuffers(1, &m_PrimsBlockBuffer); 
     glBindBuffer(GL_UNIFORM_BUFFER, m_PrimsBlockBuffer); 
-    int mem = sizeof(glm::vec4) + MAX_LIGHTS * sizeof(Light) + MAX_PRIMITIVES * sizeof(Primitive);
-    glBufferData(GL_UNIFORM_BUFFER, mem, nullptr, GL_DYNAMIC_DRAW); 
+    glBufferData(GL_UNIFORM_BUFFER, primsBlockMem, nullptr, GL_DYNAMIC_DRAW); 
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
     glBindBufferBase(GL_UNIFORM_BUFFER, 1, m_PrimsBlockBuffer); 
@@ -102,8 +108,6 @@ Renderer::Renderer(
 
     m_PathTraceShader->Bind();
     m_PathTraceShader->SetUniformInt("u_BlueNoise", 1);
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, BlueNoise);
     m_PathTraceShader->Unbind();
 
     // Send Tony McMapface 3d texture to shader (post.glsl)
@@ -129,9 +133,28 @@ Renderer::Renderer(
 
     m_FinalOutputShader->Bind();
     m_FinalOutputShader->SetUniformInt("u_TonyMcMapfaceLUT", 1);
+    m_FinalOutputShader->Unbind();
+
+    // Create texture for environment map
+    if (m_Scene->envMap != nullptr)
+    {
+        glGenTextures(1, &m_EnvMapTex);
+        glBindTexture(GL_TEXTURE_2D, m_EnvMapTex);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, m_Scene->envMap->width, m_Scene->envMap->height, 0, GL_RGBA, GL_FLOAT, m_Scene->envMap->data);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
+
+    // Textures for post.glsl
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_3D, TonyMcMapfaceLUT);
-    m_FinalOutputShader->Unbind();
+
+    // Textures for pt.glsl
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, BlueNoise);
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, m_EnvMapTex);
 }
 
 Renderer::~Renderer()
@@ -143,7 +166,7 @@ Renderer::~Renderer()
 
 void Renderer::UpdateBuffers()
 {
-    if (m_PathTraceShader->b_Reloaded)
+    if (m_PathTraceShader->hasReloaded)
     {
         std::cout << "Rebuilding BVH..." << std::endl;
         m_BVH->RebuildBVH(m_Scene->primitives);
@@ -158,32 +181,46 @@ void Renderer::UpdateBuffers()
 
         glBindBufferBase(GL_UNIFORM_BUFFER, 1, m_PrimsBlockBuffer); 
         m_PathTraceShader->SetUBO("PrimsBlock", 1);
-        m_PathTraceShader->b_Reloaded = false;
+        m_PathTraceShader->hasReloaded = false;
     }
 
     // Update BVH Block only if rebuilt
     if (m_BVH->b_Rebuilt)
     {
-        int treeSize = m_BVH->totalNodes;
-
-        int bvhBlockMem = 1000 * sizeof(LinearBVH_Node) + MAX_PRIMITIVES * sizeof(int);
-
         // Reallocate memory for BVH Block
+        int bvhBlockOffset = 0;
+        int bvhBlockMem = 1000 * sizeof(LinearBVH_Node) + MAX_PRIMITIVES * sizeof(int);
         glBindBuffer(GL_UNIFORM_BUFFER, m_BVHBlockBuffer);
         glBufferData(GL_UNIFORM_BUFFER, bvhBlockMem, nullptr, GL_STATIC_DRAW);
-        int bvhBlockOffset = 0;
-        glBufferSubData(GL_UNIFORM_BUFFER, bvhBlockOffset, treeSize * sizeof(LinearBVH_Node), m_BVH->flat_root);
+        glBufferSubData(GL_UNIFORM_BUFFER, bvhBlockOffset, m_BVH->totalNodes * sizeof(LinearBVH_Node), m_BVH->flat_root);
         bvhBlockOffset += 1000 * sizeof(LinearBVH_Node);
-        glBufferSubData(
-            GL_UNIFORM_BUFFER, bvhBlockOffset,
-            m_BVH->primitivesIndexBuffer.size() * sizeof(int),
-            m_BVH->primitivesIndexBuffer.data()
-        );
+        glBufferSubData(GL_UNIFORM_BUFFER, bvhBlockOffset, m_BVH->primitivesIndexBuffer.size() * sizeof(int), m_BVH->primitivesIndexBuffer.data());
         glBindBuffer(GL_UNIFORM_BUFFER, 0); 
 
         glBindBufferBase(GL_UNIFORM_BUFFER, 0, m_BVHBlockBuffer); 
         m_PathTraceShader->SetUBO("BVH", 0);
         m_BVH->b_Rebuilt = false;
+    }
+
+    // Update Env Map Texture
+    if (m_Scene->envMapHasChanged)
+    {
+        if (m_Scene->envMap != nullptr)
+        {
+            m_Scene->envMapHasChanged = false;
+            if (m_EnvMapTex) glDeleteTextures(1, &m_EnvMapTex);
+
+            glGenTextures(1, &m_EnvMapTex);
+            glBindTexture(GL_TEXTURE_2D, m_EnvMapTex);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, m_Scene->envMap->width, m_Scene->envMap->height, 0, GL_RGBA, GL_FLOAT, m_Scene->envMap->data);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glBindTexture(GL_TEXTURE_2D, 0);
+
+            m_PathTraceShader->Bind();
+            m_PathTraceShader->SetUniformInt("u_EnvMapTex", 2);
+            m_PathTraceShader->Unbind();
+        }
     }
 
     // Update Scene Block
@@ -197,10 +234,10 @@ void Renderer::UpdateBuffers()
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
     // Update Prims Block
-    glBindBuffer(GL_UNIFORM_BUFFER, m_PrimsBlockBuffer);
     int offset = 0;
     int n_Lights = (int) m_Scene->lights.size();
     int n_Primitives = (int) m_Scene->primitives.size();
+    glBindBuffer(GL_UNIFORM_BUFFER, m_PrimsBlockBuffer);
     glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &n_Lights); 
     offset += sizeof(int);
     glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(int), &n_Primitives); 
@@ -219,9 +256,12 @@ void Renderer::Render(uint32_t VAO, const ApplicationSettings& settings)
     // Render current frame to m_PathTraceFBO using m_AccumulationFBO's texture to continue accumulating samples
     // For first frame the texture will be empty and will not affect the output
     glActiveTexture(GL_TEXTURE0); 
-    glBindTexture(GL_TEXTURE_2D, m_AccumulationFBO.GetTextureID()); 
+    glBindTexture(GL_TEXTURE_2D, m_AccumulationFBO.GetTextureID());
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, m_EnvMapTex);
 
     m_PathTraceShader->Bind(); 
+    m_PathTraceShader->SetUniformInt("u_EnvMapTex", 2);
     m_PathTraceShader->SetUniformInt("u_AccumulationTexture", 0); 
     m_PathTraceShader->SetUniformInt("u_SampleIterations", m_SampleIterations); 
     m_PathTraceShader->SetUniformInt("u_SamplesPerPixel", m_Scene->samplesPerPixel); 
@@ -230,6 +270,7 @@ void Renderer::Render(uint32_t VAO, const ApplicationSettings& settings)
     m_PathTraceShader->SetUniformInt("u_DebugBVHVisualisation", int(settings.enableDebugBVHVisualisation));
     m_PathTraceShader->SetUniformInt("u_TotalNodes", m_BVH->totalNodes);
     m_PathTraceShader->SetUniformInt("u_UseBlueNoise", int(settings.enableBlueNoise));
+    m_PathTraceShader->SetUniformFloat("u_EnvMapRotation", m_Scene->envMapRotation);
 
     UpdateBuffers();
 
@@ -283,7 +324,7 @@ void Renderer::Render(uint32_t VAO, const ApplicationSettings& settings)
     m_FinalOutputFBO.Unbind(); 
     m_FinalOutputShader->Unbind();
     
-    if (b_DrawBVH)
+    if (shouldDrawBVH)
     {
         m_FinalOutputFBO.Bind(); 
         glViewport(0, 0, m_ViewportWidth, m_ViewportHeight);
@@ -322,7 +363,7 @@ void Renderer::OnResize(uint32_t width, uint32_t height)
     m_AccumulationFBO.OnResize(m_ViewportWidth, m_ViewportHeight);
     m_PathTraceFBO.OnResize(m_ViewportWidth, m_ViewportHeight);
     m_FinalOutputFBO.OnResize(m_ViewportWidth, m_ViewportHeight);
-    b_Pause = false;
+    hasPaused = false;
     ResetSamples();
 }
 
@@ -342,10 +383,6 @@ void DrawBbox(Shader& shader, BVH_Node node, uint32_t vao)
     glDrawElements(GL_LINE_LOOP, 4, GL_UNSIGNED_INT, (GLvoid*)(4 * sizeof(uint32_t))); 
     glDrawElements(GL_LINES, 8, GL_UNSIGNED_INT, (GLvoid*)(8 * sizeof(uint32_t))); 
     glBindVertexArray(0); 
-
-    // glBindVertexArray(vao);
-    // glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
-    // glBindVertexArray(0); 
 }
 
 void DrawTree(Shader& shader, BVH_Node* node, uint32_t vao, int currentDepth, int terminationDepth)

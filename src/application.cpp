@@ -4,6 +4,17 @@ Application::Application(std::string title, uint32_t width, uint32_t height)
     : m_Title(title)
     , m_ViewportWidth(width)
     , m_ViewportHeight(height)
+    , m_Window(nullptr)
+    , m_Gui(nullptr)
+    , m_Scene(nullptr)
+    , m_Renderer(nullptr)
+    , m_DeltaTime(0.0f)
+    , m_BVHDebugIBO(0)
+    , m_BVHDebugVAO(0)
+    , m_BVHDebugVBO(0)
+    , m_QuadIBO(0)
+    , m_QuadVAO(0)
+    , m_QuadVBO(0)
 {   
     m_Window   = std::make_unique<Window>(m_Title.c_str(), m_ViewportWidth, m_ViewportHeight);
     m_Gui      = std::make_unique<Gui>(*m_Window);
@@ -25,7 +36,18 @@ Application::~Application()
 void Application::Run()
 {
     Setup();
-    
+
+    // Configure app settings
+    m_Settings.tonemap = TONY_MCMAPFACE;
+    m_Settings.enableBlueNoise = true;
+    m_Settings.enableBVH = false;
+    m_Settings.enableCrosshair = false;
+    m_Settings.enableDebugBVHVisualisation = false;
+    m_Settings.enableVsync = false;
+    m_Settings.enableGui = true;
+
+    GetEnvMaps();
+
     // https://gafferongames.com/post/fix_your_timestep/
     constexpr double dt = 1.0 / 144.0;
     double t = 0.0;
@@ -62,7 +84,7 @@ void Application::Run()
 
 void Application::Render()
 {
-    if (!m_Renderer->b_Pause)
+    if (!m_Renderer->hasPaused)
     {
         using namespace glm;
         float phi = radians(m_Scene->sunElevation);
@@ -91,7 +113,7 @@ void Application::Render()
     ImGui::End();
     ImGui::PopStyleVar();
 
-    m_Gui->Render(*m_Renderer, *m_Scene, m_Settings);
+    m_Gui->Render(*m_Renderer, *m_Scene, m_Settings, m_EnvMaps);
 }
 
 void Application::Setup()
@@ -148,3 +170,15 @@ void Application::Resize()
     m_Renderer->OnResize(m_ViewportWidth, m_ViewportHeight);
     m_Scene->Eye->OnResize(m_ViewportWidth, m_ViewportHeight);
 }   
+
+void Application::GetEnvMaps()
+{
+    // https://stackoverflow.com/a/41305019
+    using std::filesystem::directory_iterator;
+
+    for (auto& file : directory_iterator(PATH_TO_HDR))
+    {
+        if (file.path().extension() == ".hdr")
+            m_EnvMaps.push_back(file.path().string());
+    }
+}

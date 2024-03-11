@@ -15,15 +15,25 @@ enum
 
 struct alignas(16) Primitive
 {
+    Primitive()
+        : id(0)
+        , type(PRIM_SPHERE)
+        , radius(1.0f)
+        , position(glm::vec3(0.0f))
+        , rotation(glm::mat4(1.0f))
+        , inverseRotation(glm::mat4(1.0f))
+        , dimensions(glm::vec3(1.0f))
+        , euler(0.0f) 
+    {};
     int id;
     int type;
-    float radius{ 1.0f };
-    alignas(16) glm::vec3 position{ 0.0f, 0.0f, 0.0f };
-    alignas(16) glm::mat4 rotation{ 1.0f };
-    alignas(16) glm::mat4 inverseRotation{ 1.0f };
-    alignas(16) glm::vec3 dimensions{ 1.0f };
+    float radius;
+    alignas(16) glm::vec3 position;
+    alignas(16) glm::mat4 rotation;
+    alignas(16) glm::mat4 inverseRotation;
+    alignas(16) glm::vec3 dimensions;
     Material mat;
-    alignas(16) glm::vec3 euler{ 0.0f };
+    alignas(16) glm::vec3 euler;
 
     void UpdateRotation()
     {
@@ -73,10 +83,9 @@ struct alignas(16) Primitive
 struct AABB
 {
     AABB()
-    {  
-        bMin = glm::vec3(FLT_MAX, FLT_MAX, FLT_MAX);
-        bMax = glm::vec3(FLT_MIN, FLT_MIN, FLT_MIN);
-    }
+        : bMin(glm::vec3(FLT_MAX))
+        , bMax(glm::vec3(FLT_MIN))
+    {};
 
     glm::vec3 bMin;
     glm::vec3 bMax;

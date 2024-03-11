@@ -1,12 +1,5 @@
-#include <glm/glm.hpp>
-#include <iostream>
-#include <vector>
-#include <ctime>
-#include <string>
-
-#include "primitives.h"
-#include "materials.h"
 #include "scene.h"
+
 
 float Randf01()
 {
@@ -17,14 +10,6 @@ glm::vec3 RandVec3()
 {
     return glm::vec3(Randf01(), Randf01(), Randf01());
 }
-
-Scene::Scene()
-{
-    Eye = std::make_unique<Camera>();
-    Eye->Reset();
-}
-
-Scene::~Scene() {}
 
 void Scene::SelectScene()
 {
@@ -89,12 +74,14 @@ void Scene::AddSphere(glm::vec3 position, float radius, Material mat)
     primitives.push_back(sphere);
 }
 
-void Scene::AddCube(glm::vec3 position, glm::vec3 dimensions, Material mat)
+void Scene::AddCube(glm::vec3 position, glm::vec3 dimensions, glm::vec3 rotation, Material mat)
 {
     Primitive cube;
     cube.type = PRIM_AABB;
     cube.position = position;
     cube.dimensions = dimensions;
+    cube.euler = rotation;
+    cube.UpdateRotation();
     cube.mat = mat;
     primitives.push_back(cube);
 }
@@ -105,6 +92,15 @@ void Scene::AddLight(size_t id, glm::vec3 le)
     light.id = (int) id;
     light.le = le;
     lights.push_back(light);
+}
+
+void Scene::AddEnvMap(std::string filepath)
+{
+    if (envMap != nullptr)
+        envMap.reset();
+
+    envMap = std::make_unique<HDRI>();
+    envMap->LoadHDRI(filepath);
 }
 
 Material Scene::CreateGlassMat(glm::vec3 absorption, float roughness)
@@ -157,67 +153,32 @@ Material Scene::CreateLightMat(glm::vec3 le, float intensity)
 void Scene::WhiteRoomColouredLights()
 {
     using namespace glm;
-    
+    vec3 p = vec3(0.0f, 0.0f, -50.0f);
     Eye->SetupCamera(
-        vec3(-7.f, 25.22f, -22.54f),
-        vec3(0.28f, 0.22f, 0.94f),
-        45.0f
+        p,
+        vec3(0.0f, 0.0f, 0.0f) - p,
+        25.0f
     );
-
+    Eye->focal_length = 50.0f;
+    Eye->aperture = 2.0f;
+    envMapRotation = -0.15f;
     day = 0;
 
-    float roomWidth  = 50.f;
-    float roomHeight = 60.f;
-    float roomDepth  = 100.0f;
-    float thickness  = 1.0f;
+    AddSphere(vec3(0.0f, -5.4f, 0.0f), 5.0f, CreateDielectricMat(vec3(255, 185, 0) / 255.0f, 0.0f, 0.0f));
+    AddSphere(vec3(0.0f,  5.4f, 0.0f), 5.0f, CreateDiffuseMat(vec3(50, 175, 255) / 255.0f, 1.0f));
+    AddSphere(vec3( 9.4f, 0.0f, 0.0f), 5.0f, CreateGlassMat(vec3(0, 35, 255) / 255.0f, 0.02f));
+    AddSphere(vec3(-9.4f, 0.0f, 0.0f), 5.0f, CreateMirrorMat(vec3(1.0f), 0.02f));
 
-    Material White = CreateDiffuseMat(vec3(.7295, .7355, .729)*1.1f, 1.0f);
-    Material Red   = CreateDiffuseMat(vec3(.886, .102, .102)*1.0f, 1.0f);
-    Material Green = CreateDiffuseMat(vec3(.102, .886, .102)*1.0f, 1.0f);
-    Material Blue  = CreateDiffuseMat(vec3(.102, .5, .886)*1.0f, 1.0f);  
-    
-    float unit = roomWidth/7.0f;
-    // Floor
-    AddCube(vec3(-3.f * unit, 1.5f * unit, 0.f), vec3(unit, unit, roomDepth), White);
-    AddCube(vec3(-1.f * unit, 1.5f * unit, 0.f), vec3(unit, unit, roomDepth), White);
-    AddCube(vec3(+1.f * unit, 1.5f * unit, 0.f), vec3(unit, unit, roomDepth), White);
-    AddCube(vec3(+3.f * unit, 1.5f * unit, 0.f), vec3(unit, unit, roomDepth), White);
-    
-    // Ceiling
-    AddCube(vec3(0.0f, roomHeight+thickness/2.0f, 0.0f), vec3(roomWidth, 0, roomDepth)+thickness, White);
-
-    // Walls
-    AddCube(vec3(-roomWidth/2.0f, roomHeight/2.0f, 0.0f), vec3(0, roomHeight, roomDepth)+thickness, White);
-    AddCube(vec3(+roomWidth/2.0f, roomHeight/2.0f, 0.0f), vec3(0, roomHeight, roomDepth)+thickness, White);
-    AddCube(vec3(0.0f, roomHeight/2.0f, +roomDepth/2.0f), vec3(roomWidth, roomHeight, 0)+thickness, White);
-    AddCube(vec3(0.0f, roomHeight/2.0f, -roomDepth/2.0f), vec3(roomWidth, roomHeight, 0)+thickness, White);
-
-    //AddSphere(vec3(0.f, roomHeight/2.f, 0.f), 5.0f, CreateGlassMat(vec3(0.0f), 1.55f, 0.01f));
-    AddSphere(vec3(-12.5f, 4.0f, 4.5f), 4.0f, CreateMirrorMat(vec3(1.0f), 0.1f));
-
-    vec3 WarmSun = vec3(.992156862745098, .8862745098039216, .6862745098039216);
-    vec3 LeftL   = vec3(0.012f, 0.039f, 0.51f);
-    vec3 RightL  = vec3(0.51f, 0.141f, 0.012f);
-
-    // Lights
-    AddSphere(vec3(+2.f * unit, unit/2.f, roomDepth/2.f - unit), unit/2.f, CreateLightMat(LeftL, 10.f));
-    AddSphere(vec3(-0.f * unit, unit/2.f, roomDepth/2.f - unit), unit/2.f, CreateLightMat(WarmSun, 1.f));
-    AddSphere(vec3(-2.f * unit, unit/2.f, roomDepth/2.f - unit), unit/2.f, CreateLightMat(RightL, 12.f));
-
-    // AddCube(vec3(+2.f * unit, 0.f, 0.f), vec3(unit, unit, roomDepth), CreateLightMat(vec3(1.f, 1.f, 5.f), 1.f));
-    // AddCube(vec3(-0.f * unit, 0.f, 0.f), vec3(unit, unit, roomDepth), CreateLightMat(vec3(1.f, 5.f, 1.f), 1.f));
-    // AddCube(vec3(-2.f * unit, 0.f, 0.f), vec3(unit, unit, roomDepth), CreateLightMat(vec3(5.f, 1.f, 1.f), 1.f));
-    
     Init();
 }
 
 void Scene::RTIW()
 {
     using namespace glm;
-
+    vec3 p = vec3(0.0f, 4.0f, -16.0f);
     Eye->SetupCamera(
-        vec3(-4.57f, 10.19f, -27.37f),
-        vec3(0.0f, 10.0f, 0.0f) - vec3(-4.57f, 10.19f, -27.37f),// normalize(vec3(0.15f, -0.27f, 0.95f)),
+        p,
+        vec3(0.0f, 4.0f, 9.0f) - p,
         45.0f
     );
     day = 1;
@@ -241,52 +202,53 @@ void Scene::RTIW()
     
     float floorStripW = roomWidth/6.0f;
     // Floor
-    AddCube(vec3(-roomWidth/4.0f, -thickness/2.0f, 0.0f), vec3(roomWidth/2.0f, 0, roomDepth)+thickness, White);
-    AddCube(vec3(1.0f*floorStripW/2.0f, -thickness/2.0f, 0.0f), vec3(floorStripW, 0, roomDepth)+thickness, Blue);
-    AddCube(vec3(3.0f*floorStripW/2.0f, -thickness/2.0f, 0.0f), vec3(floorStripW, 0, roomDepth)+thickness, Orange);
-    AddCube(vec3(5.0f*floorStripW/2.0f, -thickness/2.0f, 0.0f), vec3(floorStripW, 0, roomDepth)+thickness, Purple); // Far left
+    AddCube(vec3(-roomWidth/4.0f, -thickness/2.0f, 0.0f), vec3(roomWidth/2.0f, 0, roomDepth)+thickness, vec3(0.0f), White);
+    AddCube(vec3(1.0f*floorStripW/2.0f, -thickness/2.0f, 0.0f), vec3(floorStripW, 0, roomDepth)+thickness, vec3(0.0f), White);
+    AddCube(vec3(3.0f*floorStripW/2.0f, -thickness/2.0f, 0.0f), vec3(floorStripW, 0, roomDepth)+thickness, vec3(0.0f), White);
+    AddCube(vec3(5.0f*floorStripW/2.0f, -thickness/2.0f, 0.0f), vec3(floorStripW, 0, roomDepth)+thickness, vec3(0.0f), White); // Far left
     
     // Ceiling
-    AddCube(vec3(10.0f, roomHeight+thickness/2.0f, 0.0f), vec3(roomWidth, 0, roomDepth)+thickness, White);
+    constexpr float gap = 49.0f / 7.0f;
+    float start = 21.0f;
+    AddCube(vec3(start, roomHeight + thickness / 2.0f, 0.0f), vec3(gap, 0, roomDepth) + thickness, vec3(0.0f), White);
+    AddCube(vec3(start - 2 * gap, roomHeight + thickness / 2.0f, 0.0f), vec3(gap, 0, roomDepth) + thickness, vec3(0.0f), White);
+    AddCube(vec3(start - 4 * gap, roomHeight + thickness / 2.0f, 0.0f), vec3(gap, 0, roomDepth) + thickness, vec3(0.0f), White);
+    AddCube(vec3(start - 6 * gap, roomHeight + thickness / 2.0f, 0.0f), vec3(gap, 0, roomDepth) + thickness, vec3(0.0f), White);
 
     /* Wall with window */
     float w = (roomWidth - windowWidth)/2.0f;
     float h = (roomHeight - windowHeightDim);
     AddCube(vec3(-windowWidth, roomHeight/2.0f, -roomDepth/2.0f), 
-            vec3(w, roomHeight, thickness),
+            vec3(w, roomHeight, thickness), vec3(0.0f),
             White);
 
     // Above window
     AddCube(vec3(0, roomHeight - ((1.0f - windowHeightPos/roomHeight) * h)/2.0f, -roomDepth/2.0f), 
-            vec3(windowWidth, (1.0f - windowHeightPos/roomHeight) * h, 0)+thickness, 
+            vec3(windowWidth, (1.0f - windowHeightPos/roomHeight) * h, 0)+thickness, vec3(0.0f),
             White);
     // Below window
     AddCube(vec3(0, ((windowHeightPos/roomHeight) * h)/2.0f, -roomDepth/2.0f), 
-            vec3(windowWidth, (windowHeightPos/roomHeight) * h, 0)+thickness,
+            vec3(windowWidth, (windowHeightPos/roomHeight) * h, 0)+thickness, vec3(0.0f),
             White);
     AddCube(vec3(windowWidth, roomHeight/2.0f, -roomDepth/2.0f), 
-            vec3(w, roomHeight, 0)+thickness,
+            vec3(w, roomHeight, 0)+thickness, vec3(0.0f),
             White);
 
     // Window Bar
-    float barDim = thickness * 0.2f;
-    AddCube(vec3(0.0f, roomHeight/2.0f, -roomDepth/2.0f), vec3(barDim, windowHeightDim, barDim), White);
-    AddCube(vec3(0.0f, roomHeight/2.0f, -roomDepth/2.0f), vec3(windowWidth, barDim, barDim), White);
+    float barDim = 1.0f;
+    AddCube(vec3(0.0f, roomHeight/2.0f, -roomDepth/2.0f), vec3(barDim, windowHeightDim, barDim), vec3(0.0f), White);
+    //AddCube(vec3(0.0f, roomHeight/2.0f, -roomDepth/2.0f), vec3(windowWidth, barDim, barDim), White);
 
     // Walls left and right of Window resp.
-    AddCube(vec3(-roomWidth/2.0f, roomHeight/2.0f, 0.0f), vec3(0, roomHeight, roomWidth)+thickness, White);
-    AddCube(vec3(+roomWidth/2.0f, roomHeight/2.0f, 0.0f), vec3(0, roomHeight, roomWidth)+thickness, White);
+    AddCube(vec3(-roomWidth/2.0f, roomHeight/2.0f, 0.0f), vec3(0, roomHeight, roomWidth)+thickness, vec3(0.0f), White);
+    AddCube(vec3(+roomWidth/2.0f, roomHeight/2.0f, 0.0f), vec3(0, roomHeight, roomWidth)+thickness, vec3(0.0f), White);
 
     // Wall opposite window
-    AddCube(vec3(0.0f, roomHeight/2.0f, +roomDepth/2.0f), vec3(roomWidth, roomHeight, 0)+thickness, White);
+    AddCube(vec3(0.0f, roomHeight/2.0f, +roomDepth/2.0f), vec3(roomWidth, roomHeight, 0)+thickness, vec3(0.0f), White);
 
-    //AddSphere(vec3(14.5f, 4.0f, -1.5f), 4.0f, CreateGlassMat(vec3(0.0f), 1.55f, 0.01f));
-    AddSphere(vec3(-12.5f, 4.0f, 8.0f), 4.0f, CreateMirrorMat(vec3(1.0f), 0.0f));
-    //AddSphere(vec3(14.5f, 4.0f, -1.5f), 4.0f, CreateMirrorMat(vec3(0.75f), 0.0f));
-    //AddCube(vec3(-1.4f, 4.0f, -4.0f), vec3(8.0f), CreateDiffuseMat(vec3(136, 82, 153)/255.0f, 1.0f));
-
-    AddSphere(vec3(0.0f, 10.0f, 0.0f), 4.0f, CreateDielectricMat(vec3(117, 176, 105) / 255.0f, 0.0f, 0.0f));
-
+    AddSphere(vec3(0.0f, 4.0f, 9.0f), 4.0f, CreateGlassMat(vec3(0, 74, 48) / 255.0f, 0.0f));
+    AddSphere(vec3(-8.0f, 4.0f, -2.2f), 4.0f, CreateMirrorMat(vec3(255, 222, 129) / 255.0f, 0.0f));
+    AddCube(vec3(6.6f, 5.0f, -3.2f), vec3(4.0f), vec3(0.0f, 45.0f, 45.0f), Blue);
 
     Init();
 }
@@ -313,19 +275,19 @@ void Scene::CornellBox()
     Material whiteDiffuse = CreateDiffuseMat(WHITE_COL, 1.0f);
 
     // Left Wall
-    AddCube(vec3(-5.0f, 5.0f, 0.0f), vec3(0.01f, 10.0f, 10.0f), redDiffuse);
+    AddCube(vec3(-5.0f, 5.0f, 0.0f), vec3(0.01f, 10.0f, 10.0f), vec3(0.0f), redDiffuse);
 
     // Right Wall
-    AddCube(vec3( 5.0f, 5.0f, 0.0f), vec3(0.01f, 10.0f, 10.0f), greenDiffuse);
+    AddCube(vec3( 5.0f, 5.0f, 0.0f), vec3(0.01f, 10.0f, 10.0f), vec3(0.0f), greenDiffuse);
 
     // Back Wall
-    AddCube(vec3(0.0f, 5.0f, -5.0f), vec3(10.0f, 10.0f, 0.01f), whiteDiffuse);
+    AddCube(vec3(0.0f, 5.0f, -5.0f), vec3(10.0f, 10.0f, 0.01f), vec3(0.0f), whiteDiffuse);
 
     // Ceiling
-    AddCube(vec3(0.0f, 10.0f, 0.0f), vec3(10.0f, 0.01f, 10.0f), whiteDiffuse);
+    AddCube(vec3(0.0f, 10.0f, 0.0f), vec3(10.0f, 0.01f, 10.0f), vec3(0.0f), whiteDiffuse);
 
     // Ground
-    AddCube(vec3(0.0f), vec3(10.f, 0.01f, 10.f), whiteDiffuse);
+    AddCube(vec3(0.0f), vec3(10.f, 0.01f, 10.f), vec3(0.0f), whiteDiffuse);
 
     Material MIRROR = CreateMirrorMat(vec3(1.0f), 0.0f);
     AddSphere(vec3(-2.5f, 2.0f, -2.0f), 2.0f, MIRROR);
