@@ -167,12 +167,12 @@ vec3 EvalIndirectBSDF(inout Ray ray, Payload shadingPoint, out float pdf, inout 
 	vec3 l;
 	vec3 v = -ray.direction;
 	vec3 n = shadingPoint.normal;
-	vec3 position	   = shadingPoint.position;
-	vec3 albedo		   = shadingPoint.mat.albedo;
+	vec3 position = shadingPoint.position;
+	vec3 albedo	= shadingPoint.mat.albedo;
 	float transmission = shadingPoint.mat.transmission;
-	float ior          = shadingPoint.mat.ior;
-	float metallic	   = shadingPoint.mat.metallic;
-	float roughness    = shadingPoint.mat.roughness;
+	float ior = shadingPoint.mat.ior;
+	float metallic = shadingPoint.mat.metallic;
+	float roughness = shadingPoint.mat.roughness;
 
 	float rand1 = Randf01();
 	float rand2 = Randf01();
@@ -191,7 +191,7 @@ vec3 EvalIndirectBSDF(inout Ray ray, Payload shadingPoint, out float pdf, inout 
 	vec3 f0 = mix(vec3(0.04), albedo, metallic);
 	vec3 F = F_Schlick(VoH, f0);
 	float n_1 = shadingPoint.fromInside ? ior : 1.0;
-    float n_2 = shadingPoint.fromInside ? 1.0 : ior;
+    float n_2 = !shadingPoint.fromInside ? ior : 1.0;
 	float dF = F_Dielectric(abs(VoH), n_1 / n_2);
     
 	// Lobe weight probability
@@ -324,8 +324,8 @@ vec3 EvalBSDF(Ray ray, Payload shadingPoint, vec3 l, out float pdf)
 
 	vec3 v = -ray.direction;
 	vec3 n = shadingPoint.normal;
-	vec3 albedo		= shadingPoint.mat.albedo;
-	float metallic  = shadingPoint.mat.metallic;
+	vec3 albedo	= shadingPoint.mat.albedo;
+	float metallic = shadingPoint.mat.metallic;
 	float roughness = shadingPoint.mat.roughness;
 	float transmission = shadingPoint.mat.transmission;
 

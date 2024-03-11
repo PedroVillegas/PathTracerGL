@@ -2,11 +2,14 @@
 
 #include <string>
 #include <filesystem>
+
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_glfw.h"
+#include "imgui/imgui_impl_opengl3.h"
 #include "utils.h"
 #include "imgui/imgui.h"
 #include "window.h"
 #include "renderer.h"
-#include "gui.h"
 #include "scene.h"
 #include "camera.h"
 #include "utils.h"
@@ -20,7 +23,6 @@ public:
     void Run();
 
     std::unique_ptr<Window> m_Window;
-    std::unique_ptr<Gui> m_Gui;
     std::unique_ptr<Renderer> m_Renderer;
     std::unique_ptr<Scene> m_Scene;
 
@@ -29,8 +31,8 @@ public:
 private:
     void Setup();
     void Resize();
-    void Update();
     void Render();
+    void RenderUI();
     void GetEnvMaps();
 
     std::string m_Title;

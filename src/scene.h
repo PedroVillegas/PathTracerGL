@@ -39,7 +39,7 @@ public:
     Scene()
         : maxRayDepth(16)
         , samplesPerPixel(1)
-        , day(1)
+        , day(true)
         , LightIdx(0)
         , PrimitiveIdx(0)
         , SceneIdx(0)
@@ -59,7 +59,7 @@ public:
     SceneBlock Data;
     int maxRayDepth;
     int samplesPerPixel;
-    char day;
+    bool day;
     int LightIdx;
     int PrimitiveIdx;
     int SceneIdx;

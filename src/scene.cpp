@@ -106,9 +106,10 @@ void Scene::AddEnvMap(std::string filepath)
 Material Scene::CreateGlassMat(glm::vec3 absorption, float roughness)
 {
     Material out = Material();
-    out.transmission = 1.0;
+    out.transmission = 1.0f;
     out.absorption = absorption;
     out.roughness = roughness;
+    out.ior = 1.55f;
     
     return out;
 }
