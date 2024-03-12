@@ -7,12 +7,14 @@
 #include "bvh.h"
 
 
-struct BVHPrimitiveInfo {
+struct BVHPrimitiveInfo 
+{
     BVHPrimitiveInfo() {}
     BVHPrimitiveInfo(size_t primitiveNumber, const AABB& bounds)
-        : primitiveNumber(primitiveNumber),
-        bounds(bounds),
-        centroid(.5f * bounds.bMin + .5f * bounds.bMax) {}
+        : primitiveNumber(primitiveNumber)
+        , bounds(bounds)
+        , centroid(.5f * bounds.bMin + .5f * bounds.bMax)
+    {};
     size_t primitiveNumber;
     AABB bounds;
     glm::vec3 centroid;
@@ -65,6 +67,7 @@ void BVH::DeleteBVHTree(BVH_Node* node)
 
 void BVH::RebuildBVH(std::vector<Primitive>& primitives)
 {
+    std::cout << "Rebuilding BVH..." << std::endl;
     DeleteBVHTree(bvh_root);
     delete[] flat_root;
 
@@ -99,6 +102,7 @@ void BVH::RebuildBVH(std::vector<Primitive>& primitives)
     FlattenBVHTree(flatten, bvh_root, &offset);
     flat_root = flatten;
     b_Rebuilt = true;
+    std::cout << "BVH Successfully Rebuilt" << std::endl;
 }
 
 BVH_Node* BVH::RecursiveBuild(

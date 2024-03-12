@@ -63,6 +63,7 @@ float F_Schlick(float u, float f0, float f90)
 
 float F_Dielectric(float cosThetaI, float eta)
 {
+	//if (eta == 1.0) eta += EPS;
     float sinThetaTSq = eta * eta * (1.0 - cosThetaI * cosThetaI);
 
     // Total internal reflection
@@ -192,7 +193,9 @@ vec3 EvalIndirectBSDF(inout Ray ray, Payload shadingPoint, out float pdf, inout 
 	vec3 F = F_Schlick(VoH, f0);
 	float n_1 = shadingPoint.fromInside ? ior : 1.0;
     float n_2 = !shadingPoint.fromInside ? ior : 1.0;
-	float dF = F_Dielectric(abs(VoH), n_1 / n_2);
+	float eta = n_1 / n_2;
+	if (eta == 1.0) eta += EPS; // Prevents artifact when eta == 1.0;
+	float dF = F_Dielectric(abs(VoH), eta);
     
 	// Lobe weight probability
 	pdf = 1.0;
@@ -260,7 +263,6 @@ vec3 EvalIndirectBSDF(inout Ray ray, Payload shadingPoint, out float pdf, inout 
 	else //if (rand1 < cdf[2]) // Transmission
 	{
 		lastBounceSpecular = true;
-		float eta = shadingPoint.fromInside ? ior : (1.0 / ior);
 		l = refract(-v, h, eta);
 
 		ray.direction = l;

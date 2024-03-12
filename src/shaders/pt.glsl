@@ -5,6 +5,8 @@ float Saturate( float x ) { return clamp( x, 0.001, 1.0 ); }
 
 #define LIGHT_SPHERE 0
 #define LIGHT_AREA 1
+#define PRIM_SPHERE 0
+#define PRIM_AABB 1
 #define SUN_ENABLED
 #define SUN_COLOUR vec3(.992156862745098, .8862745098039216, .6862745098039216)
 #define SUN_SUNSET vec3(182, 126, 91) / 255.0
@@ -142,7 +144,7 @@ vec4 PathTrace(Ray ray)
         Payload HitRec = ClosestHit(ray, INF, nodeVisits);
 
         /* Debug: Visualize BVH Bounding Boxes */
-        if (u_DebugBVHVisualisation == 1)
+        if (u_DebugBVHVisualisation == 1 && HitRec.t < INF)
         {
             radiance = nodeVisits > 0 ? InfernoQuintic(nodeVisits / u_TotalNodes) : vec3(0.0);
             // radiance = HitRec.mat.albedo;

@@ -218,7 +218,7 @@ void Application::RenderUI()
     
     if (ImGui::Begin("Overview"))
     {
-        ImGui::Text("Viewport: %i x %i", m_Renderer->GetViewportWidth(), m_Renderer->GetViewportHeight());
+        ImGui::Text("Viewport: %i x %i", m_ViewportWidth, m_ViewportHeight);
         ImGui::Text("Render time: %.3f ms/frame", 1000.0f / ImGui::GetIO().Framerate);
         ImGui::Text("Framerate: %.1f FPS", ImGui::GetIO().Framerate);
         ImGui::Text("Iterations: %i", m_Renderer->GetIterations());
@@ -331,11 +331,6 @@ void Application::RenderUI()
             m_Renderer->ResetSamples();
         }
 
-        if (ImGui::Checkbox("Day", &m_Scene->day))
-        {
-            m_Renderer->ResetSamples();
-        }
-
         if (ImGui::Button("Reset Samples")) 
             m_Renderer->ResetSamples();
         
@@ -388,7 +383,12 @@ void Application::RenderUI()
                 m_Scene->AddLight(m_Scene->primitives.size() - 1, glm::vec3(1.0f));
                 m_Renderer->m_BVH->RebuildBVH(m_Scene->primitives);
                 m_Renderer->ResetSamples();
-        }
+            }
+
+            if (ImGui::Checkbox("Enable Sun", &m_Scene->day))
+            {
+                m_Renderer->ResetSamples();
+            }
 
             if (m_Scene->day == 1)
             {

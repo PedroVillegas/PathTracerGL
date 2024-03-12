@@ -8,6 +8,7 @@
 #include "bvh.h"
 #include "utils.h"
 #include "lodepng.h"
+#include "texture.h"
 #include "stb/stb_image.h"
 
 
@@ -19,12 +20,7 @@ public:
 
     void OnResize(uint32_t width, uint32_t height);
 
-    void SetViewportWidth(uint32_t width);
-    void SetViewportHeight(uint32_t height);
-
     Framebuffer GetViewportFramebuffer() const { return m_FinalOutputFBO; }
-    uint32_t GetViewportWidth() const { return m_ViewportWidth; }
-    uint32_t GetViewportHeight() const { return m_ViewportHeight; }
     uint32_t GetIterations() const { return m_SampleIterations; }
     Shader& GetShader() const { return *m_PathTraceShader; }
 

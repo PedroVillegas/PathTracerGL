@@ -72,7 +72,7 @@ bool Intersect(Ray ray, Primitive prim, inout Payload payload)
     float tNear, tFar;
     switch (prim.type)
     {
-        case 0: // Sphere
+        case PRIM_SPHERE: // Sphere
             // IntersectSphere tNear and tFar to be the intersection points of the ray and object
             // These intersections are only valid if the far one is in front of the camera and
             // the near one is in front of the closest object so far
@@ -87,7 +87,7 @@ bool Intersect(Ray ray, Primitive prim, inout Payload payload)
                 return true;
             }
             break;
-        case 1: // AABB
+        case PRIM_AABB: // AABB
             // Transform ray into object space
             Ray rotatedRay = Ray(vec3(prim.rotation * vec4(ray.origin - prim.position, 1.0)), vec3(prim.rotation * vec4(ray.direction, 1.0)));
             if (IntersectAABB(vec3(0.0), prim.dimensions, rotatedRay, tNear, tFar) && tFar > EPS && tNear < payload.t)

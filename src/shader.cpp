@@ -24,8 +24,6 @@ void Shader::ReloadShader()
 {
     std::string vs_path = std::string(m_VSPath);
     std::string fs_path = std::string(m_FSPath);
-    std::cout << m_VSPath << std::endl;
-    std::cout << vs_path << std::endl;
     std::string vs = ParseShader(vs_path);
     std::string fs = ParseShader(fs_path);
     uint32_t tempID = CreateShader(vs, fs);
